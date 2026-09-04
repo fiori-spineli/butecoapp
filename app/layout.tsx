@@ -1,0 +1,26 @@
+import type { Metadata, Viewport } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "BotecoApp",
+  description: "O caderninho de contas do boteco, no celular.",
+  appleWebApp: { capable: true, title: "BotecoApp", statusBarStyle: "default" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#2b2a28",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="pt-BR">
+      <body className="min-h-dvh bg-stone-100 text-stone-900 antialiased">
+        {children}
+      </body>
+    </html>
+  );
+}
