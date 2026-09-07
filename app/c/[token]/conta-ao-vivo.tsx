@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 import { Miniatura } from "@/components/miniatura";
 import { formatarReais, tempoRestanteComprovante } from "@/lib/format";
 import type { ComandaPublica } from "@/lib/types";
@@ -23,7 +23,7 @@ export function ContaAoVivo({
   const [expirou, setExpirou] = useState(false);
 
   const buscar = useCallback(async () => {
-    const supabase = createSupabaseBrowserClient();
+    const supabase = createSupabaseAnonClient();
     const { data, error } = await supabase.rpc("comanda_publica", { p_token: token });
     if (error) return;
     if (!data) {

@@ -23,7 +23,12 @@ export async function createSupabaseServerClient() {
       setAll(cookiesToSet) {
         try {
           for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+            // httpOnly: nenhum componente cliente lê a sessão — o único uso do
+            // Supabase no navegador é a página pública da comanda, que é
+            // anônima. Sem isso, o token do dono fica legível por JavaScript na
+            // mesma origem que serve /c/[token], e qualquer XSS futuro ali vira
+            // tomada de conta.
+            cookieStore.set(name, value, { ...options, httpOnly: true });
           }
         } catch {
           // Server Components não podem escrever cookies; o proxy.ts cuida

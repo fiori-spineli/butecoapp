@@ -47,7 +47,7 @@ export default async function DashboardPage() {
       <header className="flex items-center justify-between border-b border-stone-300 bg-white px-5 pt-5 pb-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-stone-500">
-            BotecoApp
+            ButecoApp
           </p>
           <h1 className="mt-0.5 text-lg font-bold leading-tight">{bar.nome}</h1>
         </div>

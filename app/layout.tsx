@@ -2,9 +2,9 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BotecoApp",
-  description: "O caderninho de contas do boteco, no celular.",
-  appleWebApp: { capable: true, title: "BotecoApp", statusBarStyle: "default" },
+  title: "ButecoApp",
+  description: "O caderninho de contas do buteco, no celular.",
+  appleWebApp: { capable: true, title: "ButecoApp", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

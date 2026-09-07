@@ -7,7 +7,7 @@ import type { EstadoForm } from "@/app/actions/auth";
 
 /**
  * A foto é convertida para WebP aqui no navegador antes de subir (economiza
- * dados numa rede de boteco); a rota /api/produtos/imagem reprocessa com sharp
+ * dados numa rede de buteco); a rota /api/produtos/imagem reprocessa com sharp
  * como rede de segurança. O input NÃO usa o atributo `capture` — assim o
  * celular oferece câmera E galeria, em vez de forçar a câmera.
  */

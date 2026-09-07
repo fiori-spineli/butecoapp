@@ -1,4 +1,4 @@
--- BotecoApp — schema inicial
+-- ButecoApp — schema inicial
 -- Aplicar no SQL Editor do projeto Supabase (ou via `supabase db push`).
 -- Idempotente: pode ser rodado mais de uma vez.
 
@@ -62,6 +62,8 @@ create index if not exists produtos_bar_id_idx     on public.produtos (bar_id);
 create index if not exists lancamentos_cliente_idx on public.lancamentos (cliente_id);
 create index if not exists pagamentos_cliente_idx  on public.pagamentos (cliente_id);
 create index if not exists pagamentos_lancto_idx   on public.pagamentos (lancamento_id);
+create index if not exists bars_owner_id_idx       on public.bars (owner_id);
+create index if not exists lancamentos_produto_idx on public.lancamentos (produto_id);
 
 -- ============================================================
 -- Row Level Security — isolamento multi-tenant
@@ -84,18 +86,18 @@ drop policy if exists "dono acessa seus pagamentos"  on public.pagamentos;
 
 create policy "dono acessa seu bar"
   on public.bars for all to authenticated
-  using (owner_id = auth.uid())
-  with check (owner_id = auth.uid());
+  using (owner_id = (select auth.uid()))
+  with check (owner_id = (select auth.uid()));
 
 create policy "dono acessa seus clientes"
   on public.clientes for all to authenticated
-  using (bar_id in (select id from public.bars where owner_id = auth.uid()))
-  with check (bar_id in (select id from public.bars where owner_id = auth.uid()));
+  using (bar_id in (select id from public.bars where owner_id = (select auth.uid())))
+  with check (bar_id in (select id from public.bars where owner_id = (select auth.uid())));
 
 create policy "dono acessa seus produtos"
   on public.produtos for all to authenticated
-  using (bar_id in (select id from public.bars where owner_id = auth.uid()))
-  with check (bar_id in (select id from public.bars where owner_id = auth.uid()));
+  using (bar_id in (select id from public.bars where owner_id = (select auth.uid())))
+  with check (bar_id in (select id from public.bars where owner_id = (select auth.uid())));
 
 create policy "dono acessa seus lancamentos"
   on public.lancamentos for all to authenticated
@@ -103,14 +105,14 @@ create policy "dono acessa seus lancamentos"
     cliente_id in (
       select c.id from public.clientes c
       join public.bars b on b.id = c.bar_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = (select auth.uid())
     )
   )
   with check (
     cliente_id in (
       select c.id from public.clientes c
       join public.bars b on b.id = c.bar_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = (select auth.uid())
     )
   );
 
@@ -120,14 +122,14 @@ create policy "dono acessa seus pagamentos"
     cliente_id in (
       select c.id from public.clientes c
       join public.bars b on b.id = c.bar_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = (select auth.uid())
     )
   )
   with check (
     cliente_id in (
       select c.id from public.clientes c
       join public.bars b on b.id = c.bar_id
-      where b.owner_id = auth.uid()
+      where b.owner_id = (select auth.uid())
     )
   );
 
@@ -299,3 +301,29 @@ create policy "dono apaga imagens do proprio bar"
     bucket_id = 'produtos-imagens'
     and (storage.foldername(name))[1] in (select id::text from public.bars where owner_id = auth.uid())
   );
+
+
+-- ============================================================
+-- Grants do role `anon`
+--
+-- O Supabase concede SELECT/INSERT/UPDATE/DELETE em todas as tabelas do
+-- schema public para `anon` por padrão. O RLS já bloqueia tudo (não há uma
+-- policy sequer para `anon`), mas "volta vazio" e "não tem permissão" são
+-- coisas diferentes: com o grant de pé, uma policy larga demais ou um RLS
+-- desligado por engano abre o banco na hora. Duas camadas em vez de uma.
+--
+-- O cliente anônimo só precisa de comanda_publica(), que é SECURITY DEFINER
+-- e não depende de grant de tabela. `authenticated` mantém os seus: é por
+-- eles + RLS que o dono acessa o próprio bar.
+-- ============================================================
+
+revoke all on all tables    in schema public from anon;
+revoke all on all sequences in schema public from anon;
+revoke all on all functions in schema public from anon;
+
+-- Reposto depois do revoke acima: é a API pública da comanda.
+grant execute on function public.comanda_publica(uuid) to anon;
+
+alter default privileges in schema public revoke all on tables    from anon;
+alter default privileges in schema public revoke all on sequences from anon;
+alter default privileges in schema public revoke all on functions from anon;

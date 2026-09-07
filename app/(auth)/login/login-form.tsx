@@ -3,11 +3,20 @@
 import { useActionState } from "react";
 import { enviarMagicLink, type EstadoForm } from "@/app/actions/auth";
 
-export function LoginForm({ erroInicial }: { erroInicial?: boolean }) {
+/** Cada jeito de o link falhar pede uma ação diferente de quem está entrando. */
+const MENSAGEM_ERRO: Record<string, string> = {
+  expirado:
+    "Esse link já foi usado ou expirou. Peça um novo — e se o seu e-mail abre links automaticamente, ele pode estar gastando o link antes de você.",
+  navegador:
+    "Abra o link no mesmo navegador em que você pediu — é lá que fica a chave que destrava a entrada.",
+  link: "Não consegui validar esse link. Peça um novo.",
+};
+
+export function LoginForm({ erroInicial }: { erroInicial?: string }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(
     enviarMagicLink,
     erroInicial
-      ? { ok: false, mensagem: "Esse link expirou ou já foi usado. Peça um novo." }
+      ? { ok: false, mensagem: MENSAGEM_ERRO[erroInicial] ?? MENSAGEM_ERRO.link }
       : null,
   );
 

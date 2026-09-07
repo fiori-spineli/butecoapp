@@ -21,7 +21,7 @@ export function OnboardingForm() {
           name="nome"
           required
           autoFocus
-          placeholder="Boteco do Marquinho"
+          placeholder="Buteco do Marquinho"
           className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3.5 outline-none placeholder:text-stone-400 focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10"
         />
       </div>

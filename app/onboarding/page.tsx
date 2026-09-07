@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-7 py-10">
       <p className="mb-2 text-center text-xs font-bold uppercase tracking-[0.18em] text-stone-500">
-        BotecoApp
+        ButecoApp
       </p>
       <h1 className="text-center text-2xl font-bold tracking-tight">Como chama seu bar?</h1>
       <p className="mx-auto mt-2.5 mb-7 max-w-[32ch] text-center text-sm leading-relaxed text-stone-500">
