@@ -47,5 +47,5 @@ export function gerarSlug(nome: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
   const sufixo = Math.random().toString(36).slice(2, 7);
-  return `${base || "boteco"}-${sufixo}`;
+  return `${base || "buteco"}-${sufixo}`;
 }
