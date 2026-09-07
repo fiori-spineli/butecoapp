@@ -173,9 +173,17 @@ left join lateral (
 -- já respeitando a janela de 24h após o fechamento.
 -- ============================================================
 
+--
+-- Nota sobre os advisors "…security_definer_function_executable": esta função
+-- é SECURITY DEFINER e executável por anon/authenticated DE PROPÓSITO — ela é
+-- a API pública da comanda. É justamente o que permite não dar SELECT anônimo
+-- nas tabelas. Ela só devolve a comanda cujo token foi informado, e o token é
+-- um UUID aleatório (não enumerável).
+--
 create or replace function public.comanda_publica(p_token uuid)
 returns jsonb
 language plpgsql
+stable
 security definer
 set search_path = public
 as $$
@@ -258,10 +266,18 @@ drop policy if exists "imagens de produto sao publicas"      on storage.objects;
 drop policy if exists "dono sobe imagens do proprio bar"     on storage.objects;
 drop policy if exists "dono atualiza imagens do proprio bar" on storage.objects;
 drop policy if exists "dono apaga imagens do proprio bar"    on storage.objects;
+drop policy if exists "dono lista imagens do proprio bar"    on storage.objects;
 
-create policy "imagens de produto sao publicas"
-  on storage.objects for select to public
-  using (bucket_id = 'produtos-imagens');
+-- Sem policy de SELECT ampla aqui de propósito: bucket público já serve os
+-- arquivos por /storage/v1/object/public/... sem passar por RLS. Uma policy
+-- de SELECT liberada permitiria LISTAR todo o bucket (advisor
+-- public_bucket_allows_listing). O dono lista só a própria pasta:
+create policy "dono lista imagens do proprio bar"
+  on storage.objects for select to authenticated
+  using (
+    bucket_id = 'produtos-imagens'
+    and (storage.foldername(name))[1] in (select id::text from public.bars where owner_id = auth.uid())
+  );
 
 create policy "dono sobe imagens do proprio bar"
   on storage.objects for insert to authenticated

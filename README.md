@@ -21,8 +21,9 @@ acompanha a própria conta por um link/QR, sem instalar nada e sem criar conta.
 ### 1. Criar o projeto no Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (free tier serve).
-2. Abra **SQL Editor** e rode o conteúdo de `supabase/migrations/0001_init.sql`.
-   Ele cria as tabelas, o RLS, a função de acesso público e o bucket de imagens.
+2. Abra **SQL Editor** e rode, em ordem, os arquivos de `supabase/migrations/`:
+   `0001_init.sql` (tabelas, RLS, função de acesso público, bucket de imagens) e
+   `0002_hardening.sql` (correções apontadas pelos advisors).
 3. Em **Project Settings → API**, copie a *Project URL* e a *anon public key*.
 
 ### 2. Configurar o app
