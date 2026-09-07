@@ -1,9 +1,9 @@
-# BotecoApp
+# ButecoApp
 
-O caderninho de contas do boteco, no celular. O dono lança o consumo; o cliente
+O caderninho de contas do buteco, no celular. O dono lança o consumo; o cliente
 acompanha a própria conta por um link/QR, sem instalar nada e sem criar conta.
 
-- **Documento de arquitetura:** `BotecoApp - Arquitetura Tecnica.docx`
+- **Documento de arquitetura:** `ButecoApp - Arquitetura Tecnica.docx`
 - **Diagramas e wireframes:** `docs/LINKS.md`
 
 ## Stack
@@ -21,9 +21,15 @@ acompanha a própria conta por um link/QR, sem instalar nada e sem criar conta.
 ### 1. Criar o projeto no Supabase
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (free tier serve).
-2. Abra **SQL Editor** e rode, em ordem, os arquivos de `supabase/migrations/`:
-   `0001_init.sql` (tabelas, RLS, função de acesso público, bucket de imagens) e
-   `0002_hardening.sql` (correções apontadas pelos advisors).
+2. Abra **SQL Editor** e rode **apenas o `0001_init.sql`**. Ele é o schema
+   completo e idempotente: tabelas, RLS, índices, função de acesso público,
+   bucket de imagens e os grants já ajustados.
+
+   Os arquivos `0002`, `0003` e `0004` são **remendos históricos**, para bancos
+   criados antes de cada correção. Numa instalação nova eles não têm efeito
+   algum — o `0001` já chega no estado final. Só rode-os, na ordem, se o seu
+   banco veio de uma versão anterior deste repo.
+
 3. Em **Project Settings → API**, copie a *Project URL* e a *anon public key*.
 
 ### 2. Configurar o app

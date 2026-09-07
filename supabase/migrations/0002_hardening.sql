@@ -1,4 +1,4 @@
--- BotecoApp — correções apontadas pelos advisors do Supabase.
+-- ButecoApp — correções apontadas pelos advisors do Supabase.
 -- Para bancos que já rodaram a 0001 na versão anterior. Idempotente.
 
 -- ============================================================
@@ -32,11 +32,17 @@ create policy "dono lista imagens do proprio bar"
 alter function public.comanda_publica(uuid) stable;
 
 -- ============================================================
--- 3. rls_auto_enable(): função que não faz parte deste projeto
+-- 3. rls_auto_enable(): guarda-corpo que não veio deste projeto
 --
--- Apareceu no banco vinda de fora desta migration (provavelmente de algum
--- template/assistente). Enquanto não se confirma quem a usa, o mínimo é tirar
--- o EXECUTE de anon/authenticated — ninguém de fora precisa chamá-la.
+-- Identificada: é a função do event trigger `ensure_rls` (ddl_command_end),
+-- que liga RLS automaticamente em toda tabela criada no schema public. Não veio
+-- de nenhuma migration daqui, e também não é da plataforma — os event triggers
+-- do Supabase pertencem a `supabase_admin`, e esta pertence a `postgres`, ou
+-- seja, foi criada por alguém rodando SQL no projeto. É inofensiva e até útil,
+-- então fica. O alerta do advisor sobre ela é falso positivo: função de event
+-- trigger não é chamável por fora (`select rls_auto_enable()` só dá erro).
+-- Ainda assim tiramos o EXECUTE de anon/authenticated — ninguém de fora precisa
+-- dela, e o disparo do event trigger não depende desse privilégio.
 -- ============================================================
 
 do $$
