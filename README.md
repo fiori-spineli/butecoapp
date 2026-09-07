@@ -1,4 +1,4 @@
-# BotecoApp
+# Buteco
 
 O caderninho de contas do boteco, no celular. O dono lança o consumo; o cliente
 acompanha a própria conta por um link/QR, sem instalar nada e sem criar conta.
