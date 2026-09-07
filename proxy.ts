@@ -26,7 +26,9 @@ export async function proxy(request: NextRequest) {
         }
         response = NextResponse.next({ request });
         for (const { name, value, options } of cookiesToSet) {
-          response.cookies.set(name, value, options);
+          // Ver o comentário em lib/supabase/server.ts: a sessão nunca é lida
+          // pelo navegador, então ela não precisa ficar exposta ao JavaScript.
+          response.cookies.set(name, value, { ...options, httpOnly: true });
         }
       },
     },
