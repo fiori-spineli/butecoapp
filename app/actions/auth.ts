@@ -30,7 +30,18 @@ export async function enviarMagicLink(
   });
 
   if (error) {
-    return { ok: false, mensagem: "Não consegui enviar o link agora. Tente de novo." };
+    // O SMTP embutido do Supabase entrega poucos e-mails por hora, e o limite é
+    // por projeto — insistir só queima o que sobrou da cota. Vale dizer isso em
+    // vez de mandar "tente de novo".
+    const excedeuCota =
+      error.status === 429 || error.code === "over_email_send_rate_limit";
+
+    return {
+      ok: false,
+      mensagem: excedeuCota
+        ? "Limite de e-mails do projeto atingido. Espere alguns minutos antes de pedir outro link — tentar de novo agora não adianta."
+        : "Não consegui enviar o link agora. Tente de novo.",
+    };
   }
 
   return {
