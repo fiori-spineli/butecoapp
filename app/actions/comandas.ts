@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirBar } from "@/lib/bar";
+import { formatarReais } from "@/lib/format";
 import type { EstadoForm } from "@/app/actions/auth";
 
 export type ItemParaLancar =
@@ -123,6 +124,29 @@ export async function registrarPagamento(
 
   const { supabase } = await exigirBar();
 
+  // Uma conta não pode ser paga além do que deve. Sem esta checagem, um "500"
+  // digitado no lugar de "50" entra como pagamento e o saldo vira negativo —
+  // inclusive na página que o cliente abre pelo QR, onde "-R$ 467,33" não
+  // significa nada. O pagamento por item já tinha essa trava; o de valor livre
+  // (usado pela divisão igualitária) não tinha.
+  const { data: resumo } = await supabase
+    .from("comandas_resumo")
+    .select("restante_centavos")
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  if (!resumo) {
+    return { ok: false, mensagem: "Comanda não encontrada." };
+  }
+
+  const restante = resumo.restante_centavos as number;
+  if (valor > restante) {
+    return {
+      ok: false,
+      mensagem: `Falta ${formatarReais(restante)} nessa conta — o valor registrado não pode passar disso.`,
+    };
+  }
+
   const { error } = await supabase.from("pagamentos").insert({
     cliente_id: clienteId,
     lancamento_id: null,
@@ -215,6 +239,37 @@ export async function removerPagamento(
 
 export async function fecharConta(clienteId: string): Promise<Resultado> {
   const { supabase } = await exigirBar();
+
+  // Fechar uma comanda já afirma que o cliente pagou: a página dele passa a
+  // estampar PAGO, mostrar "Total pago" e valer como comprovante por 24h. O que
+  // faltava era registrar o acerto. Sem isso, uma conta fechada com saldo em
+  // aberto gerava duas verdades incompatíveis sobre a mesma mesa — o cliente
+  // saía com comprovante de R$ 49,00 e o "Recebido hoje" do dono contava só os
+  // R$ 16,33 lançados na divisão.
+  //
+  // O acerto entra ANTES do fechamento de propósito: se o update falhar, um
+  // retry recalcula o restante como zero e não duplica o pagamento.
+  const { data: resumo } = await supabase
+    .from("comandas_resumo")
+    .select("restante_centavos")
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  const restante = (resumo?.restante_centavos as number | undefined) ?? 0;
+
+  if (restante > 0) {
+    const { error: erroAcerto } = await supabase.from("pagamentos").insert({
+      cliente_id: clienteId,
+      lancamento_id: null,
+      quantidade_paga: null,
+      valor_centavos: restante,
+      descricao: "Acerto no fechamento",
+    });
+
+    if (erroAcerto) {
+      return { ok: false, mensagem: "Não consegui registrar o acerto final." };
+    }
+  }
 
   const { error } = await supabase
     .from("clientes")
