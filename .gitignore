@@ -16,6 +16,14 @@
 !.env.example
 *.bak
 
+# material interno — wireframe, UML, documento de arquitetura e o script que o
+# gera. Nada disso é necessário pra rodar o app, e o gen_docx.py ainda carregava
+# um caminho absoluto desta máquina. Os arquivos continuam no disco local.
+/design/
+/docs/
+/scripts/
+*.docx
+
 # supabase
 .supabase
 supabase/.temp

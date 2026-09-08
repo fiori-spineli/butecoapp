@@ -3,9 +3,6 @@
 O caderninho de contas do buteco, no celular. O dono lança o consumo; o cliente
 acompanha a própria conta por um link/QR, sem instalar nada e sem criar conta.
 
-- **Documento de arquitetura:** `ButecoApp - Arquitetura Tecnica.docx`
-- **Diagramas e wireframes:** `docs/LINKS.md`
-
 ## Stack
 
 | Camada | Tecnologia |
