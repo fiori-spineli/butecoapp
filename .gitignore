@@ -9,18 +9,34 @@
 /build
 
 # env
-.env
-.env*.local
-.env
+# Regra ampla de propósito: o repositório é público, e a versão anterior cobria
+# só `.env` e `.env*.local` — `.env.production` e `.env.local.bak` passariam
+# direto. O `.example` é reincluído porque só tem placeholder.
+.env*
+!.env.example
+*.bak
 
 # supabase
 .supabase
+supabase/.temp
+supabase/.branches
+
+# editores
+.vscode/
+.idea/
+*.swp
 
 # misc
 .DS_Store
+Thumbs.db
+desktop.ini
 *.pem
+*.key
 *.log
 npm-debug.log*
+
+# claude code — o settings.json do projeto é compartilhado; o .local é pessoal
+.claude/settings.local.json
 
 # vercel
 .vercel
