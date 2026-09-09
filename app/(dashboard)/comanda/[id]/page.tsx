@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { exigirBar } from "@/lib/bar";
+import { montarMensagem } from "@/lib/mensagem-qr";
 import { formatarDataHora, formatarReais } from "@/lib/format";
 import { origemDoApp } from "@/lib/url";
 import { VoltarPara } from "@/components/voltar";
@@ -235,6 +236,10 @@ export default async function ComandaPage({
         clienteId={comanda.id}
         nomeComanda={comanda.nome}
         link={linkPublico}
+        mensagemQr={montarMensagem(bar.mensagem_qr, {
+          bar: bar.nome,
+          comanda: comanda.numero_mesa ? `Mesa ${comanda.numero_mesa}` : comanda.nome,
+        })}
         produtos={produtos}
         itens={itensDivisiveis}
         totalCentavos={comanda.total_centavos}

@@ -3,11 +3,12 @@ import { VoltarPara } from "@/components/voltar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
 import { SenhaForm } from "./senha-form";
+import { MensagemQrForm } from "./mensagem-qr-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
-  const { supabase } = await exigirBar();
+  const { supabase, bar } = await exigirBar();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -25,7 +26,7 @@ export default async function PerfilPage() {
       <main className="flex-1 p-6 md:p-8 max-w-2xl w-full mx-auto">
         <div className="mb-6">
           <h1 className="text-xl md:text-2xl font-black text-stone-900 dark:text-stone-100">
-            Segurança e Acesso
+            Ajustes do bar
           </h1>
           <p className="text-xs md:text-sm text-stone-500 dark:text-stone-400 mt-1">
             Logado como <strong className="text-stone-800 dark:text-stone-200">{user?.email}</strong>
@@ -41,6 +42,18 @@ export default async function PerfilPage() {
           </p>
 
           <SenhaForm />
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
+            Mensagem enviada com o QR Code
+          </h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+            Quando você compartilha a comanda pelo WhatsApp, este texto vai junto com o
+            link. Escreva do jeito que o seu bar fala.
+          </p>
+
+          <MensagemQrForm mensagemAtual={bar.mensagem_qr} nomeDoBar={bar.nome} />
         </div>
       </main>
     </div>

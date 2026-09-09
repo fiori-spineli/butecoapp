@@ -3,6 +3,8 @@ export type Bar = {
   owner_id: string;
   nome: string;
   slug: string;
+  /** Texto enviado junto ao link da comanda. Nulo = usar o padrão do app. */
+  mensagem_qr: string | null;
   created_at: string;
 };
 

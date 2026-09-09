@@ -7,19 +7,22 @@ import { Modal } from "./modal";
 export function QRModal({
   link,
   titulo,
+  mensagem,
   aberto,
   aoFechar,
 }: {
   link: string;
   titulo: string;
+  /** Texto que vai junto do link no WhatsApp. Definido pelo dono em /perfil. */
+  mensagem: string;
   aberto: boolean;
   aoFechar: () => void;
 }) {
   const [copiado, setCopiado] = useState(false);
 
-  async function copiar() {
+  async function copiar(conteudo: string = link) {
     try {
-      await navigator.clipboard.writeText(link);
+      await navigator.clipboard.writeText(conteudo);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
     } catch {
@@ -30,13 +33,17 @@ export function QRModal({
   async function compartilhar() {
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
-        await navigator.share({ title: titulo, text: "Sua conta no bar", url: link });
+        await navigator.share({ title: titulo, text: mensagem, url: link });
       } catch {
         // Cancelado pelo usuário
       }
-    } else {
-      await copiar();
+      return;
     }
+
+    // Computador do caixa não tem compartilhamento nativo. Copiar só o link
+    // faria a mensagem que o dono escreveu se perder justamente aqui — então
+    // vai o texto inteiro, pronto para colar no WhatsApp Web.
+    await copiar(`${mensagem}\n\n${link}`);
   }
 
   return (
@@ -57,7 +64,7 @@ export function QRModal({
       <div className="mt-5 grid grid-cols-2 gap-3">
         <button
           type="button"
-          onClick={copiar}
+          onClick={() => copiar()}
           className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 py-3 text-xs md:text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors"
         >
           {copiado ? "Link copiado!" : "Copiar link"}

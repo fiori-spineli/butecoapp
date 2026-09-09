@@ -10,6 +10,7 @@ export function AcoesComanda({
   clienteId,
   nomeComanda,
   link,
+  mensagemQr,
   produtos,
   itens,
   totalCentavos,
@@ -20,6 +21,7 @@ export function AcoesComanda({
   clienteId: string;
   nomeComanda: string;
   link: string;
+  mensagemQr: string;
   produtos: Produto[];
   itens: ItemDivisivel[];
   totalCentavos: number;
@@ -88,7 +90,7 @@ export function AcoesComanda({
       />
 
       <QRModal
-        link={link}
+        link={link} mensagem={mensagemQr}
         titulo={nomeComanda}
         aberto={modal === "qr"}
         aoFechar={() => setModal(null)}
