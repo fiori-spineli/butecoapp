@@ -12,13 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#2b2a28",
     icons: [
       {
-        src: "/buteco_logo_clear.png",
+        src: "/buteco_logo_pwa.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/buteco_logo_clear.png",
+        src: "/buteco_logo_pwa.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
