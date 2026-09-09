@@ -11,5 +11,19 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  redirect(user ? "/dashboard" : "/login");
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: bar } = await supabase
+    .from("bars")
+    .select("id")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!bar) {
+    redirect("/onboarding");
+  }
+
+  redirect("/dashboard");
 }
