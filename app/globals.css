@@ -30,61 +30,115 @@ textarea {
   background-color: #d97706;
   color: #ffffff;
 }
-
 /* ==========================================================
-   EFERVESCÊNCIA DO CHOPP
+   BOLHAS RANDOMIZADAS
    ========================================================== */
 
-@keyframes subirBolhaMagica {
+/*
+ * Cada bolha possui 4 deslocamentos horizontais próprios:
+ *
+ * 0%    -> posição inicial
+ * 25%   -> drift 1
+ * 50%   -> drift 2
+ * 75%   -> drift 3
+ * 100%  -> drift 4
+ *
+ * Isso cria trajetórias diferentes para cada bolha.
+ */
+
+@keyframes bolhaRandomica {
   0% {
-    transform: translate3d(0, 24px, 0) scale(0.45);
+    transform:
+      translate3d(0, 20px, 0)
+      scale(0.45);
+
     opacity: 0;
   }
 
-  12% {
-    opacity: 0.55;
+  8% {
+    opacity: var(--bubble-opacity);
   }
 
-  35% {
-    transform: translate3d(5px, -30vh, 0) scale(0.75);
-    opacity: 0.8;
+  22% {
+    transform:
+      translate3d(
+        var(--bubble-drift-1),
+        -22vh,
+        0
+      )
+      scale(0.72);
   }
 
-  55% {
-    transform: translate3d(-4px, -55vh, 0) scale(0.95);
-    opacity: 0.85;
+  42% {
+    transform:
+      translate3d(
+        var(--bubble-drift-2),
+        -43vh,
+        0
+      )
+      scale(0.9);
   }
 
-  78% {
-    transform: translate3d(6px, -82vh, 0) scale(1.08);
-    opacity: 0.65;
+  62% {
+    transform:
+      translate3d(
+        var(--bubble-drift-3),
+        -66vh,
+        0
+      )
+      scale(1);
+  }
+
+  82% {
+    transform:
+      translate3d(
+        var(--bubble-drift-4),
+        -90vh,
+        0
+      )
+      scale(1.12);
   }
 
   100% {
-    transform: translate3d(-5px, -118vh, 0) scale(1.25);
+    transform:
+      translate3d(
+        calc(var(--bubble-drift-4) * -0.5),
+        -120vh,
+        0
+      )
+      scale(var(--bubble-scale));
+
     opacity: 0;
   }
 }
 
-.anim-bolha-1 {
-  animation: subirBolhaMagica 6.5s infinite ease-in-out;
+.bolha-randomica {
+  /*
+   * O navegador sabe que somente transform e opacity
+   * serão animados.
+   */
+  animation-name: bolhaRandomica;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+
+  /*
+   * Ajuda especialmente com as bolhas maiores.
+   */
+  will-change: transform, opacity;
+
+  /*
+   * Mantém a bolha redonda.
+   */
+  aspect-ratio: 1;
+
+  /*
+   * Brilho proporcional ao tamanho.
+   */
+  box-shadow:
+    0 0 var(--bubble-glow)
+    rgba(254, 243, 199, 0.55);
 }
 
-.anim-bolha-2 {
-  animation: subirBolhaMagica 9s infinite ease-in-out 1.2s;
-}
-
-.anim-bolha-3 {
-  animation: subirBolhaMagica 5s infinite ease-in-out 0.3s;
-}
-
-.anim-bolha-4 {
-  animation: subirBolhaMagica 10.5s infinite ease-in-out 2.5s;
-}
-
-.anim-bolha-5 {
-  animation: subirBolhaMagica 7.5s infinite ease-in-out 1.8s;
-}
 
 /* ==========================================================
    ESPUMA
@@ -93,7 +147,7 @@ textarea {
 @keyframes espumaPulse {
   0%,
   100% {
-    opacity: 0.8;
+    opacity: 0.78;
     transform: scaleY(1);
   }
 
@@ -108,6 +162,7 @@ textarea {
   transform-origin: top center;
 }
 
+
 /* ==========================================================
    BRILHO DA ESPUMA
    ========================================================== */
@@ -115,12 +170,18 @@ textarea {
 @keyframes brilhoEspuma {
   0%,
   100% {
-    transform: translate3d(-50%, 0, 0) scaleX(0.75);
+    transform:
+      translate3d(-50%, 0, 0)
+      scaleX(0.75);
+
     opacity: 0.25;
   }
 
   50% {
-    transform: translate3d(-50%, 0, 0) scaleX(1);
+    transform:
+      translate3d(-50%, 0, 0)
+      scaleX(1);
+
     opacity: 0.55;
   }
 }
@@ -130,19 +191,26 @@ textarea {
   will-change: transform, opacity;
 }
 
+
 /* ==========================================================
-   LUZ INTERNA DO CHOPP
+   LUZ INTERNA
    ========================================================== */
 
 @keyframes luzChopp {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(0.95);
+    transform:
+      translate3d(0, 0, 0)
+      scale(0.95);
+
     opacity: 0.7;
   }
 
   50% {
-    transform: translate3d(35px, -20px, 0) scale(1.05);
+    transform:
+      translate3d(35px, -20px, 0)
+      scale(1.05);
+
     opacity: 1;
   }
 }
@@ -152,15 +220,22 @@ textarea {
   will-change: transform, opacity;
 }
 
+
 @keyframes luzChoppReverse {
   0%,
   100% {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform:
+      translate3d(0, 0, 0)
+      scale(1);
+
     opacity: 0.6;
   }
 
   50% {
-    transform: translate3d(-30px, 20px, 0) scale(1.08);
+    transform:
+      translate3d(-30px, 20px, 0)
+      scale(1.08);
+
     opacity: 0.9;
   }
 }
@@ -170,6 +245,7 @@ textarea {
   will-change: transform, opacity;
 }
 
+
 /* ==========================================================
    REFLEXOS DO VIDRO
    ========================================================== */
@@ -177,12 +253,18 @@ textarea {
 @keyframes reflexoMovimento {
   0%,
   100% {
-    transform: translate3d(-20px, 0, 0) skewX(12deg);
+    transform:
+      translate3d(-20px, 0, 0)
+      skewX(12deg);
+
     opacity: 0.45;
   }
 
   50% {
-    transform: translate3d(30px, 0, 0) skewX(12deg);
+    transform:
+      translate3d(30px, 0, 0)
+      skewX(12deg);
+
     opacity: 0.8;
   }
 }
@@ -192,15 +274,22 @@ textarea {
   will-change: transform, opacity;
 }
 
+
 @keyframes reflexoMovimento2 {
   0%,
   100% {
-    transform: translate3d(15px, 0, 0) skewX(-12deg);
+    transform:
+      translate3d(15px, 0, 0)
+      skewX(-12deg);
+
     opacity: 0.35;
   }
 
   50% {
-    transform: translate3d(-25px, 0, 0) skewX(-12deg);
+    transform:
+      translate3d(-25px, 0, 0)
+      skewX(-12deg);
+
     opacity: 0.65;
   }
 }
@@ -209,6 +298,7 @@ textarea {
   animation: reflexoMovimento2 14s ease-in-out infinite;
   will-change: transform, opacity;
 }
+
 
 @keyframes reflexoSuave {
   0%,
@@ -227,6 +317,7 @@ textarea {
   animation: reflexoSuave 9s ease-in-out infinite;
   will-change: transform, opacity;
 }
+
 
 /* ==========================================================
    MICRO-BOLHAS
@@ -247,22 +338,28 @@ textarea {
 
 .animate-microbolhas {
   animation: microBolhas 8s ease-in-out infinite;
-  will-change: transform, opacity;
 }
 
+
 /* ==========================================================
-   ONDA DE LUZ DO LÍQUIDO
+   ONDA DO CHOPP
    ========================================================== */
 
 @keyframes ondaChopp {
   0%,
   100% {
-    transform: translate3d(-10%, 0, 0) rotate(-2deg);
+    transform:
+      translate3d(-10%, 0, 0)
+      rotate(-2deg);
+
     opacity: 0.25;
   }
 
   50% {
-    transform: translate3d(10%, -8px, 0) rotate(2deg);
+    transform:
+      translate3d(10%, -8px, 0)
+      rotate(2deg);
+
     opacity: 0.55;
   }
 }
@@ -271,6 +368,7 @@ textarea {
   animation: ondaChopp 14s ease-in-out infinite;
   will-change: transform, opacity;
 }
+
 
 /* ==========================================================
    GLASS PANEL
@@ -283,16 +381,13 @@ textarea {
   border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
+
 /* ==========================================================
-   ACESSIBILIDADE / PERFORMANCE
+   REDUÇÃO DE MOVIMENTO
    ========================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-bolha-1,
-  .anim-bolha-2,
-  .anim-bolha-3,
-  .anim-bolha-4,
-  .anim-bolha-5,
+  .bolha-randomica,
   .animate-espuma,
   .animate-brilho-espuma,
   .animate-luz-chopp,

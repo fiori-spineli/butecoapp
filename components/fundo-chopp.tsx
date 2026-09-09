@@ -1,15 +1,157 @@
+import type { CSSProperties } from "react";
+
+type BubbleStyle = CSSProperties & {
+  "--bubble-left": string;
+  "--bubble-size": string;
+  "--bubble-opacity": string;
+  "--bubble-duration": string;
+  "--bubble-delay": string;
+  "--bubble-drift-1": string;
+  "--bubble-drift-2": string;
+  "--bubble-drift-3": string;
+  "--bubble-drift-4": string;
+  "--bubble-scale": string;
+  "--bubble-blur": string;
+  "--bubble-glow": string;
+};
+
+/**
+ * Gerador pseudoaleatório determinístico.
+ *
+ * Diferente de Math.random(), os valores não mudam
+ * a cada renderização do componente.
+ */
+function seededRandom(seed: number) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+/**
+ * Cria uma distribuição natural de bolhas.
+ *
+ * Cada bolha recebe:
+ * - posição própria
+ * - tamanho
+ * - opacidade
+ * - duração
+ * - atraso
+ * - 4 pontos diferentes de deslocamento horizontal
+ */
+function createBubbles(count: number): BubbleStyle[] {
+  return Array.from({ length: count }, (_, index) => {
+    const r1 = seededRandom(index * 17 + 1);
+    const r2 = seededRandom(index * 31 + 7);
+    const r3 = seededRandom(index * 43 + 13);
+    const r4 = seededRandom(index * 59 + 19);
+    const r5 = seededRandom(index * 71 + 29);
+    const r6 = seededRandom(index * 83 + 37);
+    const r7 = seededRandom(index * 97 + 47);
+
+    // Distribuição horizontal.
+    // Pequena variação evita agrupamentos perfeitos.
+    const left = 3 + r1 * 94;
+
+    // Mistura de bolhas pequenas, médias e grandes.
+    let size: number;
+
+    if (r2 < 0.55) {
+      size = 1 + r3 * 2.5;
+    } else if (r2 < 0.88) {
+      size = 2.5 + r3 * 3.5;
+    } else {
+      size = 5 + r3 * 4.5;
+    }
+
+    // Opacidades bem variadas.
+    const opacity = 0.12 + r4 * 0.72;
+
+    // Velocidade individual.
+    const duration = 5.5 + r5 * 9;
+
+    // Delay individual.
+    const delay = -(r6 * 14);
+
+    /**
+     * Trajetória horizontal.
+     *
+     * Cada ponto é diferente, produzindo algo parecido com:
+     *
+     *       /
+     *     /
+     *      \
+     *       \
+     *         /
+     *
+     * em vez de todas subirem em linha reta.
+     */
+    const driftBase = 8 + r7 * 22;
+
+    const drift1 =
+      (r1 > 0.5 ? 1 : -1) * (4 + r2 * driftBase);
+
+    const drift2 =
+      (r2 > 0.5 ? -1 : 1) * (5 + r3 * driftBase);
+
+    const drift3 =
+      (r3 > 0.5 ? 1 : -1) * (4 + r4 * driftBase);
+
+    const drift4 =
+      (r4 > 0.5 ? -1 : 1) * (3 + r5 * driftBase);
+
+    // Bolhas maiores recebem um pequeno brilho.
+    const glow =
+      size >= 5
+        ? Math.round(4 + r6 * 8)
+        : size >= 3
+          ? Math.round(2 + r6 * 5)
+          : 0;
+
+    return {
+      "--bubble-left": `${left.toFixed(2)}%`,
+      "--bubble-size": `${size.toFixed(2)}px`,
+      "--bubble-opacity": opacity.toFixed(2),
+      "--bubble-duration": `${duration.toFixed(2)}s`,
+      "--bubble-delay": `${delay.toFixed(2)}s`,
+      "--bubble-drift-1": `${drift1.toFixed(1)}px`,
+      "--bubble-drift-2": `${drift2.toFixed(1)}px`,
+      "--bubble-drift-3": `${drift3.toFixed(1)}px`,
+      "--bubble-drift-4": `${drift4.toFixed(1)}px`,
+      "--bubble-scale": (0.75 + r7 * 0.7).toFixed(2),
+      "--bubble-blur":
+        size < 2.5 ? "0.35px" : size < 4 ? "0.15px" : "0px",
+      "--bubble-glow": `${glow}px`,
+      left: "var(--bubble-left)",
+      bottom: "-8px",
+      width: "var(--bubble-size)",
+      height: "var(--bubble-size)",
+      opacity: "var(--bubble-opacity)",
+      animationDuration: "var(--bubble-duration)",
+      animationDelay: "var(--bubble-delay)",
+      filter: "blur(var(--bubble-blur))",
+    };
+  });
+}
+
+// Geradas uma única vez.
+// Não são recriadas a cada renderização.
+const bubbles = createBubbles(42);
+
 export function FundoChopp() {
   return (
     <div
       className="
-        absolute inset-0 z-0 overflow-hidden
+        absolute inset-0 z-0
+        overflow-hidden
         pointer-events-none
-        bg-linear-to-b from-amber-700 via-amber-950 to-stone-950
+        bg-linear-to-b
+        from-amber-700
+        via-amber-950
+        to-stone-950
       "
       aria-hidden="true"
     >
       {/* =========================================================
-          1. VINHETA / EFEITO DE VIDRO
+          1. VINHETA / VIDRO
          ========================================================= */}
 
       <div
@@ -20,7 +162,7 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          2. ESPUMA / COLARINHO
+          2. ESPUMA
          ========================================================= */}
 
       <div
@@ -45,7 +187,6 @@ export function FundoChopp() {
         "
       />
 
-      {/* Pequeno brilho horizontal da espuma */}
       <div
         className="
           absolute top-7 left-1/2 z-0
@@ -59,7 +200,7 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          3. LUZ DOURADA DO CHOPP
+          3. ILUMINAÇÃO INTERNA
          ========================================================= */}
 
       <div
@@ -87,7 +228,7 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          4. REFLEXOS VERTICAIS DO COPO
+          4. REFLEXOS DO COPO
          ========================================================= */}
 
       <div
@@ -118,7 +259,6 @@ export function FundoChopp() {
         "
       />
 
-      {/* Reflexo central mais discreto */}
       <div
         className="
           absolute top-0 left-[48%] z-1
@@ -133,105 +273,21 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          5. BOLHAS — CAMADA PROFUNDA
+          5. EFERVESCÊNCIA PRINCIPAL
          ========================================================= */}
 
-      <div className="absolute -bottom-5 left-[8%] size-1 rounded-full bg-amber-200/20 anim-bolha-2" />
-      <div className="absolute -bottom-5 left-[22%] size-1.5 rounded-full bg-amber-100/25 anim-bolha-4 blur-[0.5px]" />
-      <div className="absolute -bottom-5 left-[41%] size-1 rounded-full bg-yellow-100/15 anim-bolha-1" />
-      <div className="absolute -bottom-5 left-[59%] size-1.5 rounded-full bg-amber-50/20 anim-bolha-3 blur-[0.5px]" />
-      <div className="absolute -bottom-5 left-[73%] size-1 rounded-full bg-amber-200/25 anim-bolha-5" />
-      <div className="absolute -bottom-5 left-[85%] size-1.5 rounded-full bg-yellow-200/20 anim-bolha-2" />
+      <div className="absolute inset-0 z-2">
+        {bubbles.map((style, index) => (
+          <span
+            key={index}
+            className="bolha-randomica absolute rounded-full bg-amber-50"
+            style={style}
+          />
+        ))}
+      </div>
 
       {/* =========================================================
-          6. BOLHAS — CAMADA MÉDIA
-         ========================================================= */}
-
-      <div
-        className="
-          absolute -bottom-5 left-[15%] size-2
-          rounded-full
-          bg-amber-100/50
-          anim-bolha-1
-          shadow-[0_0_5px_rgba(254,243,199,0.45)]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[32%] size-2.5
-          rounded-full
-          bg-amber-50/60
-          anim-bolha-3
-          shadow-[0_0_7px_rgba(254,243,199,0.5)]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[50%] size-2
-          rounded-full
-          bg-amber-100/45
-          anim-bolha-5
-          blur-[0.5px]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[68%] size-3
-          rounded-full
-          bg-yellow-100/55
-          anim-bolha-4
-          shadow-[0_0_8px_rgba(254,243,199,0.55)]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[92%] size-2
-          rounded-full
-          bg-amber-50/50
-          anim-bolha-1
-        "
-      />
-
-      {/* =========================================================
-          7. BOLHAS — CAMADA FRONTAL
-         ========================================================= */}
-
-      <div
-        className="
-          absolute -bottom-5 left-[19%] size-3.5
-          rounded-full
-          bg-amber-50/80
-          anim-bolha-3
-          shadow-[0_0_11px_rgba(254,243,199,0.8)]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[47%] size-4
-          rounded-full
-          bg-yellow-50/85
-          anim-bolha-1
-          shadow-[0_0_13px_rgba(254,243,199,0.85)]
-        "
-      />
-
-      <div
-        className="
-          absolute -bottom-5 left-[81%] size-3.5
-          rounded-full
-          bg-amber-100/75
-          anim-bolha-5
-          shadow-[0_0_10px_rgba(254,243,199,0.7)]
-        "
-      />
-
-      {/* =========================================================
-          8. MICRO-BOLHAS
+          6. MICRO-BOLHAS
          ========================================================= */}
 
       <svg
@@ -291,7 +347,7 @@ export function FundoChopp() {
       </svg>
 
       {/* =========================================================
-          9. ONDA DE LUZ NO CHOPP
+          7. ONDA DE LUZ
          ========================================================= */}
 
       <div
@@ -306,7 +362,7 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          10. VINHETA FINAL
+          8. VINHETA FINAL
          ========================================================= */}
 
       <div
