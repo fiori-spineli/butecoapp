@@ -90,7 +90,7 @@ export default async function LoginPage({
         </div>
 
         {/* Rodapé com Links */}
-        <div className="relative z-10 flex flex-col gap-2 text-xs text-stone-400 border-t border-stone-800/80 pt-4">
+        <div className="relative z-10 flex flex-col gap-2 text-xstext-stone-400 pt-5">
           <div className="flex items-center gap-4">
             <Link
               href="https://github.com/fiori-spineli"
