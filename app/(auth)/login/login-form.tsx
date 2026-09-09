@@ -47,8 +47,8 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
   );
 
   return (
-    <div className="w-full flex flex-col gap-5">
-      {/* Abas Alternadoras com Tipografia e Padding Calibrados para Celular */}
+    <div className="w-full flex flex-col gap-6">
+      {/* Abas Alternadoras */}
       {modo !== "recuperar" && (
         <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800 p-1 border border-stone-200 dark:border-stone-700">
           <button
@@ -114,7 +114,6 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             {enviandoLink ? <LoadingButeco /> : "Receber link de acesso"}
           </button>
 
-          {/* Aviso sobre Spam */}
           <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 flex items-start gap-2.5 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
             <svg className="shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="10" />
@@ -156,21 +155,12 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label
-                htmlFor="password-login"
-                className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-              >
-                Senha
-              </label>
-              <button
-                type="button"
-                onClick={() => setModo("recuperar")}
-                className="cursor-pointer text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
-              >
-                Esqueceu?
-              </button>
-            </div>
+            <label
+              htmlFor="password-login"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
+            >
+              Senha
+            </label>
             <input
               id="password-login"
               name="password"
@@ -180,10 +170,20 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               placeholder="••••••••"
               className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
+            {/* Botão de Esqueceu a Senha perfeitamente posicionado abaixo do input */}
+            <div className="mt-1.5 text-right">
+              <button
+                type="button"
+                onClick={() => setModo("recuperar")}
+                className="cursor-pointer text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
+              >
+                Esqueceu a senha?
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center justify-between py-0.5">
-            <label className="cursor-pointer flex items-center gap-2 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
+            <label className="cursor-pointer flex items-center gap-2.5 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
               <input
                 type="checkbox"
                 name="lembrar"
