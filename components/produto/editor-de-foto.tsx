@@ -344,7 +344,11 @@ export function EditorDeFoto({
           type="button"
           onClick={confirmar}
           disabled={!pronta}
-          className="cursor-pointer flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 text-sm font-bold text-white shadow-xs active:scale-95 transition-transform disabled:opacity-50"
+          // Verde e não âmbar: aqui o âmbar é a cor de "ação principal" e
+          // aparece em todo botão da tela. Neste par o que importa é a
+          // diferença entre confirmar e voltar atrás — verde lê como "pronto,
+          // é essa" antes mesmo de ler o texto.
+          className="cursor-pointer flex-1 rounded-xl bg-emerald-700 hover:bg-emerald-600 dark:bg-emerald-600 dark:hover:bg-emerald-500 px-4 py-3.5 text-sm font-bold text-white shadow-xs active:scale-95 transition-transform disabled:opacity-50"
         >
           Usar esta foto
         </button>
