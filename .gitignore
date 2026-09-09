@@ -24,6 +24,12 @@
 /scripts/
 *.docx
 
+# gravações de tela dos testes: mostram o celular do dono, notificações e o que
+# mais estivesse aberto. Ficam só na máquina local — o repositório é público.
+/videos_testando/
+*.mp4
+*.mov
+
 # supabase
 .supabase
 supabase/.temp
