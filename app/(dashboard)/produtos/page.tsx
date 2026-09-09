@@ -22,9 +22,9 @@ export default async function ProdutosPage() {
 
   return (
     <>
-      <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
-        <div className="flex items-center gap-4">
-          <LogoButeco className="w-40 md:w-52 lg:w-60 h-14 md:h-18 lg:h-20" priority />
+      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+          <LogoButeco className="w-28 sm:w-40 md:w-52 lg:w-60 h-10 sm:h-14 md:h-18 lg:h-20" priority />
           <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
             <h1 className="text-lg md:text-2xl font-black text-stone-900 dark:text-stone-100">
               Catálogo de Produtos
@@ -35,7 +35,7 @@ export default async function ProdutosPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <TemaToggle />
           <Link
             href="/produtos/novo"

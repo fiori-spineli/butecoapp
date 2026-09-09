@@ -21,7 +21,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-dvh bg-stone-100 text-stone-900 antialiased">
+      <body className="min-h-dvh bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100 antialiased">
         {children}
 
         {/* Ver components/speed-insights-buteco.tsx: mede tudo menos a

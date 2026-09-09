@@ -16,6 +16,27 @@ body {
   scroll-behavior: smooth;
 }
 
+/*
+ * Fundo no <html>, não só no <body>.
+ *
+ * O body tinha bg-stone-100 e nenhuma variante escura, então no modo noturno
+ * aparecia branco em toda área que o conteúdo não cobria: atrás da barra de
+ * status do iPhone, embaixo da tab bar e nas laterais quando a página rolava
+ * de lado. Como o fundo do body se propaga para a tela inteira do navegador,
+ * bastava ele estar claro para o aparelho inteiro parecer no modo claro.
+ *
+ * Declarar aqui também cobre o overscroll — aquele elástico do iOS ao puxar
+ * além do fim da página, que pinta com a cor da tela, não com a do conteúdo.
+ */
+
+html {
+  background-color: #f5f5f4; /* stone-100 */
+}
+
+html.dark {
+  background-color: #0c0a09; /* stone-950 */
+}
+
 /* Evita zoom indesejado no iOS ao focar campos */
 
 input,

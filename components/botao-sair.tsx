@@ -11,7 +11,7 @@ export function BotaoSair() {
       type="button"
       disabled={saindo}
       onClick={() => iniciar(async () => await sair())}
-      className="cursor-pointer flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 min-h-11 px-4 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-all disabled:opacity-50"
+      className="cursor-pointer flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 min-h-11 shrink-0 px-3.5 sm:px-4 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-all disabled:opacity-50"
     >
       {saindo ? (
         <>
@@ -28,7 +28,7 @@ export function BotaoSair() {
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
             />
           </svg>
-          <span>Fechando conta...</span>
+          <span className="hidden sm:inline">Fechando conta...</span>
         </>
       ) : (
         <span>Sair</span>

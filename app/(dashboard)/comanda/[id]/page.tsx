@@ -79,8 +79,8 @@ export default async function ComandaPage({
   return (
     <>
       {/* Cabeçalho */}
-      <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
           <VoltarPara href="/dashboard" />
           <div>
             <div className="flex items-center gap-2">
@@ -99,7 +99,7 @@ export default async function ComandaPage({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <TemaToggle />
           <BotaoFecharConta
             clienteId={comanda.id}
