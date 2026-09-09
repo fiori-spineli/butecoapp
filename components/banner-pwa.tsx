@@ -10,27 +10,43 @@ interface BeforeInstallPromptEvent extends Event {
 export function BannerPwa() {
   const [eventoPrompt, setEventoPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visivel, setVisivel] = useState(false);
+  const [manual, setManual] = useState(false);
 
   useEffect(() => {
     function capturarPrompt(e: Event) {
       e.preventDefault();
       setEventoPrompt(e as BeforeInstallPromptEvent);
-      // Exibe apenas se o usuário ainda não dispensou nesta sessão
       if (!sessionStorage.getItem("buteco_pwa_dispensado")) {
         setVisivel(true);
       }
     }
 
     window.addEventListener("beforeinstallprompt", capturarPrompt);
-    return () => window.removeEventListener("beforeinstallprompt", capturarPrompt);
+
+    // Fallback: se em 2 segundos o navegador não disparar o prompt automático, 
+    // exibe o banner educativo ensinando a instalar pelo menu do 3 pontinhos do Chrome/Samsung.
+    const timer = setTimeout(() => {
+      if (!window.matchMedia("(display-mode: standalone)").matches && !sessionStorage.getItem("buteco_pwa_dispensado")) {
+        setVisivel(true);
+        setManual(true);
+      }
+    }, 2000);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", capturarPrompt);
+      clearTimeout(timer);
+    };
   }, []);
 
   async function instalar() {
-    if (!eventoPrompt) return;
-    await eventoPrompt.prompt();
-    const escolha = await eventoPrompt.userChoice;
-    if (escolha.outcome === "accepted") {
-      setVisivel(false);
+    if (eventoPrompt) {
+      await eventoPrompt.prompt();
+      const escolha = await eventoPrompt.userChoice;
+      if (escolha.outcome === "accepted") {
+        setVisivel(false);
+      }
+    } else {
+      alert("Para instalar: toque no menu de 3 pontos do seu navegador e escolha 'Adicionar à tela inicial' ou 'Instalar aplicativo'.");
     }
   }
 
@@ -39,12 +55,12 @@ export function BannerPwa() {
     setVisivel(false);
   }
 
-  if (!visivel) return null;
+  if (!visivel || window.matchMedia("(display-mode: standalone)").matches) return null;
 
   return (
     <aside
       aria-label="Instalação do aplicativo"
-      className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/90 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 backdrop-blur-md animate-in slide-in-from-top-2"
+      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 backdrop-blur-md animate-in slide-in-from-top-2"
     >
       <div className="flex items-center gap-2 min-w-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-700 dark:text-amber-400" aria-hidden>
@@ -52,7 +68,7 @@ export function BannerPwa() {
           <line x1="12" y1="18" x2="12.01" y2="18" />
         </svg>
         <span className="truncate font-semibold">
-          Instalar ButecoApp na tela inicial do celular
+          {manual ? "Instalar ButecoApp no celular" : "Instalar ButecoApp na tela inicial"}
         </span>
       </div>
 
@@ -62,7 +78,7 @@ export function BannerPwa() {
           onClick={instalar}
           className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-2.5 py-1 font-bold text-white shadow-xs transition-colors"
         >
-          Instalar
+          {manual ? "Como instalar?" : "Instalar"}
         </button>
         <button
           type="button"
