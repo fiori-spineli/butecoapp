@@ -20,12 +20,13 @@ export function AdminViewContainer({
     statusMfa.temFatorAtivo && !statusMfa.precisaVerificar
   );
 
-  // Se o 2FA ainda não foi validado, exibe exclusivamente o MfaGate
+  // Se o 2FA ainda não foi validado, exibe a tela de Admin com a Logo em destaque
   if (!desbloqueado) {
     return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center">
-        <div className="mb-6 flex items-center justify-between w-full max-w-md">
-          <LogoButeco className="w-32 h-10" />
+      <div className="flex min-h-[90vh] flex-col items-center justify-center">
+        {/* Topo com Logo Grande e Tema */}
+        <div className="mb-8 flex items-center justify-between w-full max-w-md">
+          <LogoButeco className="w-44 md:w-56 h-16 md:h-20" priority />
           <TemaToggle />
         </div>
         <MfaGate
@@ -46,10 +47,10 @@ export function AdminViewContainer({
 
   return (
     <div className="mx-auto max-w-7xl flex flex-col gap-8 animate-in fade-in duration-200">
-      {/* Topo do Painel de Admin */}
+      {/* Topo do Painel de Admin Desbloqueado */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-6">
         <div className="flex items-center gap-4">
-          <LogoButeco className="w-32 h-10" priority />
+          <LogoButeco className="w-44 md:w-56 h-16 md:h-20" priority />
           <div className="border-l border-stone-300 dark:border-stone-700 pl-4">
             <div className="flex items-center gap-2">
               <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
