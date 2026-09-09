@@ -158,6 +158,37 @@ export async function redefinirSenha(
   };
 }
 
+/** Permite ao usuário logado definir ou trocar sua senha a qualquer momento. */
+export async function definirSenha(
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const senha = String(formData.get("senha") ?? "");
+  const confirmarSenha = String(formData.get("confirmarSenha") ?? "");
+
+  if (senha.length < 6) {
+    return { ok: false, mensagem: "A senha precisa ter pelo menos 6 caracteres." };
+  }
+
+  if (senha !== confirmarSenha) {
+    return { ok: false, mensagem: "As senhas não coincidem." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.updateUser({
+    password: senha,
+  });
+
+  if (error) {
+    return { ok: false, mensagem: "Não foi possível salvar a senha. Tente novamente." };
+  }
+
+  return {
+    ok: true,
+    mensagem: "Senha cadastrada com sucesso! Agora você também pode entrar com e-mail e senha.",
+  };
+}
+
 export async function sair() {
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();

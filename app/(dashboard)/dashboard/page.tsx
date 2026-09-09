@@ -59,6 +59,13 @@ export default async function DashboardPage() {
 
         <div className="flex items-center gap-3">
           <TemaToggle />
+          <Link
+            href="/perfil"
+            prefetch={true}
+            className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-1.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+          >
+            Perfil
+          </Link>
           <BotaoSair />
         </div>
       </header>
