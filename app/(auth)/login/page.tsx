@@ -1,6 +1,8 @@
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/server";
 import { LoginForm } from "./login-form";
+import { TemaToggle } from "@/components/tema-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -20,26 +22,47 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-6 py-10 md:max-w-md">
-      <div className="mb-6 text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-500">
+    <main className="relative mx-auto flex min-h-dvh w-full max-w-sm md:max-w-md flex-col justify-center px-5 py-8 md:py-12">
+      {/* Botão de Tema no Topo */}
+      <div className="absolute top-5 right-5">
+        <TemaToggle />
+      </div>
+
+      {/* Cabeçalho com a Logo Oficial */}
+      <div className="mb-6 text-center flex flex-col items-center">
+        <div className="relative size-16 md:size-20 mb-3">
+          <Image
+            src="/buteco_logo.webp"
+            alt="Logo ButecoApp"
+            fill
+            priority
+            className="object-contain drop-shadow-sm"
+          />
+        </div>
+
+        <p className="text-xs font-extrabold uppercase tracking-[0.25em] text-amber-800 dark:text-amber-500">
           ButecoApp
         </p>
-        <h1 className="mt-1 text-2xl md:text-3xl font-bold tracking-tight text-stone-900">
-          Acesso do Bar
+        <h1 className="mt-1 text-2xl md:text-3xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+          Caderninho de Comandas
         </h1>
-        <p className="mx-auto mt-2 max-w-[32ch] text-sm text-stone-500">
-          Entre com link direto no e-mail ou use sua senha cadastrada.
+        <p className="mx-auto mt-2 max-w-[32ch] text-xs md:text-sm text-stone-600 dark:text-stone-400">
+          Abra o consumo de mesas e clientes direto no celular.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white/80 p-6 shadow-sm backdrop-blur-sm">
+      {/* Card Principal de Autenticação */}
+      <div className="rounded-3xl border border-stone-300/80 dark:border-stone-800 bg-white/90 dark:bg-stone-900/80 p-6 md:p-8 shadow-xl shadow-stone-900/5 dark:shadow-black/40 backdrop-blur-md">
         <LoginForm erroInicial={erro} />
       </div>
 
-      <p className="mt-6 text-center text-xs leading-relaxed text-stone-400">
-        Área restrita ao dono do bar. Clientes acompanham o consumo escaneando o QR Code na mesa.
-      </p>
+      {/* Rodapé */}
+      <footer className="mt-7 text-center">
+        <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-500">
+          Acesso restrito ao dono do bar. <br className="hidden sm:inline" />
+          Clientes da mesa acompanham o consumo sem login pelo QR Code.
+        </p>
+      </footer>
     </main>
   );
 }
