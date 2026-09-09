@@ -47,39 +47,40 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
   );
 
   return (
-    <div className="w-full flex flex-col gap-6">
-      {/* Abas Alternadoras: Link vs Senha */}
+    <div className="w-full flex flex-col gap-5">
+      {/* Abas Alternadoras com Tipografia e Padding Calibrados para Celular */}
       {modo !== "recuperar" && (
         <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800 p-1 border border-stone-200 dark:border-stone-700">
           <button
             type="button"
             onClick={() => setModo("link")}
-            className={`cursor-pointer py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
               modo === "link"
                 ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            Link no e-mail
+            <span className="truncate">Link no e-mail</span>
           </button>
+
           <button
             type="button"
             onClick={() => setModo("senha")}
-            className={`cursor-pointer py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
               modo === "senha" || modo === "cadastro"
                 ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
               <path d="M7 11V7a5 5 0 0 1 10 0v4" />
             </svg>
-            E-mail e senha
+            <span className="truncate">E-mail e senha</span>
           </button>
         </div>
       )}
@@ -101,21 +102,21 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="email"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoLink}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
           >
             {enviandoLink ? <LoadingButeco /> : "Receber link de acesso"}
           </button>
 
-          {/* Aviso sobre Spam em tom Pastel Suave */}
-          <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
-            <svg className="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          {/* Aviso sobre Spam */}
+          <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 flex items-start gap-2.5 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
+            <svg className="shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -123,7 +124,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             <p>
               <strong>Fique atento:</strong> O e-mail com o link pode chegar na sua pasta de{" "}
               <strong className="underline decoration-amber-600/50 underline-offset-2">Spam</strong> ou{" "}
-              <strong className="underline decoration-amber-600/50 underline-offset-2">Lixo eletrônico</strong>. Se não aparecer na caixa de entrada em instantes, confira lá.
+              <strong className="underline decoration-amber-600/50 underline-offset-2">Lixo eletrônico</strong>. Se não aparecer em instantes, confira lá.
             </p>
           </div>
 
@@ -150,7 +151,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="username"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
@@ -177,12 +178,12 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
           <div className="flex items-center justify-between py-0.5">
-            <label className="cursor-pointer flex items-center gap-2.5 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
+            <label className="cursor-pointer flex items-center gap-2 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
               <input
                 type="checkbox"
                 name="lembrar"
@@ -197,7 +198,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           <button
             type="submit"
             disabled={enviandoSenha}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
           >
             {enviandoSenha ? <LoadingButeco /> : "Entrar no bar"}
           </button>
@@ -235,7 +236,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="username"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
@@ -253,7 +254,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="new-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
@@ -271,14 +272,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="new-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoCadastro}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
           >
             {enviandoCadastro ? <LoadingButeco /> : "Cadastrar meu bar"}
           </button>
@@ -319,14 +320,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="email"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoRecuperar}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
           >
             {enviandoRecuperar ? <LoadingButeco /> : "Enviar link de recuperação"}
           </button>

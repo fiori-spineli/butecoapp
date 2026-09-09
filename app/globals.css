@@ -21,3 +21,37 @@ select,
 textarea {
   font-size: 16px;
 }
+
+/* Efeito de efervescência de chopp subindo leve em CSS */
+@keyframes subirBolha {
+  0% {
+    transform: translateY(100%) scale(0.8);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.5;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-120vh) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.anim-bolha-1 {
+  animation: subirBolha 7s infinite linear;
+}
+.anim-bolha-2 {
+  animation: subirBolha 9s infinite linear 2s;
+}
+.anim-bolha-3 {
+  animation: subirBolha 6s infinite linear 1s;
+}
+.anim-bolha-4 {
+  animation: subirBolha 11s infinite linear 4s;
+}
+.anim-bolha-5 {
+  animation: subirBolha 8s infinite linear 3s;
+}

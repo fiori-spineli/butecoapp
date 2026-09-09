@@ -4,6 +4,7 @@ import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/
 import { LoginForm } from "./login-form";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
+import { FundoChopp } from "@/components/fundo-chopp";
 
 export const dynamic = "force-dynamic";
 
@@ -38,31 +39,19 @@ export default async function LoginPage({
         <TemaToggle />
       </div>
 
-      {/* LADO ESQUERDO: Painel Temático de Buteco / Cerveja (Desktop) */}
-      <section className="hidden md:flex md:col-span-5 lg:col-span-6 relative flex-col justify-between p-10 lg:p-16 border-r border-amber-900/30 bg-linear-to-br from-stone-950 via-amber-950/80 to-stone-900 text-stone-100 overflow-hidden">
-        {/* Efeito Visual: Bolhas de Chopp Subindo e Iluminação Âmbar Dourada */}
-        <div className="absolute -top-32 -left-32 size-96 rounded-full bg-amber-500/15 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-10 right-10 size-80 rounded-full bg-amber-600/10 blur-3xl pointer-events-none" />
+      {/* LADO ESQUERDO: Painel com Fundo de Cerveja Animado e Logo Grande */}
+      <section className="hidden md:flex md:col-span-5 lg:col-span-6 relative flex-col justify-between p-10 lg:p-16 border-r border-amber-900/30 bg-linear-to-br from-stone-950 via-amber-950/85 to-stone-950 text-stone-100 overflow-hidden">
+        {/* Fundo de Cerveja e Efervescência */}
+        <FundoChopp />
 
-        {/* Textura sutil de efervescência */}
-        <svg className="absolute inset-0 size-full opacity-10 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <pattern id="bolhas" width="40" height="40" patternUnits="userSpaceOnUse">
-            <circle cx="10" cy="10" r="1.5" fill="#fef3c7" />
-            <circle cx="30" cy="25" r="2.5" fill="#fef3c7" />
-            <circle cx="20" cy="35" r="1" fill="#fef3c7" />
-            <circle cx="35" cy="8" r="1.2" fill="#fef3c7" />
-          </pattern>
-          <rect width="100%" height="100%" fill="url(#bolhas)" />
-        </svg>
-
-        {/* Topo: Logo sem texto repetido */}
+        {/* Topo: Logo Grande no PC */}
         <div className="relative z-10 flex items-center">
-          <LogoButeco className="w-44 h-16" priority />
+          <LogoButeco className="w-56 lg:w-64 h-20 lg:h-24" priority />
         </div>
 
         {/* Chamada Principal */}
-        <div className="relative z-10 my-auto max-w-md py-12">
-          <span className="inline-block px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-[11px] font-black text-amber-300 uppercase tracking-widest mb-4">
+        <div className="relative z-10 my-auto max-w-md py-8">
+          <span className="inline-block px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-[11px] font-black text-amber-300 uppercase tracking-widest mb-4">
             Painel do Balcão
           </span>
           <h1 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight text-white">
@@ -127,23 +116,23 @@ export default async function LoginPage({
         </div>
       </section>
 
-      {/* LADO DIREITO: Área do Formulário */}
-      <section className="md:col-span-7 lg:col-span-6 flex flex-col justify-center items-center px-6 py-12 lg:px-16">
+      {/* LADO DIREITO: Formulário */}
+      <section className="md:col-span-7 lg:col-span-6 flex flex-col justify-center items-center px-5 py-12 lg:px-16">
         <div className="w-full max-w-md">
-          {/* Logo no Mobile sem texto duplicado */}
-          <div className="md:hidden flex flex-col items-center mb-8">
-            <LogoButeco className="w-48 h-18 mb-2" priority />
-            <h2 className="mt-2 text-xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+          {/* Logo Mobile */}
+          <div className="md:hidden flex flex-col items-center mb-6">
+            <LogoButeco className="w-44 h-16 mb-1" priority />
+            <h2 className="text-lg font-black tracking-tight text-stone-900 dark:text-stone-100">
               Acesso do Bar
             </h2>
           </div>
 
-          {/* Título visível no Desktop */}
-          <div className="hidden md:block mb-8">
+          {/* Título Desktop */}
+          <div className="hidden md:block mb-6">
             <h2 className="text-2xl lg:text-3xl font-black tracking-tight">
               Entrar no sistema
             </h2>
-            <p className="mt-2 text-sm text-stone-500 dark:text-stone-400">
+            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               Acesse suas comandas por link direto no e-mail ou com senha.
             </p>
           </div>
@@ -153,9 +142,9 @@ export default async function LoginPage({
           </div>
 
           {/* Links no Mobile */}
-          <div className="mt-8 flex flex-col items-center gap-2 text-center text-xs text-stone-500 dark:text-stone-400">
+          <div className="mt-6 flex flex-col items-center gap-1.5 text-center text-xs text-stone-500 dark:text-stone-400">
             <p>Área restrita ao administrador do bar.</p>
-            <div className="flex items-center gap-2.5 pt-2">
+            <div className="flex items-center gap-2.5 pt-1">
               <Link
                 href="https://github.com/fiori-spineli"
                 target="_blank"
