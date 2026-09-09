@@ -38,9 +38,33 @@ export async function proxy(request: NextRequest) {
 
   // Precisa acontecer antes da resposta ser finalizada, senão um refresh
   // de token não consegue mais gravar os cookies novos.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  //
+  // O refresh pode falhar por um motivo banal: o navegador voltou com um
+  // cookie de sessão que já não vale (expirou, foi revogado, ou o usuário foi
+  // apagado). Isso não é erro de aplicação — é gente deslogada. Sem tratar,
+  // o cookie morto volta a cada requisição daquele navegador e enche o log da
+  // Vercel com "Invalid Refresh Token: Refresh Token Not Found".
+  let user = null;
+
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) throw error;
+    user = data.user;
+  } catch (erro) {
+    const codigo = (erro as { code?: string } | null)?.code;
+    const sessaoMorta =
+      codigo === "refresh_token_not_found" || codigo === "refresh_token_already_used";
+
+    // Só engolimos a falha que sabemos ser sessão vencida. Qualquer outra
+    // (Supabase fora do ar, rede) precisa continuar aparecendo.
+    if (!sessaoMorta) throw erro;
+
+    // Apaga o cookie que já não serve, para o navegador parar de reapresentá-lo
+    // a cada página. Sem isso o mesmo erro se repete indefinidamente.
+    for (const { name } of request.cookies.getAll()) {
+      if (name.startsWith("sb-")) response.cookies.delete(name);
+    }
+  }
 
   const nextUrl = request.nextUrl;
 
