@@ -1,49 +1,35 @@
 "use client";
 
-import { useActionState } from "react";
-import { definirSenha, type EstadoForm } from "@/app/actions/auth";
+import { useState, useTransition } from "react";
+import { pedirTrocaDeSenha, type EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
 
+/**
+ * Trocar senha não acontece aqui.
+ *
+ * Antes esta tela gravava a senha nova direto, sem pedir a atual: bastava
+ * alguém pegar o celular destravado no balcão para fixar uma senha e ficar
+ * com a conta. Agora ela só dispara o link por e-mail — quem troca a senha é
+ * quem tem a caixa postal, não quem tem o aparelho na mão.
+ */
 export function SenhaForm() {
-  const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(definirSenha, null);
+  const [pendente, iniciar] = useTransition();
+  const [estado, setEstado] = useState<EstadoForm>(null);
+
+  function enviarLink() {
+    setEstado(null);
+    iniciar(async () => {
+      setEstado(await pedirTrocaDeSenha());
+    });
+  }
 
   return (
-    <form action={acao} className="flex flex-col gap-5 max-w-md">
-      <div>
-        <label
-          htmlFor="senha"
-          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-        >
-          Nova senha (mínimo 6 caracteres)
-        </label>
-        <input
-          id="senha"
-          name="senha"
-          type="password"
-          autoComplete="new-password"
-          required
-          placeholder="••••••••"
-          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 transition-all text-sm font-semibold"
-        />
-      </div>
-
-      <div>
-        <label
-          htmlFor="confirmarSenha"
-          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-        >
-          Confirmar nova senha
-        </label>
-        <input
-          id="confirmarSenha"
-          name="confirmarSenha"
-          type="password"
-          autoComplete="new-password"
-          required
-          placeholder="••••••••"
-          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 transition-all text-sm font-semibold"
-        />
-      </div>
+    <div className="flex flex-col gap-5 max-w-md">
+      <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+        Por segurança, a senha é cadastrada pelo link que enviamos para o e-mail da
+        sua conta. Assim ninguém troca a sua senha só por estar com o seu celular
+        na mão.
+      </p>
 
       {estado && (
         <p
@@ -59,12 +45,13 @@ export function SenhaForm() {
       )}
 
       <button
-        type="submit"
-        disabled={enviando}
+        type="button"
+        onClick={enviarLink}
+        disabled={pendente}
         className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-5 py-3.5 font-bold text-white shadow-xs transition-colors disabled:opacity-60 text-sm"
       >
-        {enviando ? <LoadingButeco /> : "Salvar senha de acesso"}
+        {pendente ? <LoadingButeco /> : "Receber link para cadastrar senha"}
       </button>
-    </form>
+    </div>
   );
 }

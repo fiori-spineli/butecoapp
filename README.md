@@ -57,21 +57,26 @@ Toda a configuração de auth já está versionada em `supabase/config.toml`
 ### Opção B — projeto na nuvem
 
 1. Crie um projeto em [supabase.com](https://supabase.com) (free tier serve).
-2. Abra **SQL Editor** e rode **apenas o `0001_init.sql`**. Ele é o schema
-   completo e idempotente: tabelas, RLS, índices, função de acesso público,
-   bucket de imagens e os grants já ajustados.
+2. Abra **SQL Editor** e rode as migrations **na ordem**. O `0001_init.sql` é o
+   schema base (tabelas, RLS, índices, função de acesso público, bucket de
+   imagens e os grants já ajustados); da `0005` em diante vêm o painel
+   administrativo, o relatório gerencial e as travas de cadastro.
 
    Os arquivos `0002`, `0003` e `0004` são **remendos históricos**, para bancos
-   criados antes de cada correção. Numa instalação nova eles não têm efeito
-   algum — o `0001` já chega no estado final. Só rode-os, na ordem, se o seu
-   banco veio de uma versão anterior deste repo.
+   criados antes de cada correção — numa instalação nova eles não têm efeito
+   algum, porque o `0001` já chega no estado final deles. As migrations `0005`,
+   `0006` e `0007` são obrigatórias em qualquer instalação.
 
 3. Em **Project Settings → API**, copie a *Project URL* e a *anon public key*
    para o `.env.local` (`cp .env.example .env.local`), e ponha em
    `NEXT_PUBLIC_SITE_URL` a URL pública do app.
 4. Em **Authentication → URL Configuration**, cadastre como *Redirect URLs*
    tanto `http://localhost:3000/auth/callback` quanto a URL de produção.
-5. Em **Authentication → Emails**, troque o template do *Magic Link* pelo
+5. Em **Authentication → Sign In / Providers**, deixe **`Confirm email` ligado**.
+   O cadastro do dono depende disso: a conta só passa a valer quando a pessoa
+   abre o link na própria caixa postal. Com a opção desligada, qualquer um cria
+   conta com um endereço que não é dele.
+6. Em **Authentication → Emails**, troque o template do *Magic Link* pelo
    conteúdo de `supabase/templates/magic_link.html`. O `{{ .RedirectTo }}` faz
    o link apontar direto para o app em vez de passar pelo `/auth/v1/verify` do
    Supabase — que é onde o scanner de link de alguns provedores de e-mail gasta
@@ -121,6 +126,12 @@ proxy.ts                 # renovação de sessão (era "middleware" antes do Nex
 - **A sessão do dono é `httpOnly`.** Nenhum componente cliente lê a sessão, e a
   mesma origem serve a página pública `/c/[token]` — deixar o token legível por
   JavaScript transformaria qualquer XSS futuro ali em tomada de conta.
+- **Criar conta passa por três travas**: formato do endereço, lista de e-mails
+  descartáveis (~121 mil domínios, `lib/email-descartavel.ts`) e um cadastro por
+  IP. A conta só existe de fato depois que a pessoa abre o link de confirmação.
+- **Senha só se cadastra ou troca por link no e-mail.** Nem a tela de perfil
+  grava senha direto: quem muda a senha é quem tem a caixa postal, não quem
+  está com o celular do balcão na mão.
 - **Divisão de conta é registro contábil, não pagamento.** Nenhum valor passa
   pelo app; o dinheiro é acertado fora dele.
 - **Fechar a conta registra o acerto do que faltava.** Sem isso a comanda

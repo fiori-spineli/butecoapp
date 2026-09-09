@@ -37,7 +37,7 @@ export default async function PerfilPage() {
             Cadastrar ou alterar senha fixa
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Se você entrou originalmente por Magic Link, você pode cadastrar uma senha aqui. A partir daí, você poderá entrar tanto pelo link no e-mail quanto digitando sua senha.
+            Com uma senha cadastrada você entra tanto pelo link no e-mail quanto digitando e-mail e senha. O cadastro é feito por um link que enviamos para a sua caixa postal.
           </p>
 
           <SenhaForm />

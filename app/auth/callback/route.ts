@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+import { FLUXO_DE_EMAIL, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 
 /**
  * Destino do magic link. Aceita as duas formas que o Supabase pode enviar:
@@ -22,16 +23,23 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const proximo = searchParams.get("next") ?? "/dashboard";
+  // Sem `next`, cai na raiz: é ela que sabe se a pessoa vai para /admin,
+  // /onboarding ou /dashboard. Só aceitamos caminho interno — um `next` com
+  // URL absoluta viraria redirecionamento aberto para fora do app.
+  const destinoPedido = searchParams.get("next");
+  const proximo =
+    destinoPedido && /^\/(?!\/)/.test(destinoPedido) ? destinoPedido : "/";
 
   const cookieStore = await cookies();
   const paraGravar: { name: string; value: string; options: CookieOptions }[] = [];
 
+  const sessaoLonga = querSessaoLonga(cookieStore.get(COOKIE_LEMBRAR)?.value);
+
   const responder = (destino: string) => {
     const resposta = NextResponse.redirect(`${origin}${destino}`);
     for (const { name, value, options } of paraGravar) {
-      // httpOnly: a sessão nunca é lida pelo navegador — ver lib/supabase/server.ts.
-      resposta.cookies.set(name, value, { ...options, httpOnly: true });
+      // httpOnly e validade da sessão: ver lib/sessao.ts.
+      resposta.cookies.set(name, value, opcoesDeCookieDeSessao(options, sessaoLonga));
     }
     return resposta;
   };
@@ -47,6 +55,8 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    // Precisa casar com o fluxo usado para enviar o link — ver lib/supabase/server.ts.
+    auth: { flowType: FLUXO_DE_EMAIL },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -66,8 +76,15 @@ export async function GET(request: NextRequest) {
 
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
-    if (!error) return responder(proximo);
-    return falha("expirado");
+    if (error) return falha("expirado");
+
+    // O próprio tipo do token diz a intenção. Isso evita passar o destino como
+    // `?next=` no redirectTo: o template monta o link como
+    // `{{ .RedirectTo }}?token_hash=...`, e um redirectTo que já tivesse query
+    // produziria uma URL com dois "?".
+    if (type === "recovery") return responder("/nova-senha");
+
+    return responder(proximo);
   }
 
   return falha("link");

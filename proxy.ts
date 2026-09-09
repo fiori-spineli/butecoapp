@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 
 /**
  * No Next.js 16 o antigo `middleware` passou a se chamar `proxy`.
@@ -14,6 +15,7 @@ export async function proxy(request: NextRequest) {
   if (!url || !anonKey) return NextResponse.next({ request });
 
   let response = NextResponse.next({ request });
+  const sessaoLonga = querSessaoLonga(request.cookies.get(COOKIE_LEMBRAR)?.value);
 
   const supabase = createServerClient(url, anonKey, {
     cookies: {
@@ -26,9 +28,9 @@ export async function proxy(request: NextRequest) {
         }
         response = NextResponse.next({ request });
         for (const { name, value, options } of cookiesToSet) {
-          // Ver o comentário em lib/supabase/server.ts: a sessão nunca é lida
-          // pelo navegador, então ela não precisa ficar exposta ao JavaScript.
-          response.cookies.set(name, value, { ...options, httpOnly: true });
+          // Ver lib/sessao.ts: a sessão nunca é lida pelo navegador, e a
+          // validade do cookie segue o "manter conectado" que o dono escolheu.
+          response.cookies.set(name, value, opcoesDeCookieDeSessao(options, sessaoLonga));
         }
       },
     },

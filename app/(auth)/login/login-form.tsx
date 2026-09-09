@@ -21,7 +21,9 @@ const MENSAGEM_ERRO: Record<string, string> = {
 type ModoAcesso = "link" | "senha" | "cadastro" | "recuperar";
 
 export function LoginForm({ erroInicial }: { erroInicial?: string }) {
-  const [modo, setModo] = useState<ModoAcesso>("link");
+  // Senha é a aba de entrada: é o caminho que funciona sem depender de e-mail
+  // chegar, e é o que o dono usa no dia a dia.
+  const [modo, setModo] = useState<ModoAcesso>("senha");
   const [lembrar, setLembrar] = useState(true);
 
   const [estadoLink, acaoLink, enviandoLink] = useActionState<EstadoForm, FormData>(
@@ -53,22 +55,6 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
         <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800 p-1 border border-stone-200 dark:border-stone-700">
           <button
             type="button"
-            onClick={() => setModo("link")}
-            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
-              modo === "link"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-            }`}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            <span className="truncate">Link no e-mail</span>
-          </button>
-
-          <button
-            type="button"
             onClick={() => setModo("senha")}
             className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
               modo === "senha" || modo === "cadastro"
@@ -82,12 +68,31 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             </svg>
             <span className="truncate">E-mail e senha</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setModo("link")}
+            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
+              modo === "link"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
+                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+            }`}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+              <polyline points="22,6 12,13 2,6" />
+            </svg>
+            <span className="truncate">Link no e-mail</span>
+          </button>
         </div>
       )}
 
       {/* 1. MODO: LINK MÁGICO */}
       {modo === "link" && (
         <form action={acaoLink} className="flex flex-col gap-4">
+          {/* Mesma preferência da aba de senha: quem entra pelo link também
+              escolhe se quer continuar conectado neste aparelho. */}
+          {lembrar && <input type="hidden" name="lembrar" value="on" />}
           <div>
             <label
               htmlFor="email-link"
@@ -245,13 +250,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               htmlFor="senha-cadastro"
               className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
-              Criar senha (mínimo 6 caracteres)
+              Criar senha (mínimo 8 caracteres)
             </label>
             <input
               id="senha-cadastro"
               name="password"
               type="password"
               autoComplete="new-password"
+              minLength={8}
               required
               placeholder="••••••••"
               className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"

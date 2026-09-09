@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 
 export const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 export const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
@@ -9,13 +10,37 @@ export function supabaseConfigurado() {
 }
 
 /**
+ * Fluxo dos links enviados por e-mail (magic link e redefinição de senha).
+ *
+ * O padrão do @supabase/ssr é PKCE: junto com o link vai um "code verifier"
+ * gravado em cookie NO NAVEGADOR QUE PEDIU. Quem abrir o link em outro
+ * navegador não tem o verifier e o login falha.
+ *
+ * Isso quebra no celular, que é onde o app vive: o iOS abre o link do e-mail
+ * no navegador padrão do aparelho. Quem pede o link no Safari e tem o Chrome
+ * como padrão recebe um link que nunca vai funcionar. O mesmo vale para o app
+ * instalado na tela inicial, que tem armazenamento separado do navegador.
+ *
+ * Com o fluxo `implicit` o token do e-mail se basta: o /auth/callback troca o
+ * token por sessão em qualquer navegador. O que se perde é a amarração do link
+ * ao navegador de origem — e ela vale pouco aqui, porque quem já tem acesso à
+ * caixa postal consegue pedir um link novo de qualquer jeito. O token continua
+ * de uso único e de vida curta.
+ */
+export const FLUXO_DE_EMAIL = "implicit" as const;
+
+/**
  * Cliente Supabase para Server Components, Server Actions e Route Handlers.
  * No Next 16 `cookies()` é assíncrono — daí a função ser async.
  */
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
+  // Lido aqui, uma vez: é a escolha de "manter conectado" que a action gravou
+  // antes de montar este cliente. Ver lib/sessao.ts.
+  const sessaoLonga = querSessaoLonga(cookieStore.get(COOKIE_LEMBRAR)?.value);
 
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { flowType: FLUXO_DE_EMAIL },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -28,7 +53,7 @@ export async function createSupabaseServerClient() {
             // anônima. Sem isso, o token do dono fica legível por JavaScript na
             // mesma origem que serve /c/[token], e qualquer XSS futuro ali vira
             // tomada de conta.
-            cookieStore.set(name, value, { ...options, httpOnly: true });
+            cookieStore.set(name, value, opcoesDeCookieDeSessao(options, sessaoLonga));
           }
         } catch {
           // Server Components não podem escrever cookies; o proxy.ts cuida

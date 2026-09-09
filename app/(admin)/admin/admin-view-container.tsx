@@ -154,7 +154,9 @@ export function AdminViewContainer({
                     Manutenção Remota do Banco de Dados
                 </h3>
                 <p className="text-xs text-stone-500 dark:text-stone-400 mb-4 max-w-xl">
-                    Permite reciclar estatísticas e conexões do PostgreSQL remotamente.
+                    Roda <code>ANALYZE</code> nas tabelas do app: recalcula as estatísticas que o
+                    PostgreSQL usa para escolher o plano de cada consulta. Útil depois de muita
+                    escrita. Não apaga dado nenhum.
                 </p>
                 <AcoesAdmin />
             </section>
