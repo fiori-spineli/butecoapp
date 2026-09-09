@@ -56,47 +56,63 @@ textarea {
   }
 
   8% {
+    transform:
+      translate3d(
+        calc(var(--bubble-drift-1) * 0.15),
+        -8vh,
+        0
+      )
+      scale(0.58);
+
     opacity: var(--bubble-opacity);
   }
 
-  22% {
+  25% {
     transform:
       translate3d(
         var(--bubble-drift-1),
-        -22vh,
+        -25vh,
         0
       )
-      scale(0.72);
+      scale(0.74);
+
+    opacity: var(--bubble-opacity);
   }
 
-  42% {
+  43% {
     transform:
       translate3d(
         var(--bubble-drift-2),
-        -43vh,
+        -45vh,
         0
       )
       scale(0.9);
+
+    opacity: var(--bubble-opacity);
   }
 
-  62% {
+  61% {
     transform:
       translate3d(
         var(--bubble-drift-3),
-        -66vh,
+        -65vh,
         0
       )
       scale(1);
+
+    opacity: calc(var(--bubble-opacity) * 0.95);
   }
 
-  82% {
+  80% {
     transform:
       translate3d(
         var(--bubble-drift-4),
-        -90vh,
+        -88vh,
         0
       )
-      scale(1.12);
+      scale(1.1);
+
+    opacity: calc(var(--bubble-opacity) * 0.8);
   }
 
   100% {
@@ -113,27 +129,21 @@ textarea {
 }
 
 .bolha-randomica {
-  /*
-   * O navegador sabe que somente transform e opacity
-   * serão animados.
-   */
   animation-name: bolhaRandomica;
-  animation-timing-function: ease-in-out;
+
+  /*
+   * Linear evita que a bolha "pare" nos keyframes.
+   * A mudança de direção continua acontecendo,
+   * mas sem zerar a velocidade entre os pontos.
+   */
+  animation-timing-function: linear;
+
   animation-iteration-count: infinite;
 
-  /*
-   * Ajuda especialmente com as bolhas maiores.
-   */
   will-change: transform, opacity;
 
-  /*
-   * Mantém a bolha redonda.
-   */
   aspect-ratio: 1;
 
-  /*
-   * Brilho proporcional ao tamanho.
-   */
   box-shadow:
     0 0 var(--bubble-glow)
     rgba(254, 243, 199, 0.55);
