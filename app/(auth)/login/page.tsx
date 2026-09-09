@@ -38,7 +38,7 @@ export default async function LoginPage({
         <div className="relative z-10 flex items-center gap-3">
           <div className="relative size-12">
             <Image
-              src="/buteco_logo.webp"
+              src="/buteco_logo.png"
               alt="ButecoApp"
               fill
               priority
@@ -97,7 +97,7 @@ export default async function LoginPage({
           <div className="lg:hidden flex flex-col items-center text-center mb-8">
             <div className="relative size-16 mb-2">
               <Image
-                src="/buteco_logo.webp"
+                src="/buteco_logo.png"
                 alt="ButecoApp"
                 fill
                 priority
