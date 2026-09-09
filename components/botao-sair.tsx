@@ -11,7 +11,7 @@ export function BotaoSair() {
       type="button"
       disabled={saindo}
       onClick={() => iniciar(async () => await sair())}
-      className="cursor-pointer flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-1.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-all disabled:opacity-50"
+      className="cursor-pointer flex items-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 min-h-11 px-4 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-all disabled:opacity-50"
     >
       {saindo ? (
         <>

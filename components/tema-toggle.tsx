@@ -36,7 +36,7 @@ export function TemaToggle() {
       type="button"
       onClick={alternar}
       aria-label="Alternar tema claro e escuro"
-      className="cursor-pointer flex items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-3.5 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
+      className="cursor-pointer flex items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 min-h-11 px-4 py-2.5 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
     >
       {escuro ? (
         <>

@@ -76,7 +76,7 @@ export function BannerPwa() {
         <button
           type="button"
           onClick={instalar}
-          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-2.5 py-1 font-bold text-white shadow-xs transition-colors"
+          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 min-h-11 px-3.5 py-2 font-bold text-white shadow-xs transition-colors"
         >
           {manual ? "Como instalar?" : "Instalar"}
         </button>
@@ -84,7 +84,7 @@ export function BannerPwa() {
           type="button"
           onClick={dispensar}
           aria-label="Dispensar aviso de instalação"
-          className="cursor-pointer p-1 text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+          className="cursor-pointer flex size-11 items-center justify-center text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />

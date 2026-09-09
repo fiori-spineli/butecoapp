@@ -56,7 +56,7 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
           <button
             type="button"
             onClick={() => setFiltroStatus("todas")}
-            className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${
+            className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
               filtroStatus === "todas"
                 ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
@@ -67,7 +67,7 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
           <button
             type="button"
             onClick={() => setFiltroStatus("aberta")}
-            className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${
+            className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
               filtroStatus === "aberta"
                 ? "bg-white dark:bg-stone-900 text-emerald-700 dark:text-emerald-400 shadow-xs"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
@@ -78,7 +78,7 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
           <button
             type="button"
             onClick={() => setFiltroStatus("fechada")}
-            className={`cursor-pointer px-3 py-1.5 rounded-lg transition-all ${
+            className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
               filtroStatus === "fechada"
                 ? "bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 shadow-xs"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
