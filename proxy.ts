@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * No Next.js 16 o antigo `middleware` passou a se chamar `proxy`.
- * Aqui ele existe só para renovar a sessão do Supabase (refresh token)
- * a cada requisição — a autorização de verdade continua no RLS do Postgres.
+ * Aqui ele renova a sessão do Supabase (refresh token) e intercepta
+ * administradores para enviá-los direto ao painel /admin.
  */
 export async function proxy(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -36,7 +36,24 @@ export async function proxy(request: NextRequest) {
 
   // Precisa acontecer antes da resposta ser finalizada, senão um refresh
   // de token não consegue mais gravar os cookies novos.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const nextUrl = request.nextUrl;
+
+  // Se for usuário autenticado, checa se é Super Admin para blindar rotas comuns
+  if (user && (nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/onboarding"))) {
+    const { data: admin } = await supabase
+      .from("administradores")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (admin) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+  }
 
   // Respostas de autenticação nunca podem ser cacheadas por CDN.
   response.headers.set("Cache-Control", "private, no-store");
