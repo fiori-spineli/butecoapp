@@ -10,16 +10,19 @@ type BubbleStyle = CSSProperties & {
   "--bubble-drift-2": string;
   "--bubble-drift-3": string;
   "--bubble-drift-4": string;
+  "--bubble-drift-5": string;
+  "--bubble-drift-6": string;
   "--bubble-scale": string;
   "--bubble-blur": string;
   "--bubble-glow": string;
+  "--bubble-fade": string;
 };
 
 /**
- * Gerador pseudoaleatório determinístico.
+ * Pseudo-random determinístico.
  *
- * Diferente de Math.random(), os valores não mudam
- * a cada renderização do componente.
+ * Os valores continuam parecendo aleatórios,
+ * mas nunca mudam durante um re-render.
  */
 function seededRandom(seed: number) {
   const x = Math.sin(seed * 12.9898) * 43758.5453;
@@ -27,15 +30,16 @@ function seededRandom(seed: number) {
 }
 
 /**
- * Cria uma distribuição natural de bolhas.
+ * Cria as bolhas com características individuais.
  *
- * Cada bolha recebe:
- * - posição própria
+ * Cada uma possui:
+ * - posição horizontal própria
  * - tamanho
  * - opacidade
- * - duração
+ * - velocidade
  * - atraso
- * - 4 pontos diferentes de deslocamento horizontal
+ * - trajetória horizontal própria
+ * - pequenas variações de velocidade
  */
 function createBubbles(count: number): BubbleStyle[] {
   return Array.from({ length: count }, (_, index) => {
@@ -46,59 +50,68 @@ function createBubbles(count: number): BubbleStyle[] {
     const r5 = seededRandom(index * 71 + 29);
     const r6 = seededRandom(index * 83 + 37);
     const r7 = seededRandom(index * 97 + 47);
+    const r8 = seededRandom(index * 113 + 61);
 
-    // Distribuição horizontal.
-    // Pequena variação evita agrupamentos perfeitos.
+    /* Posição horizontal */
     const left = 3 + r1 * 94;
 
-    // Mistura de bolhas pequenas, médias e grandes.
+    /* Distribuição de tamanhos */
     let size: number;
 
-    if (r2 < 0.55) {
-      size = 1 + r3 * 2.5;
-    } else if (r2 < 0.88) {
+    if (r2 < 0.58) {
+      size = 1 + r3 * 2.4;
+    } else if (r2 < 0.9) {
       size = 2.5 + r3 * 3.5;
     } else {
       size = 5 + r3 * 4.5;
     }
 
-    // Opacidades bem variadas.
-    const opacity = 0.12 + r4 * 0.72;
+    /* Opacidade individual */
+    const opacity = 0.1 + r4 * 0.75;
 
-    // Velocidade individual.
+    /*
+     * Velocidade individual.
+     *
+     * Algumas bolhas sobem rapidamente,
+     * outras ficam mais tempo no líquido.
+     */
     const duration = 5.5 + r5 * 9;
 
-    // Delay individual.
-    const delay = -(r6 * 14);
+    /* Delay negativo faz o fundo já nascer "em movimento". */
+    const delay = -(r6 * duration);
 
-    /**
-     * Trajetória horizontal.
+    /*
+     * Intensidade do zigue-zague.
      *
-     * Cada ponto é diferente, produzindo algo parecido com:
-     *
-     *       /
-     *     /
-     *      \
-     *       \
-     *         /
-     *
-     * em vez de todas subirem em linha reta.
+     * Algumas bolhas quase sobem retas.
+     * Outras fazem desvios mais perceptíveis.
      */
-    const driftBase = 8 + r7 * 22;
+    const driftIntensity = 5 + r7 * 24;
+
+    const direction = r8 > 0.5 ? 1 : -1;
 
     const drift1 =
-      (r1 > 0.5 ? 1 : -1) * (4 + r2 * driftBase);
+      direction * (3 + r1 * driftIntensity);
 
     const drift2 =
-      (r2 > 0.5 ? -1 : 1) * (5 + r3 * driftBase);
+      -direction * (2 + r2 * driftIntensity);
 
     const drift3 =
-      (r3 > 0.5 ? 1 : -1) * (4 + r4 * driftBase);
+      direction * (4 + r3 * driftIntensity);
 
     const drift4 =
-      (r4 > 0.5 ? -1 : 1) * (3 + r5 * driftBase);
+      -direction * (3 + r4 * driftIntensity);
 
-    // Bolhas maiores recebem um pequeno brilho.
+    const drift5 =
+      direction * (2 + r5 * driftIntensity);
+
+    const drift6 =
+      -direction * (1 + r6 * driftIntensity);
+
+    /*
+     * Bolhas maiores recebem brilho.
+     * As pequenas ficam praticamente sem glow.
+     */
     const glow =
       size >= 5
         ? Math.round(4 + r6 * 8)
@@ -106,20 +119,37 @@ function createBubbles(count: number): BubbleStyle[] {
           ? Math.round(2 + r6 * 5)
           : 0;
 
+    /*
+     * O final da trajetória perde um pouco de opacidade
+     * antes de desaparecer.
+     */
+    const fade = Math.max(0.5, 0.7 + r8 * 0.3);
+
     return {
       "--bubble-left": `${left.toFixed(2)}%`,
       "--bubble-size": `${size.toFixed(2)}px`,
       "--bubble-opacity": opacity.toFixed(2),
       "--bubble-duration": `${duration.toFixed(2)}s`,
       "--bubble-delay": `${delay.toFixed(2)}s`,
+
       "--bubble-drift-1": `${drift1.toFixed(1)}px`,
       "--bubble-drift-2": `${drift2.toFixed(1)}px`,
       "--bubble-drift-3": `${drift3.toFixed(1)}px`,
       "--bubble-drift-4": `${drift4.toFixed(1)}px`,
+      "--bubble-drift-5": `${drift5.toFixed(1)}px`,
+      "--bubble-drift-6": `${drift6.toFixed(1)}px`,
+
       "--bubble-scale": (0.75 + r7 * 0.7).toFixed(2),
       "--bubble-blur":
-        size < 2.5 ? "0.35px" : size < 4 ? "0.15px" : "0px",
+        size < 2.5
+          ? "0.35px"
+          : size < 4
+            ? "0.15px"
+            : "0px",
+
       "--bubble-glow": `${glow}px`,
+      "--bubble-fade": fade.toFixed(2),
+
       left: "var(--bubble-left)",
       bottom: "-8px",
       width: "var(--bubble-size)",
@@ -132,8 +162,11 @@ function createBubbles(count: number): BubbleStyle[] {
   });
 }
 
-// Geradas uma única vez.
-// Não são recriadas a cada renderização.
+/*
+ * Geradas uma única vez.
+ *
+ * Isso evita recalcular Math/randomização em cada render.
+ */
 const bubbles = createBubbles(42);
 
 export function FundoChopp() {
@@ -200,7 +233,7 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          3. ILUMINAÇÃO INTERNA
+          3. LUZ INTERNA DO CHOPP
          ========================================================= */}
 
       <div
@@ -273,14 +306,19 @@ export function FundoChopp() {
       />
 
       {/* =========================================================
-          5. EFERVESCÊNCIA PRINCIPAL
+          5. BOLHAS RANDOMIZADAS
          ========================================================= */}
 
       <div className="absolute inset-0 z-2">
         {bubbles.map((style, index) => (
           <span
             key={index}
-            className="bolha-randomica absolute rounded-full bg-amber-50"
+            className="
+              bolha-randomica
+              absolute
+              rounded-full
+              bg-amber-50
+            "
             style={style}
           />
         ))}

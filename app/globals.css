@@ -30,20 +30,32 @@ textarea {
   background-color: #d97706;
   color: #ffffff;
 }
+
 /* ==========================================================
    BOLHAS RANDOMIZADAS
+   MOVIMENTO NATURAL COM VARIAÇÃO DE VELOCIDADE
    ========================================================== */
 
 /*
- * Cada bolha possui 4 deslocamentos horizontais próprios:
+ * A velocidade vertical NÃO é constante.
  *
- * 0%    -> posição inicial
- * 25%   -> drift 1
- * 50%   -> drift 2
- * 75%   -> drift 3
- * 100%  -> drift 4
+ * Os intervalos possuem distâncias diferentes:
  *
- * Isso cria trajetórias diferentes para cada bolha.
+ * 0%   → 10vh
+ * 10%  → 22vh
+ * 22%  → 36vh
+ * 36%  → 51vh
+ * 51%  → 64vh
+ * 64%  → 80vh
+ * 80%  → 94vh
+ * 94%  → 120vh
+ *
+ * Como todos os intervalos ocupam tempos diferentes,
+ * a velocidade aparente muda durante a subida.
+ *
+ * Importante:
+ * usamos linear para não criar uma parada artificial
+ * nos keyframes.
  */
 
 @keyframes bolhaRandomica {
@@ -55,11 +67,14 @@ textarea {
     opacity: 0;
   }
 
-  8% {
+  /*
+   * Começa lentamente saindo do líquido.
+   */
+  7% {
     transform:
       translate3d(
-        calc(var(--bubble-drift-1) * 0.15),
-        -8vh,
+        calc(var(--bubble-drift-1) * 0.18),
+        -7vh,
         0
       )
       scale(0.58);
@@ -67,58 +82,133 @@ textarea {
     opacity: var(--bubble-opacity);
   }
 
-  25% {
+  /*
+   * Primeira aceleração.
+   */
+  17% {
     transform:
       translate3d(
-        var(--bubble-drift-1),
-        -25vh,
+        calc(var(--bubble-drift-1) * 0.65),
+        -18vh,
         0
       )
-      scale(0.74);
+      scale(0.68);
 
     opacity: var(--bubble-opacity);
   }
 
-  43% {
+  /*
+   * Continua subindo, mas começa a desacelerar.
+   */
+  28% {
+    transform:
+      translate3d(
+        var(--bubble-drift-1),
+        -31vh,
+        0
+      )
+      scale(0.78);
+
+    opacity: var(--bubble-opacity);
+  }
+
+  /*
+   * Mudança de direção horizontal.
+   *
+   * A bolha não para.
+   * Apenas começa a virar para o outro lado.
+   */
+  40% {
     transform:
       translate3d(
         var(--bubble-drift-2),
         -45vh,
         0
       )
-      scale(0.9);
+      scale(0.88);
 
     opacity: var(--bubble-opacity);
   }
 
-  61% {
+  /*
+   * Pequena desaceleração natural.
+   */
+  51% {
+    transform:
+      translate3d(
+        var(--bubble-drift-2),
+        -56vh,
+        0
+      )
+      scale(0.95);
+
+    opacity: var(--bubble-opacity);
+  }
+
+  /*
+   * Nova aceleração.
+   */
+  62% {
     transform:
       translate3d(
         var(--bubble-drift-3),
-        -65vh,
+        -71vh,
         0
       )
       scale(1);
 
-    opacity: calc(var(--bubble-opacity) * 0.95);
+    opacity: calc(var(--bubble-opacity) * 0.96);
   }
 
-  80% {
+  /*
+   * Movimento mais suave próximo do topo.
+   */
+  74% {
     transform:
       translate3d(
         var(--bubble-drift-4),
-        -88vh,
+        -84vh,
         0
       )
-      scale(1.1);
+      scale(1.06);
 
-    opacity: calc(var(--bubble-opacity) * 0.8);
+    opacity: calc(var(--bubble-opacity) * 0.9);
+  }
+
+  /*
+   * Pequena aceleração final.
+   */
+  86% {
+    transform:
+      translate3d(
+        var(--bubble-drift-5),
+        -99vh,
+        0
+      )
+      scale(1.13);
+
+    opacity: calc(var(--bubble-opacity) * 0.75);
+  }
+
+  /*
+   * A bolha começa a desaparecer.
+   */
+  94% {
+    transform:
+      translate3d(
+        var(--bubble-drift-6),
+        -110vh,
+        0
+      )
+      scale(1.18);
+
+    opacity: calc(var(--bubble-opacity) * 0.5);
   }
 
   100% {
     transform:
       translate3d(
-        calc(var(--bubble-drift-4) * -0.5),
+        calc(var(--bubble-drift-6) * -0.5),
         -120vh,
         0
       )
@@ -129,21 +219,33 @@ textarea {
 }
 
 .bolha-randomica {
-  animation-name: bolhaRandomica;
-
   /*
-   * Linear evita que a bolha "pare" nos keyframes.
-   * A mudança de direção continua acontecendo,
-   * mas sem zerar a velocidade entre os pontos.
+   * Linear é proposital.
+   *
+   * A variação de velocidade já está embutida
+   * na distância percorrida entre cada keyframe.
+   *
+   * Assim a bolha nunca "freia até parar"
+   * em uma mudança de direção.
    */
+  animation-name: bolhaRandomica;
   animation-timing-function: linear;
-
   animation-iteration-count: infinite;
 
+  /*
+   * Somente transform e opacity são animados.
+   * Isso favorece a composição pela GPU.
+   */
   will-change: transform, opacity;
 
   aspect-ratio: 1;
 
+  /*
+   * Glow individual.
+   *
+   * Bolhas pequenas possuem 0px e praticamente
+   * não geram custo extra de sombra.
+   */
   box-shadow:
     0 0 var(--bubble-glow)
     rgba(254, 243, 199, 0.55);
