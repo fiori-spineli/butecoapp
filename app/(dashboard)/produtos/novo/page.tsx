@@ -1,14 +1,20 @@
 import { VoltarPara } from "@/components/voltar";
 import { NovoProdutoForm } from "./novo-produto-form";
+import { TemaToggle } from "@/components/tema-toggle";
 
 export const dynamic = "force-dynamic";
 
 export default function NovoProdutoPage() {
   return (
     <>
-      <header className="flex items-center gap-3.5 border-b border-stone-300 bg-white px-5 pt-5 pb-4">
-        <VoltarPara href="/produtos" />
-        <h1 className="text-lg font-bold">Novo produto</h1>
+      <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <VoltarPara href="/produtos" />
+          <h1 className="text-lg md:text-xl font-black text-stone-900 dark:text-stone-100">
+            Novo Produto
+          </h1>
+        </div>
+        <TemaToggle />
       </header>
 
       <NovoProdutoForm />

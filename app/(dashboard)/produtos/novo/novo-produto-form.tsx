@@ -1,57 +1,90 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import { criarProduto } from "@/app/actions/produtos";
 import type { EstadoForm } from "@/app/actions/auth";
+import { LoadingButeco } from "@/components/loading-buteco";
 
-/**
- * A foto é convertida para WebP aqui no navegador antes de subir (economiza
- * dados numa rede de buteco); a rota /api/produtos/imagem reprocessa com sharp
- * como rede de segurança. O input NÃO usa o atributo `capture` — assim o
- * celular oferece câmera E galeria, em vez de forçar a câmera.
- */
 export function NovoProdutoForm() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarProduto, null);
   const [previa, setPrevia] = useState<string | null>(null);
   const [imagemUrl, setImagemUrl] = useState("");
   const [subindo, setSubindo] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
-  const inputArquivo = useRef<HTMLInputElement>(null);
 
-  async function aoEscolherFoto(evento: React.ChangeEvent<HTMLInputElement>) {
-    const arquivo = evento.target.files?.[0];
+  // Inputs separados para Câmera e Galeria
+  const inputCamera = useRef<HTMLInputElement>(null);
+  const inputGaleria = useRef<HTMLInputElement>(null);
+
+  // Função auxiliar de recorte quadrado no Canvas do navegador
+  async function recortarQuadrado(arquivo: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        const menorLado = Math.min(img.width, img.height);
+        const canvas = document.createElement("canvas");
+        canvas.width = menorLado;
+        canvas.height = menorLado;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return reject(new Error("Canvas não suportado"));
+
+        const offsetX = (img.width - menorLado) / 2;
+        const offsetY = (img.height - menorLado) / 2;
+
+        ctx.drawImage(img, offsetX, offsetY, menorLado, menorLado, 0, 0, menorLado, menorLado);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Falha ao recortar"));
+          },
+          "image/jpeg",
+          0.9,
+        );
+      };
+      img.onerror = () => reject(new Error("Erro ao ler imagem"));
+      img.src = URL.createObjectURL(arquivo);
+    });
+  }
+
+  async function processarArquivo(arquivo?: File) {
     if (!arquivo) return;
 
     setErroFoto(null);
     setSubindo(true);
-    setPrevia(URL.createObjectURL(arquivo));
 
     try {
-      let paraEnviar: File | Blob = arquivo;
+      // 1. Recorta centralizado em quadrado (1:1)
+      const blobQuadrado = await recortarQuadrado(arquivo);
+      const arquivoRecortado = new File([blobQuadrado], "produto.jpg", { type: "image/jpeg" });
+      setPrevia(URL.createObjectURL(arquivoRecortado));
+
+      // 2. Comprime para WebP leve
+      let paraEnviar: File | Blob = arquivoRecortado;
       try {
-        paraEnviar = await imageCompression(arquivo, {
+        paraEnviar = await imageCompression(arquivoRecortado, {
           maxSizeMB: 0.35,
-          maxWidthOrHeight: 1200,
+          maxWidthOrHeight: 800,
           useWebWorker: true,
           fileType: "image/webp",
           initialQuality: 0.8,
         });
       } catch {
-        // Navegador sem suporte a WebP no canvas: sobe o original e deixa o
-        // servidor converter.
+        // Fallback sem webp no canvas
       }
 
+      // 3. Envia para a API
       const corpo = new FormData();
       corpo.append("arquivo", paraEnviar, "produto.webp");
 
       const resposta = await fetch("/api/produtos/imagem", { method: "POST", body: corpo });
-      if (!resposta.ok) throw new Error("upload falhou");
+      if (!resposta.ok) throw new Error("Upload falhou");
 
       const { url } = (await resposta.json()) as { url: string };
       setImagemUrl(url);
     } catch {
-      setErroFoto("Não consegui subir a foto. Dá pra salvar o produto sem ela.");
+      setErroFoto("Não consegui subir a foto. Você pode salvar o produto sem ela.");
       setImagemUrl("");
     } finally {
       setSubindo(false);
@@ -59,11 +92,15 @@ export function NovoProdutoForm() {
   }
 
   return (
-    <form action={acao} className="flex flex-1 flex-col gap-5 px-5 py-6">
+    <form action={acao} className="flex flex-1 flex-col gap-6 p-6 max-w-xl mx-auto w-full">
       <input type="hidden" name="imagem_url" value={imagemUrl} />
 
+      {/* Nome do Produto */}
       <div>
-        <label htmlFor="nome" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
+        <label
+          htmlFor="nome"
+          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
+        >
           Nome do produto
         </label>
         <input
@@ -71,86 +108,129 @@ export function NovoProdutoForm() {
           name="nome"
           required
           autoFocus
-          placeholder="Long Neck"
-          className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3.5 outline-none placeholder:text-stone-400 focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10"
+          placeholder="Ex: Cerveja 600ml, Batata Frita"
+          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
         />
       </div>
 
+      {/* Preço */}
       <div>
-        <label htmlFor="preco" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500">
-          Preço
+        <label
+          htmlFor="preco"
+          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
+        >
+          Preço (R$)
         </label>
         <input
           id="preco"
           name="preco"
           required
           inputMode="decimal"
-          placeholder="8,00"
-          className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3.5 outline-none placeholder:text-stone-400 focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10"
+          placeholder="Ex: 14,00"
+          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all font-bold"
         />
       </div>
 
+      {/* Foto do Produto */}
       <div>
-        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-stone-500">
-          Foto <span className="font-normal normal-case text-stone-400">(opcional)</span>
-        </p>
+        <span className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+          Foto do item <span className="font-normal normal-case text-stone-400">(opcional)</span>
+        </span>
 
-        <div className="flex aspect-[1.6] items-center justify-center overflow-hidden rounded-xl border border-dashed border-stone-400 bg-white">
+        {/* Prévia Quadrada (Recortada) */}
+        <div className="relative mx-auto size-48 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/60 overflow-hidden flex items-center justify-center">
           {previa ? (
-            // Prévia local (blob:) — não passa pelo otimizador de imagem.
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={previa} alt="Prévia da foto do produto" className="size-full object-cover" />
+            <Image
+              src={previa}
+              alt="Prévia do produto"
+              fill
+              className="object-cover"
+            />
           ) : (
-            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#b5b2ac" strokeWidth="1.6" aria-hidden>
-              <rect x="3" y="7" width="18" height="13" rx="2" />
-              <path d="M8 7l1.5-2.5h5L16 7" />
-              <circle cx="12" cy="13.5" r="3.5" />
-            </svg>
+            <div className="text-center p-4">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mx-auto text-stone-400 mb-1" aria-hidden>
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <span className="text-xs text-stone-400">Recorte 1:1 quadrado automático</span>
+            </div>
           )}
         </div>
 
+        {/* Inputs Ocultos */}
         <input
-          ref={inputArquivo}
+          ref={inputCamera}
           type="file"
           accept="image/*"
-          onChange={aoEscolherFoto}
+          capture="environment"
+          onChange={(e) => processarArquivo(e.target.files?.[0])}
           className="hidden"
-          aria-label="Escolher foto do produto"
+          aria-label="Tirar foto com a câmera"
+        />
+        <input
+          ref={inputGaleria}
+          type="file"
+          accept="image/*"
+          onChange={(e) => processarArquivo(e.target.files?.[0])}
+          className="hidden"
+          aria-label="Escolher foto da galeria"
         />
 
-        <button
-          type="button"
-          onClick={() => inputArquivo.current?.click()}
-          disabled={subindo}
-          className="mt-2.5 w-full rounded-lg border-2 border-stone-900 px-4 py-3 text-sm font-semibold disabled:opacity-60"
-        >
-          {subindo ? "Enviando foto…" : previa ? "Trocar foto" : "Tirar foto ou escolher da galeria"}
-        </button>
+        {/* Dois Botões Separados */}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => inputCamera.current?.click()}
+            disabled={subindo}
+            className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+              <circle cx="12" cy="13" r="4" />
+            </svg>
+            Tirar foto
+          </button>
 
-        <p className="mt-2 text-xs leading-relaxed text-stone-400">
-          O celular oferece as duas opções — câmera ou galeria. A imagem é convertida para
-          WebP antes de subir.
-        </p>
+          <button
+            type="button"
+            onClick={() => inputGaleria.current?.click()}
+            disabled={subindo}
+            className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            Abrir galeria
+          </button>
+        </div>
 
-        {erroFoto ? (
-          <p role="alert" className="mt-2 text-xs text-amber-700">
+        {subindo && (
+          <div className="mt-3">
+            <LoadingButeco fraseFixa="Processando e recortando foto..." />
+          </div>
+        )}
+
+        {erroFoto && (
+          <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">
             {erroFoto}
           </p>
-        ) : null}
+        )}
       </div>
 
-      {estado && !estado.ok ? (
-        <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      {estado && !estado.ok && (
+        <p role="alert" className="rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-xs text-rose-900 dark:text-rose-200">
           {estado.mensagem}
         </p>
-      ) : null}
+      )}
 
       <button
         type="submit"
         disabled={enviando || subindo}
-        className="mt-auto rounded-lg bg-stone-900 px-4 py-4 font-semibold text-white hover:bg-stone-800 disabled:opacity-60"
+        className="cursor-pointer mt-4 w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-60"
       >
-        {enviando ? "Salvando…" : "Salvar produto"}
+        {enviando ? <LoadingButeco /> : "Salvar produto"}
       </button>
     </form>
   );

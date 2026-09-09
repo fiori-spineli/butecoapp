@@ -5,6 +5,7 @@ import { Modal } from "./modal";
 import { Miniatura } from "@/components/miniatura";
 import { formatarReais, parseReaisParaCentavos } from "@/lib/format";
 import { lancarItens, type ItemParaLancar } from "@/app/actions/comandas";
+import { LoadingButeco } from "@/components/loading-buteco";
 import type { Produto } from "@/lib/types";
 
 export function AdicionarItens({
@@ -97,29 +98,31 @@ export function AdicionarItens({
   }
 
   return (
-    <Modal titulo="Adicionar item" aberto={aberto} aoFechar={limparEFechar}>
-      <label className="mb-3 flex items-center gap-2 rounded-lg border border-stone-300 bg-white px-3 py-2.5">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a8a29e" strokeWidth="2" strokeLinecap="round">
-          <circle cx="11" cy="11" r="7" />
-          <path d="M21 21l-4.35-4.35" />
+    <Modal titulo="Adicionar item à conta" aberto={aberto} aoFechar={limparEFechar}>
+      {/* Campo de Busca */}
+      <label className="mb-4 flex items-center gap-2.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/90 px-3.5 py-3 text-stone-900 dark:text-stone-100 shadow-xs">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="text-stone-400" aria-hidden>
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         <input
           value={busca}
-          onChange={(evento) => setBusca(evento.target.value)}
-          placeholder="Buscar produto…"
+          onChange={(e) => setBusca(e.target.value)}
+          placeholder="Buscar no catálogo..."
           aria-label="Buscar produto"
-          className="w-full bg-transparent text-sm outline-none placeholder:text-stone-400"
+          className="w-full bg-transparent text-sm outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
         />
       </label>
 
-      <div className="flex flex-col gap-2">
+      {/* Lista de Produtos do Catálogo */}
+      <div className="flex flex-col gap-2.5 max-h-[42vh] overflow-y-auto pr-1">
         {produtos.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-stone-300 px-4 py-6 text-center text-sm text-stone-500">
-            Nenhum produto no catálogo ainda — dá pra lançar com descrição livre aqui embaixo.
+          <p className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 p-6 text-center text-xs text-stone-500 dark:text-stone-400">
+            Nenhum produto cadastrado. Você pode lançar itens com descrição livre abaixo.
           </p>
         ) : filtrados.length === 0 ? (
-          <p className="px-1 py-4 text-center text-sm text-stone-500">
-            Nada encontrado para “{busca}”.
+          <p className="py-6 text-center text-xs text-stone-500 dark:text-stone-400">
+            Nenhum item encontrado para &ldquo;{busca}&rdquo;.
           </p>
         ) : (
           filtrados.map((produto) => {
@@ -127,34 +130,43 @@ export function AdicionarItens({
             return (
               <div
                 key={produto.id}
-                className={`flex items-center gap-3 rounded-xl border bg-white px-3 py-2.5 ${
-                  quantidade > 0 ? "border-stone-900" : "border-stone-300"
+                className={`flex items-center gap-3.5 rounded-xl border p-3 transition-colors ${
+                  quantidade > 0
+                    ? "border-amber-700 bg-amber-50/50 dark:border-amber-500 dark:bg-amber-950/20"
+                    : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800/60"
                 }`}
               >
-                <Miniatura url={produto.imagem_url} alt={produto.nome} tamanho={40} />
+                <Miniatura url={produto.imagem_url} alt={produto.nome} tamanho={42} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{produto.nome}</p>
-                  <p className="text-xs tabular-nums text-stone-500">
+                  <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">
+                    {produto.nome}
+                  </p>
+                  <p className="text-xs font-black tabular-nums text-amber-700 dark:text-amber-400">
                     {formatarReais(produto.preco_centavos)}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <BotaoQuantidade
-                    rotulo={`Tirar um ${produto.nome}`}
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
                     onClick={() => ajustar(produto.id, -1)}
-                    desabilitado={quantidade === 0}
+                    disabled={quantidade === 0}
+                    aria-label={`Remover um ${produto.nome}`}
+                    className="cursor-pointer size-9 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
                   >
-                    –
-                  </BotaoQuantidade>
-                  <span className="min-w-4 text-center text-sm font-bold tabular-nums">
+                    -
+                  </button>
+                  <span className="min-w-5 text-center text-sm font-black tabular-nums text-stone-900 dark:text-stone-100">
                     {quantidade}
                   </span>
-                  <BotaoQuantidade
-                    rotulo={`Adicionar um ${produto.nome}`}
+                  <button
+                    type="button"
                     onClick={() => ajustar(produto.id, 1)}
+                    aria-label={`Adicionar um ${produto.nome}`}
+                    className="cursor-pointer size-9 rounded-lg border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-600 text-sm font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-500 flex items-center justify-center transition-colors"
                   >
                     +
-                  </BotaoQuantidade>
+                  </button>
                 </div>
               </div>
             );
@@ -162,78 +174,61 @@ export function AdicionarItens({
         )}
       </div>
 
-      <div className="mt-4 border-t border-stone-300 pt-4">
+      {/* Opção de Item Avulso com Descrição Livre */}
+      <div className="mt-4 border-t border-stone-200 dark:border-stone-800 pt-4">
         {modoLivre ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-800/40 p-3.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+              Item Avulso (Fora do catálogo)
+            </span>
             <input
               value={descricaoLivre}
-              onChange={(evento) => setDescricaoLivre(evento.target.value)}
-              placeholder="O que foi? (ex: shot de tequila)"
+              onChange={(e) => setDescricaoLivre(e.target.value)}
+              placeholder="O que foi? (ex: Porção especial, Shot)"
               aria-label="Descrição do item avulso"
-              className="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-stone-400 focus:border-stone-900"
+              className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600"
             />
             <input
               value={valorLivre}
-              onChange={(evento) => setValorLivre(evento.target.value)}
+              onChange={(e) => setValorLivre(e.target.value)}
               inputMode="decimal"
-              placeholder="Valor (ex: 12,50)"
+              placeholder="Valor em R$ (ex: 15,00)"
               aria-label="Valor do item avulso"
-              className="rounded-lg border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none placeholder:text-stone-400 focus:border-stone-900"
+              className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-bold"
             />
           </div>
         ) : (
           <button
             type="button"
             onClick={() => setModoLivre(true)}
-            className="w-full text-center text-sm text-stone-500 underline underline-offset-4 hover:text-stone-900"
+            className="cursor-pointer w-full text-center text-xs font-semibold text-amber-800 dark:text-amber-400 hover:underline"
           >
-            ou lançar com descrição livre + valor
+            + Lançar item com descrição livre e valor avulso
           </button>
         )}
       </div>
 
-      {erro ? (
-        <p role="alert" className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+      {erro && (
+        <p role="alert" className="mt-3 rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-2.5 text-xs text-rose-900 dark:text-rose-200">
           {erro}
         </p>
-      ) : null}
+      )}
 
+      {/* Botão de Finalizar */}
       <button
         type="button"
         onClick={enviar}
         disabled={enviando}
-        className="mt-4 rounded-lg bg-stone-900 px-4 py-3.5 font-semibold text-white hover:bg-stone-800 disabled:opacity-60"
+        className="cursor-pointer mt-4 w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-5 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
       >
-        {enviando
-          ? "Lançando…"
-          : qtdSelecionada > 0
-            ? `Adicionar ${qtdSelecionada} ${qtdSelecionada === 1 ? "item" : "itens"} · ${formatarReais(totalSelecionado)}`
-            : "Adicionar à conta"}
+        {enviando ? (
+          <LoadingButeco />
+        ) : qtdSelecionada > 0 ? (
+          `Lançar ${qtdSelecionada} item${qtdSelecionada === 1 ? "" : "s"} (${formatarReais(totalSelecionado)})`
+        ) : (
+          "Lançar na comanda"
+        )}
       </button>
     </Modal>
-  );
-}
-
-function BotaoQuantidade({
-  children,
-  onClick,
-  rotulo,
-  desabilitado,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  rotulo: string;
-  desabilitado?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={desabilitado}
-      aria-label={rotulo}
-      className="size-11 rounded-lg border border-stone-900 text-lg font-bold leading-none text-stone-900 disabled:border-stone-300 disabled:text-stone-300"
-    >
-      {children}
-    </button>
   );
 }
