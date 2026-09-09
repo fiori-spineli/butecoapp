@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SpeedInsightsButeco } from "@/components/speed-insights-buteco";
 import { AnalyticsButeco } from "@/components/analytics-buteco";
 import "./globals.css";
 
@@ -24,15 +24,9 @@ export default function RootLayout({
       <body className="min-h-dvh bg-stone-100 text-stone-900 antialiased">
         {children}
 
-        {/*
-          Mede o carregamento real nos celulares de quem usa, para sabermos se
-          a lentidão vem de rede, de cold start ou de render — em vez de
-          adivinhar. É a versão `/next` de propósito: ela informa o PADRÃO da
-          rota (`/c/[token]`) em vez do caminho resolvido. Isso importa aqui,
-          porque o token da comanda É a credencial de acesso do cliente e não
-          pode acabar num painel de métricas.
-        */}
-        <SpeedInsights />
+        {/* Ver components/speed-insights-buteco.tsx: mede tudo menos a
+            página do cliente, cujo beacon carregaria o token da comanda. */}
+        <SpeedInsightsButeco />
 
         {/* Ver components/analytics-buteco.tsx: o token da comanda é removido
             da URL antes de qualquer evento sair do navegador. */}
