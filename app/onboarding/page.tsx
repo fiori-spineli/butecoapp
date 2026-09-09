@@ -1,6 +1,10 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { contextoDoDono } from "@/lib/bar";
 import { OnboardingForm } from "./onboarding-form";
+import { TemaToggle } from "@/components/tema-toggle";
+import { BotaoSair } from "@/components/botao-sair";
+import { LogoButeco } from "@/components/logo-buteco";
 
 export const dynamic = "force-dynamic";
 
@@ -9,16 +13,34 @@ export default async function OnboardingPage() {
   if (bar) redirect("/dashboard");
 
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-7 py-10">
-      <p className="mb-2 text-center text-xs font-bold uppercase tracking-[0.18em] text-stone-500">
-        ButecoApp
-      </p>
-      <h1 className="text-center text-2xl font-bold tracking-tight">Como chama seu bar?</h1>
-      <p className="mx-auto mt-2.5 mb-7 max-w-[32ch] text-center text-sm leading-relaxed text-stone-500">
-        É o nome que seus clientes vão ver quando abrirem a conta pelo celular.
-      </p>
+    <main className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors flex flex-col justify-between p-6 md:p-10">
+      {/* Topo com Logo, Sair e Tema */}
+      <header className="w-full max-w-2xl mx-auto flex items-center justify-between">
+        <LogoButeco className="w-36 h-12" priority />
+        <div className="flex items-center gap-3">
+          <TemaToggle />
+          <BotaoSair />
+        </div>
+      </header>
 
-      <OnboardingForm />
+      {/* Centro: Card de Criação do Bar */}
+      <div className="w-full max-w-md mx-auto my-auto rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-8 shadow-xl">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-stone-900 dark:text-stone-100">
+            Como se chama o seu bar?
+          </h1>
+          <p className="mt-2 text-xs md:text-sm text-stone-500 dark:text-stone-400">
+            Este é o nome que os seus clientes vão ver no topo da comanda quando escanearem o QR Code.
+          </p>
+        </div>
+
+        <OnboardingForm />
+      </div>
+
+      {/* Rodapé discreto */}
+      <footer className="text-center text-xs text-stone-400 dark:text-stone-600">
+        ButecoApp &bull; Configuração inicial do estabelecimento
+      </footer>
     </main>
   );
 }

@@ -22,14 +22,27 @@ export default async function LoginPage({
     } = await supabase.auth.getUser();
 
     if (user) {
+      const { data: admin } = await supabase
+        .from("administradores")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (admin) {
+        redirect("/admin");
+      }
+
       const { data: bar } = await supabase
         .from("bars")
         .select("id")
         .eq("owner_id", user.id)
         .maybeSingle();
 
-      if (bar) redirect("/dashboard");
-      else redirect("/onboarding");
+      if (bar) {
+        redirect("/dashboard");
+      } else {
+        redirect("/onboarding");
+      }
     }
   }
 

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { criarBar } from "@/app/actions/bar";
 import type { EstadoForm } from "@/app/actions/auth";
+import { LoadingButeco } from "@/components/loading-buteco";
 
 export function OnboardingForm() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarBar, null);
@@ -12,30 +13,30 @@ export function OnboardingForm() {
       <div>
         <label
           htmlFor="nome"
-          className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-stone-500"
+          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
         >
-          Nome do bar
+          Nome do estabelecimento
         </label>
         <input
           id="nome"
           name="nome"
           required
           autoFocus
-          placeholder="Buteco do Marquinho"
-          className="w-full rounded-lg border border-stone-300 bg-white px-4 py-3.5 outline-none placeholder:text-stone-400 focus:border-stone-900 focus:ring-2 focus:ring-stone-900/10"
+          placeholder="Ex: Buteco do Marquinho"
+          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all text-sm font-semibold"
         />
       </div>
 
       <button
         type="submit"
         disabled={enviando}
-        className="rounded-lg bg-stone-900 px-4 py-3.5 font-semibold text-white hover:bg-stone-800 disabled:opacity-60"
+        className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-60"
       >
-        {enviando ? "Criando…" : "Criar meu bar"}
+        {enviando ? <LoadingButeco /> : "Criar e acessar meu bar"}
       </button>
 
       {estado && !estado.ok ? (
-        <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p role="alert" className="rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-3 text-xs text-rose-900 dark:text-rose-200">
           {estado.mensagem}
         </p>
       ) : null}
