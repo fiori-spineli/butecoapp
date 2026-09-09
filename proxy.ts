@@ -44,26 +44,27 @@ export async function proxy(request: NextRequest) {
   // apagado). Isso não é erro de aplicação — é gente deslogada. Sem tratar,
   // o cookie morto volta a cada requisição daquele navegador e enche o log da
   // Vercel com "Invalid Refresh Token: Refresh Token Not Found".
+  // ATENÇÃO: este bloco NÃO pode lançar. O proxy roda em toda requisição, então
+  // qualquer exceção aqui vira 500 no site inteiro — inclusive na página do
+  // cliente, que nem sessão tem. Erro aqui é informação, nunca exceção.
   let user = null;
 
-  try {
-    const { data, error } = await supabase.auth.getUser();
-    if (error) throw error;
-    user = data.user;
-  } catch (erro) {
-    const codigo = (erro as { code?: string } | null)?.code;
-    const sessaoMorta =
-      codigo === "refresh_token_not_found" || codigo === "refresh_token_already_used";
+  const { data, error } = await supabase.auth.getUser();
 
-    // Só engolimos a falha que sabemos ser sessão vencida. Qualquer outra
-    // (Supabase fora do ar, rede) precisa continuar aparecendo.
-    if (!sessaoMorta) throw erro;
+  if (error) {
+    // Visitante sem sessão cai aqui, e isso é o caso normal — não é falha.
+    // O que vale tratar é o cookie de refresh que já morreu: sem apagá-lo, o
+    // navegador o reapresenta a cada página e o log enche de
+    // "Invalid Refresh Token: Refresh Token Not Found".
+    const codigo = (error as { code?: string }).code;
 
-    // Apaga o cookie que já não serve, para o navegador parar de reapresentá-lo
-    // a cada página. Sem isso o mesmo erro se repete indefinidamente.
-    for (const { name } of request.cookies.getAll()) {
-      if (name.startsWith("sb-")) response.cookies.delete(name);
+    if (codigo === "refresh_token_not_found" || codigo === "refresh_token_already_used") {
+      for (const { name } of request.cookies.getAll()) {
+        if (name.startsWith("sb-")) response.cookies.delete(name);
+      }
     }
+  } else {
+    user = data.user;
   }
 
   const nextUrl = request.nextUrl;
