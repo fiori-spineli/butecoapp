@@ -17,68 +17,291 @@ body {
 }
 
 /* Evita zoom indesejado no iOS ao focar campos */
+
 input,
 select,
 textarea {
   font-size: 16px;
 }
 
-/* Seleção de texto estilizada em tom âmbar */
+/* Seleção de texto em tom âmbar */
+
 ::selection {
   background-color: #d97706;
   color: #ffffff;
 }
 
-/* ========================================================== */
-/* ANIMAÇÃO SUPREMA DE EFERVESCÊNCIA DE CHOPP (60 FPS GPU)    */
-/* ========================================================== */
+/* ==========================================================
+   EFERVESCÊNCIA DO CHOPP
+   ========================================================== */
 
 @keyframes subirBolhaMagica {
   0% {
-    transform: translateY(20px) translateX(0px) scale(0.4);
+    transform: translate3d(0, 24px, 0) scale(0.45);
     opacity: 0;
   }
-  15% {
-    opacity: 0.65;
+
+  12% {
+    opacity: 0.55;
   }
-  50% {
-    transform: translateY(-50vh) translateX(6px) scale(0.9);
+
+  35% {
+    transform: translate3d(5px, -30vh, 0) scale(0.75);
+    opacity: 0.8;
+  }
+
+  55% {
+    transform: translate3d(-4px, -55vh, 0) scale(0.95);
     opacity: 0.85;
   }
-  85% {
-    opacity: 0.7;
+
+  78% {
+    transform: translate3d(6px, -82vh, 0) scale(1.08);
+    opacity: 0.65;
   }
+
   100% {
-    transform: translateY(-115vh) translateX(-6px) scale(1.3);
+    transform: translate3d(-5px, -118vh, 0) scale(1.25);
     opacity: 0;
   }
 }
 
 .anim-bolha-1 {
   animation: subirBolhaMagica 6.5s infinite ease-in-out;
-  will-change: transform, opacity;
 }
+
 .anim-bolha-2 {
   animation: subirBolhaMagica 9s infinite ease-in-out 1.2s;
-  will-change: transform, opacity;
 }
+
 .anim-bolha-3 {
   animation: subirBolhaMagica 5s infinite ease-in-out 0.3s;
-  will-change: transform, opacity;
 }
+
 .anim-bolha-4 {
   animation: subirBolhaMagica 10.5s infinite ease-in-out 2.5s;
-  will-change: transform, opacity;
 }
+
 .anim-bolha-5 {
   animation: subirBolhaMagica 7.5s infinite ease-in-out 1.8s;
+}
+
+/* ==========================================================
+   ESPUMA
+   ========================================================== */
+
+@keyframes espumaPulse {
+  0%,
+  100% {
+    opacity: 0.8;
+    transform: scaleY(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scaleY(1.04);
+  }
+}
+
+.animate-espuma {
+  animation: espumaPulse 7s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+/* ==========================================================
+   BRILHO DA ESPUMA
+   ========================================================== */
+
+@keyframes brilhoEspuma {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 0) scaleX(0.75);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: translate3d(-50%, 0, 0) scaleX(1);
+    opacity: 0.55;
+  }
+}
+
+.animate-brilho-espuma {
+  animation: brilhoEspuma 5s ease-in-out infinite;
   will-change: transform, opacity;
 }
 
-/* Utilitários visuais de vidro e iluminação para o painel */
+/* ==========================================================
+   LUZ INTERNA DO CHOPP
+   ========================================================== */
+
+@keyframes luzChopp {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translate3d(35px, -20px, 0) scale(1.05);
+    opacity: 1;
+  }
+}
+
+.animate-luz-chopp {
+  animation: luzChopp 12s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes luzChoppReverse {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: translate3d(-30px, 20px, 0) scale(1.08);
+    opacity: 0.9;
+  }
+}
+
+.animate-luz-chopp-reverse {
+  animation: luzChoppReverse 15s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================
+   REFLEXOS DO VIDRO
+   ========================================================== */
+
+@keyframes reflexoMovimento {
+  0%,
+  100% {
+    transform: translate3d(-20px, 0, 0) skewX(12deg);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translate3d(30px, 0, 0) skewX(12deg);
+    opacity: 0.8;
+  }
+}
+
+.animate-reflexo {
+  animation: reflexoMovimento 11s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes reflexoMovimento2 {
+  0%,
+  100% {
+    transform: translate3d(15px, 0, 0) skewX(-12deg);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform: translate3d(-25px, 0, 0) skewX(-12deg);
+    opacity: 0.65;
+  }
+}
+
+.animate-reflexo-2 {
+  animation: reflexoMovimento2 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+@keyframes reflexoSuave {
+  0%,
+  100% {
+    transform: translate3d(-8px, 0, 0);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: translate3d(12px, 0, 0);
+    opacity: 0.5;
+  }
+}
+
+.animate-reflexo-suave {
+  animation: reflexoSuave 9s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================
+   MICRO-BOLHAS
+   ========================================================== */
+
+@keyframes microBolhas {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.07;
+  }
+
+  50% {
+    transform: translate3d(0, -12px, 0);
+    opacity: 0.12;
+  }
+}
+
+.animate-microbolhas {
+  animation: microBolhas 8s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================
+   ONDA DE LUZ DO LÍQUIDO
+   ========================================================== */
+
+@keyframes ondaChopp {
+  0%,
+  100% {
+    transform: translate3d(-10%, 0, 0) rotate(-2deg);
+    opacity: 0.25;
+  }
+
+  50% {
+    transform: translate3d(10%, -8px, 0) rotate(2deg);
+    opacity: 0.55;
+  }
+}
+
+.animate-onda-chopp {
+  animation: ondaChopp 14s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================
+   GLASS PANEL
+   ========================================================== */
+
 .glass-panel {
   background: rgba(28, 25, 23, 0.75);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+/* ==========================================================
+   ACESSIBILIDADE / PERFORMANCE
+   ========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-bolha-1,
+  .anim-bolha-2,
+  .anim-bolha-3,
+  .anim-bolha-4,
+  .anim-bolha-5,
+  .animate-espuma,
+  .animate-brilho-espuma,
+  .animate-luz-chopp,
+  .animate-luz-chopp-reverse,
+  .animate-reflexo,
+  .animate-reflexo-2,
+  .animate-reflexo-suave,
+  .animate-microbolhas,
+  .animate-onda-chopp {
+    animation: none;
+  }
 }
