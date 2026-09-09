@@ -1,14 +1,14 @@
 import Image from "next/image";
 
 export function LogoButeco({
-  className = "size-12",
+  className = "w-40 md:w-56 h-14 md:h-20",
   priority = false,
 }: {
   className?: string;
   priority?: boolean;
 }) {
   return (
-    <div className={`relative ${className} shrink-0`}>
+    <div className={`relative ${className} shrink-0 transition-all`}>
       {/* Versão para o tema Claro */}
       <Image
         src="/buteco_logo_clear.png"

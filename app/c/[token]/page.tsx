@@ -25,7 +25,7 @@ export default async function PaginaCliente({
     <main className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-4 py-8 md:py-12 transition-colors flex flex-col items-center">
       {/* Topo com Logo e Toggle de Tema */}
       <div className="w-full max-w-lg flex items-center justify-between mb-6">
-        <LogoButeco className="w-32 h-10" priority />
+        <LogoButeco className="w-40 md:w-48 h-12 md:h-14" priority />
         <TemaToggle />
       </div>
 
