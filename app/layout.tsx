@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { AnalyticsButeco } from "@/components/analytics-buteco";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -32,6 +33,10 @@ export default function RootLayout({
           pode acabar num painel de métricas.
         */}
         <SpeedInsights />
+
+        {/* Ver components/analytics-buteco.tsx: o token da comanda é removido
+            da URL antes de qualquer evento sair do navegador. */}
+        <AnalyticsButeco />
 
         <script
           dangerouslySetInnerHTML={{
