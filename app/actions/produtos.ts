@@ -17,7 +17,7 @@ export async function criarProduto(
   if (nome.length < 2) return { ok: false, mensagem: "Digite o nome do produto." };
 
   const precoCentavos = parseReaisParaCentavos(precoBruto);
-  if (precoCentavos === null) return { ok: false, mensagem: "Preço inválido." };
+  if (precoCentavos === null) return { ok: false, mensagem: "Preço inválido. Use vírgula para os centavos, como 12,50." };
 
   const { supabase, bar } = await exigirBar();
 
@@ -46,7 +46,7 @@ export async function atualizarProduto(
   if (nome.length < 2) return { ok: false, mensagem: "Digite o nome do produto." };
 
   const precoCentavos = parseReaisParaCentavos(precoBruto);
-  if (precoCentavos === null) return { ok: false, mensagem: "Preço inválido." };
+  if (precoCentavos === null) return { ok: false, mensagem: "Preço inválido. Use vírgula para os centavos, como 12,50." };
 
   const { supabase, bar } = await exigirBar();
 

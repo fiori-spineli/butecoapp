@@ -6,6 +6,7 @@ import imageCompression from "browser-image-compression";
 import { criarProduto } from "@/app/actions/produtos";
 import type { EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
+import { EditorDeFoto } from "@/components/produto/editor-de-foto";
 
 export function NovoProdutoForm() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarProduto, null);
@@ -13,57 +14,38 @@ export function NovoProdutoForm() {
   const [imagemUrl, setImagemUrl] = useState("");
   const [subindo, setSubindo] = useState(false);
   const [erroFoto, setErroFoto] = useState<string | null>(null);
+  const [emEdicao, setEmEdicao] = useState<File | null>(null);
 
   // Inputs separados para Câmera e Galeria
   const inputCamera = useRef<HTMLInputElement>(null);
   const inputGaleria = useRef<HTMLInputElement>(null);
 
-  // Função auxiliar de recorte quadrado no Canvas do navegador
-  async function recortarQuadrado(arquivo: File): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      const img = document.createElement("img");
-      img.onload = () => {
-        const menorLado = Math.min(img.width, img.height);
-        const canvas = document.createElement("canvas");
-        canvas.width = menorLado;
-        canvas.height = menorLado;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return reject(new Error("Canvas não suportado"));
-
-        const offsetX = (img.width - menorLado) / 2;
-        const offsetY = (img.height - menorLado) / 2;
-
-        ctx.drawImage(img, offsetX, offsetY, menorLado, menorLado, 0, 0, menorLado, menorLado);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Falha ao recortar"));
-          },
-          "image/jpeg",
-          0.9,
-        );
-      };
-      img.onerror = () => reject(new Error("Erro ao ler imagem"));
-      img.src = URL.createObjectURL(arquivo);
-    });
+  /**
+   * Escolher a foto agora só ABRE o editor. O recorte deixou de ser
+   * automático e central: quem enquadra é o dono, que sabe onde está a
+   * garrafa na foto.
+   */
+  function escolherArquivo(arquivo?: File) {
+    if (!arquivo) return;
+    setErroFoto(null);
+    setEmEdicao(arquivo);
   }
 
-  async function processarArquivo(arquivo?: File) {
-    if (!arquivo) return;
-
+  /** Recebe o recorte do editor, converte para WebP e sobe. */
+  async function enviarRecorte(recorte: Blob) {
+    setEmEdicao(null);
     setErroFoto(null);
     setSubindo(true);
 
     try {
-      // 1. Recorta centralizado em quadrado (1:1)
-      const blobQuadrado = await recortarQuadrado(arquivo);
-      const arquivoRecortado = new File([blobQuadrado], "produto.jpg", { type: "image/jpeg" });
-      setPrevia(URL.createObjectURL(arquivoRecortado));
+      const recortado = new File([recorte], "produto.jpg", { type: "image/jpeg" });
+      setPrevia(URL.createObjectURL(recortado));
 
-      // 2. Comprime para WebP leve
-      let paraEnviar: File | Blob = arquivoRecortado;
+      // A conversão para WebP continua igual: economiza dados numa rede de
+      // bar, e a rota do servidor reprocessa com sharp como rede de segurança.
+      let paraEnviar: File | Blob = recortado;
       try {
-        paraEnviar = await imageCompression(arquivoRecortado, {
+        paraEnviar = await imageCompression(recortado, {
           maxSizeMB: 0.35,
           maxWidthOrHeight: 800,
           useWebWorker: true,
@@ -71,10 +53,9 @@ export function NovoProdutoForm() {
           initialQuality: 0.8,
         });
       } catch {
-        // Fallback sem webp no canvas
+        // Navegador antigo sem WebP no canvas: sobe o JPEG e o servidor converte.
       }
 
-      // 3. Envia para a API
       const corpo = new FormData();
       corpo.append("arquivo", paraEnviar, "produto.webp");
 
@@ -137,78 +118,94 @@ export function NovoProdutoForm() {
           Foto do item <span className="font-normal normal-case text-stone-400">(opcional)</span>
         </span>
 
-        {/* Prévia Quadrada (Recortada) */}
-        <div className="relative mx-auto size-48 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/60 overflow-hidden flex items-center justify-center">
-          {previa ? (
-            <Image
-              src={previa}
-              alt="Prévia do produto"
-              fill
-              className="object-cover"
-            />
-          ) : (
-            <div className="text-center p-4">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mx-auto text-stone-400 mb-1" aria-hidden>
+        {emEdicao ? (
+          <EditorDeFoto
+            arquivo={emEdicao}
+            aoConfirmar={enviarRecorte}
+            aoCancelar={() => setEmEdicao(null)}
+          />
+        ) : (
+          <>
+          {/* Prévia Quadrada (Recortada) */}
+          <div className="relative mx-auto size-48 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/60 overflow-hidden flex items-center justify-center">
+            {previa ? (
+              <Image
+                src={previa}
+                alt="Prévia do produto"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="text-center p-4">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mx-auto text-stone-400 mb-1" aria-hidden>
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                <span className="text-xs text-stone-400">Enquadre você mesmo ao escolher</span>
+              </div>
+            )}
+          </div>
+
+          {/* Inputs Ocultos */}
+          <input
+            ref={inputCamera}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={(e) => {
+                escolherArquivo(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            className="hidden"
+            aria-label="Tirar foto com a câmera"
+          />
+          <input
+            ref={inputGaleria}
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+                escolherArquivo(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            className="hidden"
+            aria-label="Escolher foto da galeria"
+          />
+
+          {/* Dois Botões Separados */}
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => inputCamera.current?.click()}
+              disabled={subindo}
+              className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
-              <span className="text-xs text-stone-400">Recorte 1:1 quadrado automático</span>
-            </div>
-          )}
-        </div>
+              Tirar foto
+            </button>
 
-        {/* Inputs Ocultos */}
-        <input
-          ref={inputCamera}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={(e) => processarArquivo(e.target.files?.[0])}
-          className="hidden"
-          aria-label="Tirar foto com a câmera"
-        />
-        <input
-          ref={inputGaleria}
-          type="file"
-          accept="image/*"
-          onChange={(e) => processarArquivo(e.target.files?.[0])}
-          className="hidden"
-          aria-label="Escolher foto da galeria"
-        />
-
-        {/* Dois Botões Separados */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => inputCamera.current?.click()}
-            disabled={subindo}
-            className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-              <circle cx="12" cy="13" r="4" />
-            </svg>
-            Tirar foto
-          </button>
-
-          <button
-            type="button"
-            onClick={() => inputGaleria.current?.click()}
-            disabled={subindo}
-            className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            Abrir galeria
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => inputGaleria.current?.click()}
+              disabled={subindo}
+              className="cursor-pointer flex items-center justify-center gap-2 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors disabled:opacity-50 shadow-xs"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              Abrir galeria
+            </button>
+          </div>
+          </>
+        )}
 
         {subindo && (
           <div className="mt-3">
-            <LoadingButeco fraseFixa="Processando e recortando foto..." />
+            <LoadingButeco fraseFixa="Preparando a foto..." />
           </div>
         )}
 

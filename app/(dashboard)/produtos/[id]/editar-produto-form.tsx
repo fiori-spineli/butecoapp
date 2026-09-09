@@ -6,6 +6,7 @@ import imageCompression from "browser-image-compression";
 import { atualizarProduto, removerProduto } from "@/app/actions/produtos";
 import { formatarReais } from "@/lib/format";
 import { LoadingButeco } from "@/components/loading-buteco";
+import { EditorDeFoto } from "@/components/produto/editor-de-foto";
 import type { Produto } from "@/lib/types";
 
 export function EditarProdutoForm({ produto }: { produto: Produto }) {
@@ -15,24 +16,42 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
   const [imagemUrl, setImagemUrl] = useState(produto.imagem_url ?? "");
   const [subindo, setSubindo] = useState(false);
   const [excluindo, iniciarExclusao] = useTransition();
+  const [emEdicao, setEmEdicao] = useState<File | null>(null);
+  const [erroFoto, setErroFoto] = useState<string | null>(null);
 
   const inputCamera = useRef<HTMLInputElement>(null);
   const inputGaleria = useRef<HTMLInputElement>(null);
 
-  async function processarArquivo(arquivo?: File) {
+  /** Escolher a foto abre o editor; o recorte é do dono, não automático. */
+  function escolherArquivo(arquivo?: File) {
     if (!arquivo) return;
+    setErroFoto(null);
+    setEmEdicao(arquivo);
+  }
+
+  async function enviarRecorte(recorte: Blob) {
+    setEmEdicao(null);
+    setErroFoto(null);
     setSubindo(true);
 
     try {
-      const comprimido = await imageCompression(arquivo, {
-        maxSizeMB: 0.35,
-        maxWidthOrHeight: 800,
-        useWebWorker: true,
-        fileType: "image/webp",
-      });
+      const recortado = new File([recorte], "produto.jpg", { type: "image/jpeg" });
+
+      let paraEnviar: File | Blob = recortado;
+      try {
+        paraEnviar = await imageCompression(recortado, {
+          maxSizeMB: 0.35,
+          maxWidthOrHeight: 800,
+          useWebWorker: true,
+          fileType: "image/webp",
+          initialQuality: 0.8,
+        });
+      } catch {
+        // Navegador antigo sem WebP no canvas: o servidor converte.
+      }
 
       const corpo = new FormData();
-      corpo.append("arquivo", comprimido, "produto.webp");
+      corpo.append("arquivo", paraEnviar, "produto.webp");
 
       const res = await fetch("/api/produtos/imagem", { method: "POST", body: corpo });
       if (!res.ok) throw new Error();
@@ -41,7 +60,9 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
       setImagemUrl(url);
       setPrevia(url);
     } catch {
-      // Ignora e mantém foto anterior
+      // Antes isso era engolido em silêncio: a foto não subia e o dono ficava
+      // olhando para a foto antiga sem entender o que houve.
+      setErroFoto("Não consegui subir a foto. A anterior foi mantida.");
     } finally {
       setSubindo(false);
     }
@@ -83,35 +104,53 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
           Foto do item
         </span>
 
-        <div className="relative mx-auto size-44 rounded-2xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 overflow-hidden flex items-center justify-center">
-          {previa ? (
-            <Image src={previa} alt={produto.nome} fill className="object-cover" />
-          ) : (
-            <span className="text-xs text-stone-400">Sem foto</span>
-          )}
-        </div>
+        {emEdicao ? (
+          <EditorDeFoto
+            arquivo={emEdicao}
+            aoConfirmar={enviarRecorte}
+            aoCancelar={() => setEmEdicao(null)}
+          />
+        ) : (
+          <>
+          <div className="relative mx-auto size-44 rounded-2xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 overflow-hidden flex items-center justify-center">
+            {previa ? (
+              <Image src={previa} alt={produto.nome} fill className="object-cover" />
+            ) : (
+              <span className="text-xs text-stone-400">Sem foto</span>
+            )}
+          </div>
 
-        <input ref={inputCamera} type="file" accept="image/*" capture="environment" onChange={(e) => processarArquivo(e.target.files?.[0])} className="hidden" />
-        <input ref={inputGaleria} type="file" accept="image/*" onChange={(e) => processarArquivo(e.target.files?.[0])} className="hidden" />
+          <input ref={inputCamera} type="file" accept="image/*" capture="environment" onChange={(e) => { escolherArquivo(e.target.files?.[0]); e.target.value = ""; }} className="hidden" />
+          <input ref={inputGaleria} type="file" accept="image/*" onChange={(e) => { escolherArquivo(e.target.files?.[0]); e.target.value = ""; }} className="hidden" />
 
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => inputCamera.current?.click()}
-            disabled={subindo}
-            className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50"
-          >
-            Tirar foto
-          </button>
-          <button
-            type="button"
-            onClick={() => inputGaleria.current?.click()}
-            disabled={subindo}
-            className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50"
-          >
-            Galeria
-          </button>
-        </div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => inputCamera.current?.click()}
+              disabled={subindo}
+              className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50"
+            >
+              Tirar foto
+            </button>
+            <button
+              type="button"
+              onClick={() => inputGaleria.current?.click()}
+              disabled={subindo}
+              className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50"
+            >
+              Galeria
+            </button>
+          </div>
+          </>
+        )}
+
+        {subindo && <div className="mt-3"><LoadingButeco fraseFixa="Preparando a foto..." /></div>}
+
+        {erroFoto && (
+          <p role="alert" className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+            {erroFoto}
+          </p>
+        )}
       </div>
 
       {estado && !estado.ok && (

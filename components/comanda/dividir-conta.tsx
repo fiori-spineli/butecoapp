@@ -192,8 +192,18 @@ export function DividirConta({
             disabled={processando || !valorEspecifico.trim()}
             onClick={() => {
               const centavos = parseReaisParaCentavos(valorEspecifico);
-              if (centavos === null || centavos <= 0) {
-                setErro("Digite um valor numérico válido.");
+              if (centavos === null) {
+                setErro("Valor inválido. Use vírgula para os centavos, como 12,50.");
+                return;
+              }
+              if (centavos <= 0) {
+                setErro("O valor precisa ser maior que zero.");
+                return;
+              }
+              if (centavos > restanteCentavos) {
+                setErro(
+                  `Falta só ${formatarReais(restanteCentavos)} nesta conta — o abatimento não pode passar disso.`,
+                );
                 return;
               }
               executar(async () => {
@@ -223,6 +233,16 @@ export function DividirConta({
             <ul className="divide-y divide-stone-200 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800/50 max-h-[38vh] overflow-y-auto">
               {itens.map((item) => {
                 const restantes = item.quantidade - item.pagas;
+
+                // Duas contagens diferentes precisam bater. Um pagamento de
+                // valor livre abate o total sem marcar unidade nenhuma, então
+                // um item pode ter unidade "em aberto" e mesmo assim não caber
+                // no que falta da conta. Deixar clicar aqui levaria a conta
+                // para saldo negativo — o servidor recusa, mas o botão não
+                // deve nem oferecer.
+                const cabeNoSaldo = item.valor_unitario_centavos <= restanteCentavos;
+                const bloqueado = processando || restantes <= 0 || !cabeNoSaldo;
+
                 return (
                   <li key={item.id} className="flex items-center justify-between p-3.5 gap-3">
                     <div className="min-w-0 flex-1">
@@ -233,11 +253,16 @@ export function DividirConta({
                         {item.pagas} de {item.quantidade} pagas &bull;{" "}
                         {formatarReais(item.valor_unitario_centavos)} cada
                       </p>
+                      {restantes > 0 && !cabeNoSaldo && (
+                        <p className="mt-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-500">
+                          Já coberto por pagamento avulso
+                        </p>
+                      )}
                     </div>
 
                     <button
                       type="button"
-                      disabled={processando || restantes <= 0}
+                      disabled={bloqueado}
                       onClick={() =>
                         executar(() => registrarPagamentoDeItem(clienteId, item.id, 1))
                       }

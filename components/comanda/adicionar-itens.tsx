@@ -74,7 +74,7 @@ export function AdicionarItens({
         return;
       }
       if (centavos === null || centavos <= 0) {
-        setErro("Digite um valor válido para o item avulso.");
+        setErro("Valor inválido. Use vírgula para os centavos, como 12,50.");
         return;
       }
       itens.push({

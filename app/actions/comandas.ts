@@ -203,6 +203,37 @@ export async function registrarPagamentoDeItem(
     };
   }
 
+  // Além de checar as unidades DESTE item, é preciso checar o saldo da conta
+  // inteira. As duas contagens são independentes: um pagamento de valor livre
+  // (a divisão igualitária, por exemplo) abate o total sem marcar unidade
+  // nenhuma como paga. Sem esta trava, numa conta de R$ 100 alguém pagava
+  // R$ 90 no avulso, outro pagava um item de R$ 50 — que continuava "em
+  // aberto" pela contagem por unidade — e o saldo virava −R$ 40, inclusive na
+  // tela que o cliente abre pelo QR.
+  const valorDoPagamento = qtd * (lancamento.valor_unitario_centavos as number);
+
+  const { data: resumo } = await supabase
+    .from("comandas_resumo")
+    .select("restante_centavos")
+    .eq("id", clienteId)
+    .maybeSingle();
+
+  if (!resumo) {
+    return { ok: false, mensagem: "Comanda não encontrada." };
+  }
+
+  const restanteDaConta = resumo.restante_centavos as number;
+
+  if (valorDoPagamento > restanteDaConta) {
+    return {
+      ok: false,
+      mensagem:
+        restanteDaConta <= 0
+          ? "Esta conta já está quitada — não há saldo em aberto para abater."
+          : `Faltam só ${formatarReais(restanteDaConta)} nesta conta, e esse item custa ${formatarReais(valorDoPagamento)}. Parte dele já foi coberta por um pagamento avulso.`,
+    };
+  }
+
   const nomeDoItem =
     ((lancamento as { produtos?: { nome?: string } | null }).produtos?.nome ??
       (lancamento.descricao as string | null)) ||
@@ -212,7 +243,7 @@ export async function registrarPagamentoDeItem(
     cliente_id: clienteId,
     lancamento_id: lancamentoId,
     quantidade_paga: qtd,
-    valor_centavos: qtd * (lancamento.valor_unitario_centavos as number),
+    valor_centavos: valorDoPagamento,
     descricao: `${qtd}x ${nomeDoItem}`,
   });
 
