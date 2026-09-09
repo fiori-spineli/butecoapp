@@ -4,14 +4,13 @@ import { exigirBar } from "@/lib/bar";
 import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
-import { sair } from "@/app/actions/auth";
+import { BotaoSair } from "@/components/botao-sair";
 import type { ComandaResumo } from "@/lib/types";
 
 export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  // Executa todas as consultas financeiras e de comandas em paralelo no banco
   const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
     supabase
       .from("comandas_resumo")
@@ -44,8 +43,8 @@ export default async function DashboardPage() {
   );
 
   return (
-    <div className="flex flex-1 flex-col animate-in fade-in duration-200">
-      {/* Topo */}
+    <div className="flex flex-1 flex-col animate-in fade-in duration-150">
+      {/* Topo com o BotaoSair interativo */}
       <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
         <div className="flex items-center gap-3.5">
           <div className="relative size-10 shrink-0">
@@ -69,14 +68,7 @@ export default async function DashboardPage() {
 
         <div className="flex items-center gap-3">
           <TemaToggle />
-          <form action={sair}>
-            <button
-              type="submit"
-              className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-4 py-2 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
-            >
-              Sair
-            </button>
-          </form>
+          <BotaoSair />
         </div>
       </header>
 
