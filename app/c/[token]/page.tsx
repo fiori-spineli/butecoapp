@@ -4,6 +4,7 @@ import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 import { ContaAoVivo } from "./conta-ao-vivo";
 import { TemaToggle } from "@/components/tema-toggle";
 import type { ComandaPublica } from "@/lib/types";
+import { LogoButeco } from "@/components/logo-buteco";
 
 export const dynamic = "force-dynamic";
 
@@ -24,20 +25,7 @@ export default async function PaginaCliente({
     <main className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-4 py-8 md:py-12 transition-colors flex flex-col items-center">
       {/* Topo com Logo e Toggle de Tema */}
       <div className="w-full max-w-lg flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2.5">
-          <div className="relative size-8 shrink-0">
-            <Image
-              src="/buteco_logo.png"
-              alt="ButecoApp"
-              fill
-              priority
-              className="object-contain"
-            />
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-500">
-            ButecoApp
-          </span>
-        </div>
+        <LogoButeco className="w-32 h-10" priority />
         <TemaToggle />
       </div>
 

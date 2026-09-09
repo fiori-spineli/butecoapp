@@ -7,6 +7,7 @@ import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoSair } from "@/components/botao-sair";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
 import type { ComandaResumo } from "@/lib/types";
+import { LogoButeco } from "@/components/logo-buteco";
 
 export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
@@ -47,20 +48,9 @@ export default async function DashboardPage() {
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
       {/* Topo */}
       <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
-        <div className="flex items-center gap-3.5">
-          <div className="relative size-10 shrink-0">
-            <Image
-              src="/buteco_logo.png"
-              alt="ButecoApp"
-              fill
-              priority
-              className="object-contain"
-            />
-          </div>
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-700 dark:text-amber-500">
-              ButecoApp
-            </span>
+        <div className="flex items-center gap-4">
+          <LogoButeco className="w-28 h-10" />
+          <div className="border-l border-stone-200 dark:border-stone-800 pl-4">
             <h1 className="text-lg md:text-2xl font-black leading-tight text-stone-900 dark:text-stone-100">
               {bar.nome}
             </h1>
