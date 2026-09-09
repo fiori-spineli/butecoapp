@@ -49,7 +49,7 @@ export default async function DashboardPage() {
       {/* Topo */}
       <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
         <div className="flex items-center gap-4">
-          <LogoButeco className="w-36 md:w-44 h-11 md:h-14" priority />
+          <LogoButeco className="w-40 md:w-52 lg:w-60 h-14 md:h-18 lg:h-20" priority />
           <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
             <h1 className="text-lg md:text-2xl font-black leading-tight text-stone-900 dark:text-stone-100">
               {bar.nome}
@@ -62,7 +62,6 @@ export default async function DashboardPage() {
           <BotaoSair />
         </div>
       </header>
-
       {/* Métricas */}
       <section
         aria-label="Métricas de hoje"

@@ -50,16 +50,16 @@ export function AdminViewContainer({
         <div className="mx-auto max-w-7xl flex flex-col gap-8 animate-in fade-in duration-200">
             {/* Topo do Painel de Admin Desbloqueado */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-6">
-                <div className="flex items-center gap-4">
-                    <LogoButeco className="w-44 md:w-56 h-16 md:h-20" priority />
-                    <div className="border-l border-stone-300 dark:border-stone-700 pl-4">
+                <div className="flex items-center gap-5">
+                    <LogoButeco className="w-48 md:w-64 lg:w-72 h-16 md:h-22 lg:h-26" priority />
+                    <div className="border-l border-stone-300 dark:border-stone-700 pl-5">
                         <div className="flex items-center gap-2">
                             <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
                             <span className="text-xs font-black uppercase tracking-widest text-amber-700 dark:text-amber-500">
                                 Sessão Protegida com 2FA
                             </span>
                         </div>
-                        <h1 className="text-2xl md:text-3xl font-black tracking-tight">
+                        <h1 className="text-2xl md:text-4xl font-black tracking-tight mt-0.5">
                             Infraestrutura & Negócio
                         </h1>
                     </div>

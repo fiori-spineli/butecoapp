@@ -5,6 +5,7 @@ import { formatarReais } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import type { Produto } from "@/lib/types";
+import { LogoButeco } from "@/components/logo-buteco";
 
 export const dynamic = "force-dynamic";
 
@@ -22,21 +23,29 @@ export default async function ProdutosPage() {
   return (
     <>
       <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
-        <div>
-          <h1 className="text-lg md:text-xl font-black text-stone-900 dark:text-stone-100">
-            Catálogo de Produtos
-          </h1>
-          <p className="text-xs text-stone-500 dark:text-stone-400">
-            {produtos.length} item{produtos.length === 1 ? "" : "s"} cadastrado{produtos.length === 1 ? "" : "s"}
-          </p>
+        <div className="flex items-center gap-4">
+          <LogoButeco className="w-40 md:w-52 lg:w-60 h-14 md:h-18 lg:h-20" priority />
+          <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
+            <h1 className="text-lg md:text-2xl font-black text-stone-900 dark:text-stone-100">
+              Catálogo de Produtos
+            </h1>
+            <p className="text-xs text-stone-500 dark:text-stone-400">
+              {produtos.length} item{produtos.length === 1 ? "" : "s"} cadastrado{produtos.length === 1 ? "" : "s"}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
           <TemaToggle />
           <Link
             href="/produtos/novo"
-            className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
+            prefetch={true}
+            className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-2.5 text-xs md:text-sm font-bold text-white shadow-xs transition-transform active:scale-95 flex items-center gap-2"
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
             + Novo produto
           </Link>
         </div>
