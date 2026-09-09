@@ -3,9 +3,10 @@ import Link from "next/link";
 const abas = [
   { href: "/dashboard", chave: "comandas", rotulo: "Comandas" },
   { href: "/produtos", chave: "produtos", rotulo: "Produtos" },
+  { href: "/relatorios", chave: "relatorios", rotulo: "Relatórios" },
 ] as const;
 
-export function TabBar({ ativo }: { ativo: "comandas" | "produtos" }) {
+export function TabBar({ ativo }: { ativo: "comandas" | "produtos" | "relatorios" }) {
   return (
     <nav className="sticky bottom-0 z-20 flex border-t border-stone-200 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md transition-all">
       {abas.map((aba) => {
