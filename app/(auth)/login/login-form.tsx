@@ -50,13 +50,13 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
     <div className="w-full flex flex-col gap-6">
       {/* Abas Alternadoras: Link vs Senha */}
       {modo !== "recuperar" && (
-        <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800/70 p-1 border border-stone-200 dark:border-stone-700/60">
+        <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800 p-1 border border-stone-200 dark:border-stone-700">
           <button
             type="button"
             onClick={() => setModo("link")}
-            className={`cursor-pointer py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`cursor-pointer py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
               modo === "link"
-                ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-400 shadow-sm border border-stone-200/60 dark:border-stone-700"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
@@ -69,9 +69,9 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           <button
             type="button"
             onClick={() => setModo("senha")}
-            className={`cursor-pointer py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
+            className={`cursor-pointer py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 ${
               modo === "senha" || modo === "cadastro"
-                ? "bg-white dark:bg-stone-900 text-amber-900 dark:text-amber-400 shadow-sm border border-stone-200/60 dark:border-stone-700"
+                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
@@ -90,7 +90,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           <div>
             <label
               htmlFor="email-link"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
               E-mail do bar
             </label>
@@ -101,29 +101,29 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="email"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoLink}
-            className="cursor-pointer w-full rounded-xl bg-amber-800 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-sm transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
           >
             {enviandoLink ? <LoadingButeco /> : "Receber link de acesso"}
           </button>
 
-          {/* Aviso sobre SPAM */}
-          <div className="rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/70 dark:bg-amber-950/30 p-4 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
-            <svg className="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          {/* Aviso sobre Spam em tom Pastel Suave */}
+          <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 flex items-start gap-3 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
+            <svg className="shrink-0 mt-0.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <p>
-              <strong>Fique atento:</strong> O e-mail com o link pode ir para a pasta de{" "}
-              <strong className="underline decoration-amber-600 underline-offset-2">Spam</strong> ou{" "}
-              <strong className="underline decoration-amber-600 underline-offset-2">Lixo eletrônico</strong>. Caso não chegue na entrada em 1 minuto, cheque lá.
+              <strong>Fique atento:</strong> O e-mail com o link pode chegar na sua pasta de{" "}
+              <strong className="underline decoration-amber-600/50 underline-offset-2">Spam</strong> ou{" "}
+              <strong className="underline decoration-amber-600/50 underline-offset-2">Lixo eletrônico</strong>. Se não aparecer na caixa de entrada em instantes, confira lá.
             </p>
           </div>
 
@@ -139,7 +139,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           <div>
             <label
               htmlFor="email-senha"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
               E-mail
             </label>
@@ -150,7 +150,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="username"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
@@ -158,14 +158,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             <div className="flex items-center justify-between mb-1.5">
               <label
                 htmlFor="password-login"
-                className="block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+                className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
               >
                 Senha
               </label>
               <button
                 type="button"
                 onClick={() => setModo("recuperar")}
-                className="cursor-pointer text-xs font-semibold text-amber-800 dark:text-amber-400 hover:underline"
+                className="cursor-pointer text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
               >
                 Esqueceu?
               </button>
@@ -177,7 +177,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="current-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
@@ -190,14 +190,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
                 onChange={(e) => setLembrar(e.target.checked)}
                 className="cursor-pointer size-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600 accent-amber-700"
               />
-              <span>Lembrar meu acesso neste aparelho</span>
+              <span>Manter conectado neste aparelho</span>
             </label>
           </div>
 
           <button
             type="submit"
             disabled={enviandoSenha}
-            className="cursor-pointer w-full rounded-xl bg-amber-800 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-sm transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
           >
             {enviandoSenha ? <LoadingButeco /> : "Entrar no bar"}
           </button>
@@ -210,7 +210,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             <button
               type="button"
               onClick={() => setModo("cadastro")}
-              className="cursor-pointer text-xs font-bold text-amber-900 dark:text-amber-400 hover:underline"
+              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
             >
               Não tem conta? Cadastrar bar e criar senha
             </button>
@@ -224,9 +224,9 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
           <div>
             <label
               htmlFor="email-cadastro"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
-              E-mail do dono
+              E-mail do bar
             </label>
             <input
               id="email-cadastro"
@@ -235,14 +235,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="username"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
           <div>
             <label
               htmlFor="senha-cadastro"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
               Criar senha (mínimo 6 caracteres)
             </label>
@@ -253,14 +253,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="new-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
           <div>
             <label
               htmlFor="confirm-senha"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
               Confirmar senha
             </label>
@@ -271,14 +271,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="new-password"
               required
               placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoCadastro}
-            className="cursor-pointer w-full rounded-xl bg-amber-800 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-sm transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
           >
             {enviandoCadastro ? <LoadingButeco /> : "Cadastrar meu bar"}
           </button>
@@ -291,7 +291,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             <button
               type="button"
               onClick={() => setModo("senha")}
-              className="cursor-pointer text-xs font-bold text-amber-900 dark:text-amber-400 hover:underline"
+              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
             >
               Já tem conta? Fazer login
             </button>
@@ -308,7 +308,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             </p>
             <label
               htmlFor="email-recuperar"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300"
+              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
             >
               E-mail cadastrado
             </label>
@@ -319,14 +319,14 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
               autoComplete="email"
               required
               placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
+              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all"
             />
           </div>
 
           <button
             type="submit"
             disabled={enviandoRecuperar}
-            className="cursor-pointer w-full rounded-xl bg-amber-800 hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-sm transition-all disabled:opacity-60"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60"
           >
             {enviandoRecuperar ? <LoadingButeco /> : "Enviar link de recuperação"}
           </button>
@@ -339,7 +339,7 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
             <button
               type="button"
               onClick={() => setModo("senha")}
-              className="cursor-pointer text-xs font-bold text-amber-900 dark:text-amber-400 hover:underline"
+              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
             >
               Voltar ao login
             </button>
@@ -356,8 +356,8 @@ function Alerta({ ok, mensagem }: { ok: boolean; mensagem: string }) {
       role="status"
       className={`rounded-xl border px-4 py-3 text-xs leading-relaxed font-medium ${
         ok
-          ? "border-emerald-300 bg-emerald-50 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200"
-          : "border-rose-300 bg-rose-50 text-rose-950 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-200"
+          ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300"
+          : "border-rose-200 dark:border-rose-900/50 bg-rose-50/80 dark:bg-rose-950/20 text-rose-900 dark:text-rose-300"
       }`}
     >
       {mensagem}

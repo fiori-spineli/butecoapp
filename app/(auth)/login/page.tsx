@@ -1,137 +1,198 @@
+import Link from "next/link";
 import Image from "next/image";
-import { redirect } from "next/navigation";
-import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/server";
-import { LoginForm } from "./login-form";
+import { exigirBar } from "@/lib/bar";
+import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
+import { TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
+import { sair } from "@/app/actions/auth";
+import type { ComandaResumo } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ erro?: string }>;
-}) {
-  const { erro } = await searchParams;
+export default async function DashboardPage() {
+  const { supabase, bar } = await exigirBar();
+  const inicioDoDia = inicioDoDiaLocalISO();
 
-  if (supabaseConfigurado()) {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) redirect("/dashboard");
-  }
+  const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
+    supabase
+      .from("comandas_resumo")
+      .select("*")
+      .eq("bar_id", bar.id)
+      .order("status", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("lancamentos")
+      .select("quantidade, valor_unitario_centavos, clientes!inner(bar_id)")
+      .eq("clientes.bar_id", bar.id)
+      .gte("created_at", inicioDoDia),
+    supabase
+      .from("pagamentos")
+      .select("valor_centavos, clientes!inner(bar_id)")
+      .eq("clientes.bar_id", bar.id)
+      .gte("created_at", inicioDoDia),
+  ]);
+
+  const comandas = (comandasResposta.data ?? []) as ComandaResumo[];
+  const abertas = comandas.filter((comanda) => comanda.status === "aberta");
+
+  const consumoHoje = (consumoResposta.data ?? []).reduce(
+    (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
+    0,
+  );
+  const recebidoHoje = (recebidoResposta.data ?? []).reduce(
+    (soma, item) => soma + item.valor_centavos,
+    0,
+  );
 
   return (
-    <main className="min-h-screen w-full grid grid-cols-1 lg:grid-cols-12 bg-stone-100 dark:bg-stone-950 transition-colors">
-      {/* Botão de Tema flutuante no topo direito */}
-      <div className="absolute top-6 right-6 z-20">
-        <TemaToggle />
-      </div>
-
-      {/* LADO ESQUERDO: Painel de Apresentação (Apenas Desktop / lg:) */}
-      <div className="hidden lg:flex lg:col-span-5 xl:col-span-6 relative flex-col justify-between p-12 xl:p-16 bg-gradient-to-br from-stone-900 via-stone-950 to-amber-950 text-stone-100 overflow-hidden border-r border-stone-800">
-        {/* Detalhe sutil de iluminação ambiente no fundo */}
-        <div className="absolute -top-24 -left-24 size-96 rounded-full bg-amber-600/10 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 right-0 size-96 rounded-full bg-amber-700/10 blur-3xl pointer-events-none" />
-
-        {/* Topo do painel */}
-        <div className="relative z-10 flex items-center gap-3">
-          <div className="relative size-12">
+    <>
+      {/* Cabeçalho */}
+      <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="relative size-10 shrink-0">
             <Image
               src="/buteco_logo.png"
               alt="ButecoApp"
               fill
-              priority
               className="object-contain"
             />
           </div>
           <div>
-            <span className="text-xs font-black uppercase tracking-[0.25em] text-amber-500">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-500">
               ButecoApp
-            </span>
-            <p className="text-sm font-semibold text-stone-400">
-              O caderninho do bar, no celular
             </p>
+            <h1 className="text-lg md:text-xl font-black leading-tight text-stone-900 dark:text-stone-100">
+              {bar.nome}
+            </h1>
           </div>
         </div>
 
-        {/* Centro: Chamada de Produto */}
-        <div className="relative z-10 my-auto max-w-lg">
-          <span className="inline-block px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-400 uppercase tracking-widest mb-4">
-            Painel do Estabelecimento
+        <div className="flex items-center gap-3">
+          <TemaToggle />
+          <form action={sair}>
+            <button
+              type="submit"
+              className="cursor-pointer rounded-full border border-stone-300 dark:border-stone-700 px-3.5 py-1.5 text-xs font-semibold text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 hover:border-stone-400 dark:hover:border-stone-500 transition-colors"
+            >
+              Sair
+            </button>
+          </form>
+        </div>
+      </header>
+
+      {/* Métricas do Dia */}
+      <section
+        aria-label="Resumo de hoje"
+        className="grid grid-cols-3 divide-x divide-stone-200 dark:divide-stone-800 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900"
+      >
+        <ResumoCelula rotulo="Consumo hoje" valor={formatarReais(consumoHoje)} />
+        <ResumoCelula rotulo="Recebido hoje" valor={formatarReais(recebidoHoje)} />
+        <ResumoCelula rotulo="Comandas abertas" valor={String(abertas.length)} />
+      </section>
+
+      {/* Barra de Ações */}
+      <div className="flex items-center justify-between px-6 pt-6 pb-2">
+        <div>
+          <h2 className="text-base md:text-lg font-black tracking-tight">Comandas</h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400">
+            {comandas.length} registrada{comandas.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <Link
+          href="/comanda/nova"
+          className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition-colors"
+        >
+          + Nova comanda
+        </Link>
+      </div>
+
+      {/* Lista de Comandas */}
+      <main className="flex flex-1 flex-col gap-3 px-6 py-4">
+        {comandas.length === 0 ? (
+          <div className="my-auto flex flex-col items-center justify-center p-8 text-center">
+            <div className="size-16 rounded-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center text-2xl text-stone-400 mb-3">
+              📋
+            </div>
+            <p className="text-sm font-semibold text-stone-700 dark:text-stone-300">
+              Nenhuma comanda aberta hoje
+            </p>
+            <p className="mt-1 max-w-[34ch] text-xs text-stone-500 dark:text-stone-400">
+              Toque em <strong>+ Nova comanda</strong> assim que o primeiro cliente sentar à mesa ou no balcão.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {comandas.map((comanda) => (
+              <LinhaComanda key={comanda.id} comanda={comanda} />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <TabBar ativo="comandas" />
+    </>
+  );
+}
+
+function ResumoCelula({ rotulo, valor }: { rotulo: string; valor: string }) {
+  return (
+    <div className="px-3 py-4 text-center">
+      <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
+        {rotulo}
+      </p>
+      <p className="mt-1 text-base md:text-lg font-black tabular-nums text-stone-900 dark:text-stone-100">
+        {valor}
+      </p>
+    </div>
+  );
+}
+
+function LinhaComanda({ comanda }: { comanda: ComandaResumo }) {
+  const fechada = comanda.status === "fechada";
+
+  return (
+    <Link
+      href={`/comanda/${comanda.id}`}
+      className={`cursor-pointer flex items-center justify-between rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 py-3.5 hover:border-amber-600 dark:hover:border-amber-500 transition-colors shadow-xs ${
+        fechada ? "opacity-60" : ""
+      }`}
+    >
+      <span className="flex items-center gap-3">
+        <span
+          aria-hidden
+          className={`size-2.5 shrink-0 rounded-full ${
+            fechada ? "bg-stone-300 dark:bg-stone-700" : "bg-emerald-600 dark:bg-emerald-500"
+          }`}
+        />
+        <span>
+          <span className="flex items-center gap-2 font-bold text-stone-900 dark:text-stone-100">
+            {comanda.nome}
+            {comanda.numero_mesa ? (
+              <span className="rounded-md bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-[11px] font-semibold text-stone-600 dark:text-stone-300 border border-stone-200 dark:border-stone-700">
+                Mesa {comanda.numero_mesa}
+              </span>
+            ) : null}
           </span>
-          <h1 className="text-4xl xl:text-5xl font-extrabold tracking-tight leading-tight text-stone-100">
-            Abra a conta da mesa em segundos.
-          </h1>
-          <p className="mt-4 text-base leading-relaxed text-stone-300">
-            Controle consumo, divisões e encerramentos com rapidez no meio do movimento.
-            Seus clientes acompanham tudo em tempo real pelo QR Code, sem precisar baixar aplicativo.
-          </p>
+          <span className="mt-0.5 block text-xs text-stone-500 dark:text-stone-400">
+            {fechada
+              ? "Encerrada"
+              : `${comanda.itens} ${comanda.itens === 1 ? "item" : "itens"}${
+                  comanda.pago_centavos > 0
+                    ? ` · restante ${formatarReais(comanda.restante_centavos)}`
+                    : ""
+                }`}
+          </span>
+        </span>
+      </span>
 
-          <div className="mt-8 grid grid-cols-2 gap-4 border-t border-stone-800/80 pt-8">
-            <div>
-              <p className="text-2xl font-bold text-amber-400">100% Digital</p>
-              <p className="text-xs text-stone-400 mt-1">
-                Adeus fichas de papel molhadas e comandas perdidas.
-              </p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-amber-400">Zero atrito</p>
-              <p className="text-xs text-stone-400 mt-1">
-                Cliente lê com a câmera e confere a conta na hora.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Rodapé do painel */}
-        <div className="relative z-10 text-xs text-stone-500">
-          ButecoApp &copy; {new Date().getFullYear()} &mdash; Simplicidade para quem está atrás do balcão.
-        </div>
-      </div>
-
-      {/* LADO DIREITO: Área do Formulário (Mobile + Desktop) */}
-      <div className="lg:col-span-7 xl:col-span-6 flex flex-col justify-center items-center px-6 py-12 md:px-12 xl:px-20">
-        <div className="w-full max-w-md">
-          {/* Cabeçalho mobile (oculto no desktop) */}
-          <div className="lg:hidden flex flex-col items-center text-center mb-8">
-            <div className="relative size-16 mb-2">
-              <Image
-                src="/buteco_logo.png"
-                alt="ButecoApp"
-                fill
-                priority
-                className="object-contain"
-              />
-            </div>
-            <span className="text-xs font-black uppercase tracking-[0.25em] text-amber-700 dark:text-amber-500">
-              ButecoApp
-            </span>
-            <h2 className="mt-1 text-2xl font-black tracking-tight text-stone-900 dark:text-stone-100">
-              Acesso ao Bar
-            </h2>
-          </div>
-
-          {/* Título Desktop */}
-          <div className="hidden lg:block mb-8">
-            <h2 className="text-3xl font-black tracking-tight text-stone-900 dark:text-stone-100">
-              Entrar no sistema
-            </h2>
-            <p className="mt-2 text-sm text-stone-600 dark:text-stone-400">
-              Acesse suas comandas por link direto no e-mail ou com senha.
-            </p>
-          </div>
-
-          {/* Card do Formulário */}
-          <div className="rounded-2xl border border-stone-200 dark:border-stone-800/80 bg-white dark:bg-stone-900/70 p-6 md:p-8 shadow-sm backdrop-blur-sm">
-            <LoginForm erroInicial={erro} />
-          </div>
-
-          <p className="mt-6 text-center text-xs text-stone-500 dark:text-stone-500">
-            Acesso exclusivo para administradores do bar.
-          </p>
-        </div>
-      </div>
-    </main>
+      <span className="flex items-center gap-2">
+        <span className="font-black tabular-nums text-stone-900 dark:text-stone-100">
+          {formatarReais(comanda.total_centavos)}
+        </span>
+        <span aria-hidden className="text-stone-400">
+          ›
+        </span>
+      </span>
+    </Link>
   );
 }

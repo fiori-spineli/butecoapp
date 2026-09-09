@@ -7,8 +7,10 @@ export function TemaToggle() {
 
   useEffect(() => {
     const salvo = localStorage.getItem("buteco_tema");
-    const prefereEscuro = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    if (salvo === "dark" || (!salvo && prefereEscuro)) {
+    const prefere = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const deveSerEscuro = salvo === "dark" || (!salvo && prefere);
+
+    if (deveSerEscuro) {
       document.documentElement.classList.add("dark");
       setEscuro(true);
     } else {
@@ -34,7 +36,7 @@ export function TemaToggle() {
       type="button"
       onClick={alternar}
       aria-label="Alternar tema claro e escuro"
-      className="cursor-pointer flex items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/70 dark:bg-stone-800/80 px-3.5 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-sm transition-all hover:border-amber-700 dark:hover:border-amber-500"
+      className="cursor-pointer flex items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-3.5 py-1.5 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
     >
       {escuro ? (
         <>
@@ -56,7 +58,7 @@ export function TemaToggle() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
           </svg>
-          Modo noturno
+          Modo escuro
         </>
       )}
     </button>

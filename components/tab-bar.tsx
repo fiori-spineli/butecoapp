@@ -7,7 +7,7 @@ const abas = [
 
 export function TabBar({ ativo }: { ativo: "comandas" | "produtos" }) {
   return (
-    <nav className="sticky bottom-0 flex border-t border-stone-300 bg-white">
+    <nav className="sticky bottom-0 z-20 flex border-t border-stone-300 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm">
       {abas.map((aba) => {
         const selecionada = aba.chave === ativo;
         return (
@@ -15,10 +15,10 @@ export function TabBar({ ativo }: { ativo: "comandas" | "produtos" }) {
             key={aba.chave}
             href={aba.href}
             aria-current={selecionada ? "page" : undefined}
-            className={`flex-1 border-t-2 px-2 pt-3.5 pb-5 text-center text-xs font-semibold ${
+            className={`cursor-pointer flex-1 border-t-2 px-3 pt-3.5 pb-5 text-center text-xs font-bold uppercase tracking-wider transition-colors ${
               selecionada
-                ? "border-stone-900 text-stone-900"
-                : "border-transparent text-stone-400"
+                ? "border-amber-700 dark:border-amber-500 text-amber-800 dark:text-amber-400"
+                : "border-transparent text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
             }`}
           >
             {aba.rotulo}
