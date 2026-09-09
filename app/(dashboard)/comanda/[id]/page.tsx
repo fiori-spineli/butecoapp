@@ -100,7 +100,11 @@ export default async function ComandaPage({
 
         <div className="flex items-center gap-3">
           <TemaToggle />
-          <BotaoFecharConta clienteId={comanda.id} contaAberta={contaAberta} />
+          <BotaoFecharConta
+            clienteId={comanda.id}
+            contaAberta={contaAberta}
+            restanteCentavos={comanda.restante_centavos}
+          />
         </div>
       </header>
 

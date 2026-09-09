@@ -60,31 +60,34 @@ export default async function ProdutosPage() {
             {produtos.map((produto) => (
               <li
                 key={produto.id}
-                className="overflow-hidden rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-xs hover:border-amber-600 dark:hover:border-amber-500 transition-colors"
+                className="overflow-hidden rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-xs hover:border-amber-600 dark:hover:border-amber-500 transition-all flex flex-col hover:-translate-y-0.5"
               >
-                <div className="relative flex aspect-square items-center justify-center bg-stone-100 dark:bg-stone-800">
-                  {produto.imagem_url ? (
-                    <Image
-                      src={produto.imagem_url}
-                      alt={produto.nome}
-                      fill
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-stone-400" aria-hidden>
-                      <circle cx="7" cy="7" r="2.2" />
-                      <path d="M3 18l6-7 4 4.5 3-3.5 5 6" />
-                    </svg>
-                  )}
-                </div>
-                <div className="px-3.5 py-3">
-                  <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">
-                    {produto.nome}
-                  </p>
-                  <p className="mt-1 text-xs font-black tabular-nums text-amber-700 dark:text-amber-500">
-                    {formatarReais(produto.preco_centavos)}
-                  </p>
-                </div>
+                <Link href={`/produtos/${produto.id}`} prefetch={true} className="cursor-pointer flex flex-col flex-1">
+                  <div className="relative flex aspect-square items-center justify-center bg-stone-100 dark:bg-stone-800/80">
+                    {produto.imagem_url ? (
+                      <Image
+                        src={produto.imagem_url}
+                        alt={produto.nome}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="text-stone-400" aria-hidden>
+                        <circle cx="7" cy="7" r="2.2" />
+                        <path d="M3 18l6-7 4 4.5 3-3.5 5 6" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="p-4 flex flex-col justify-between flex-1">
+                    <h3 className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">
+                      {produto.nome}
+                    </h3>
+                    <p className="mt-1 text-sm font-black tabular-nums text-amber-700 dark:text-amber-500">
+                      {formatarReais(produto.preco_centavos)}
+                    </p>
+                  </div>
+                </Link>
               </li>
             ))}
           </ul>

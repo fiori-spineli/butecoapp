@@ -5,6 +5,7 @@ import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoSair } from "@/components/botao-sair";
+import { ListaComandas } from "@/components/comanda/lista-comandas";
 import type { ComandaResumo } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -31,7 +32,7 @@ export default async function DashboardPage() {
   ]);
 
   const comandas = (comandasResposta.data ?? []) as ComandaResumo[];
-  const abertas = comandas.filter((comanda) => comanda.status === "aberta");
+  const abertas = comandas.filter((c) => c.status === "aberta");
 
   const consumoHoje = (consumoResposta.data ?? []).reduce(
     (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
@@ -44,7 +45,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-      {/* Topo com o BotaoSair interativo */}
+      {/* Topo */}
       <header className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4">
         <div className="flex items-center gap-3.5">
           <div className="relative size-10 shrink-0">
@@ -72,7 +73,7 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      {/* Cards de Métricas */}
+      {/* Métricas */}
       <section
         aria-label="Métricas de hoje"
         className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 border-b border-stone-200 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/40"
@@ -105,7 +106,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      {/* Painel de Comandas */}
+      {/* Painel Principal com Busca em Tempo Real */}
       <section className="flex-1 flex flex-col p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -113,7 +114,7 @@ export default async function DashboardPage() {
               Comandas
             </h2>
             <p className="text-xs md:text-sm text-stone-500 dark:text-stone-400">
-              {comandas.length} comanda{comandas.length === 1 ? "" : "s"} &mdash; {abertas.length} em aberto
+              Controle rápido de mesas e clientes no salão
             </p>
           </div>
 
@@ -130,79 +131,11 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
-        {comandas.length === 0 ? (
-          <div className="my-auto flex flex-col items-center justify-center p-12 text-center rounded-2xl border border-dashed border-stone-300 dark:border-stone-800 bg-white dark:bg-stone-900/50">
-            <p className="text-base font-bold text-stone-800 dark:text-stone-200">
-              Nenhuma comanda aberta
-            </p>
-            <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">
-              Toque em <strong>+ Nova comanda</strong> para abrir a primeira mesa.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {comandas.map((comanda) => (
-              <LinhaComanda key={comanda.id} comanda={comanda} />
-            ))}
-          </div>
-        )}
+        {/* Componente Interativo com Filtro */}
+        <ListaComandas comandas={comandas} />
       </section>
 
       <TabBar ativo="comandas" />
     </div>
-  );
-}
-
-function LinhaComanda({ comanda }: { comanda: ComandaResumo }) {
-  const fechada = comanda.status === "fechada";
-
-  return (
-    <Link
-      href={`/comanda/${comanda.id}`}
-      prefetch={true}
-      className={`cursor-pointer flex flex-col justify-between rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 hover:border-amber-600 dark:hover:border-amber-500 transition-all shadow-xs active:scale-[0.99] ${
-        fechada ? "opacity-60 bg-stone-50 dark:bg-stone-900/60" : ""
-      }`}
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={`size-2.5 rounded-full shrink-0 ${
-                fechada ? "bg-stone-300 dark:bg-stone-700" : "bg-emerald-600 dark:bg-emerald-500"
-              }`}
-            />
-            <h3 className="truncate font-bold text-base text-stone-900 dark:text-stone-100">
-              {comanda.nome}
-            </h3>
-          </div>
-          {comanda.numero_mesa && (
-            <span className="mt-2 inline-block rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 text-xs font-semibold text-stone-600 dark:text-stone-300">
-              Mesa {comanda.numero_mesa}
-            </span>
-          )}
-        </div>
-
-        <div className="text-right">
-          <p className="text-lg font-black tabular-nums text-stone-900 dark:text-stone-100">
-            {formatarReais(comanda.total_centavos)}
-          </p>
-          <span className="text-xs text-stone-400">
-            {fechada ? "Encerrada" : comanda.pago_centavos > 0 ? "Parcialmente paga" : "Em aberto"}
-          </span>
-        </div>
-      </div>
-
-      <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-        <span>
-          {comanda.itens} {comanda.itens === 1 ? "item" : "itens"}
-        </span>
-        {comanda.pago_centavos > 0 && !fechada && (
-          <span className="font-semibold text-amber-700 dark:text-amber-400">
-            Restam {formatarReais(comanda.restante_centavos)}
-          </span>
-        )}
-      </div>
-    </Link>
   );
 }

@@ -1,36 +1,96 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   fecharConta,
   reabrirConta,
   removerLancamento,
   removerPagamento,
 } from "@/app/actions/comandas";
+import { formatarReais } from "@/lib/format";
+import { LoadingButeco } from "@/components/loading-buteco";
 
 export function BotaoFecharConta({
   clienteId,
   contaAberta,
+  restanteCentavos = 0,
 }: {
   clienteId: string;
   contaAberta: boolean;
+  restanteCentavos?: number;
 }) {
+  const [confirmando, setConfirmando] = useState(false);
   const [processando, iniciar] = useTransition();
 
+  function executarEncerramento() {
+    iniciar(async () => {
+      await fecharConta(clienteId);
+      setConfirmando(false);
+    });
+  }
+
+  function clicar() {
+    if (contaAberta && restanteCentavos > 0) {
+      setConfirmando(true);
+    } else if (contaAberta) {
+      iniciar(async () => {
+        await fecharConta(clienteId);
+      });
+    } else {
+      iniciar(async () => {
+        await reabrirConta(clienteId);
+      });
+    }
+  }
+
   return (
-    <button
-      type="button"
-      disabled={processando}
-      onClick={() =>
-        iniciar(async () => {
-          if (contaAberta) await fecharConta(clienteId);
-          else await reabrirConta(clienteId);
-        })
-      }
-      className="cursor-pointer shrink-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-4 py-2 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
-    >
-      {contaAberta ? "Fechar conta" : "Reabrir conta"}
-    </button>
+    <>
+      <button
+        type="button"
+        disabled={processando}
+        onClick={clicar}
+        className="cursor-pointer shrink-0 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-4 py-2 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+      >
+        {processando ? "Atualizando..." : contaAberta ? "Fechar conta" : "Reabrir conta"}
+      </button>
+
+      {/* Modal de Confirmação quando há saldo devedor */}
+      {confirmando && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+            <h3 className="text-base font-black text-stone-900 dark:text-stone-100">
+              Confirmar fechamento de conta?
+            </h3>
+            <p className="mt-2 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+              Ainda resta um saldo devedor de{" "}
+              <strong className="text-amber-700 dark:text-amber-400">
+                {formatarReais(restanteCentavos)}
+              </strong>
+              . Fechar a conta registrará o recebimento integral desse saldo.
+            </p>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                disabled={processando}
+                onClick={() => setConfirmando(false)}
+                className="cursor-pointer flex-1 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                disabled={processando}
+                onClick={executarEncerramento}
+                className="cursor-pointer flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 py-2.5 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+              >
+                {processando ? <LoadingButeco /> : "Confirmar e fechar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -50,7 +110,11 @@ export function BotaoRemoverItem({
       type="button"
       disabled={processando}
       aria-label={`Remover ${nome} da conta`}
-      onClick={() => iniciar(async () => void (await removerLancamento(clienteId, lancamentoId)))}
+      onClick={() =>
+        iniciar(async () => {
+          await removerLancamento(clienteId, lancamentoId);
+        })
+      }
       className="cursor-pointer -m-1.5 shrink-0 rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-rose-600 transition-colors disabled:opacity-40"
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
@@ -74,7 +138,11 @@ export function BotaoDesfazerPagamento({
     <button
       type="button"
       disabled={processando}
-      onClick={() => iniciar(async () => void (await removerPagamento(clienteId, pagamentoId)))}
+      onClick={() =>
+        iniciar(async () => {
+          await removerPagamento(clienteId, pagamentoId);
+        })
+      }
       className="cursor-pointer text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline disabled:opacity-40"
     >
       Desfazer

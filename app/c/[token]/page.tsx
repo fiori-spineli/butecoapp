@@ -1,24 +1,54 @@
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { createSupabaseAnonClient } from "@/lib/supabase/publico";
-import { supabaseConfigurado } from "@/lib/supabase/server";
-import type { ComandaPublica } from "@/lib/types";
 import { ContaAoVivo } from "./conta-ao-vivo";
+import { TemaToggle } from "@/components/tema-toggle";
+import type { ComandaPublica } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function ContaPublicaPage({
+export default async function PaginaCliente({
   params,
 }: {
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-
-  if (!supabaseConfigurado()) notFound();
-
   const supabase = createSupabaseAnonClient();
-  const { data, error } = await supabase.rpc("comanda_publica", { p_token: token });
 
-  if (error || !data) notFound();
+  const { data } = await supabase.rpc("comanda_publica", { p_token: token });
+  const comanda = data as ComandaPublica | null;
 
-  return <ContaAoVivo token={token} inicial={data as ComandaPublica} />;
+  if (!comanda) notFound();
+
+  return (
+    <main className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 px-4 py-8 md:py-12 transition-colors flex flex-col items-center">
+      {/* Topo com Logo e Toggle de Tema */}
+      <div className="w-full max-w-lg flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2.5">
+          <div className="relative size-8 shrink-0">
+            <Image
+              src="/buteco_logo.png"
+              alt="ButecoApp"
+              fill
+              priority
+              className="object-contain"
+            />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-500">
+            ButecoApp
+          </span>
+        </div>
+        <TemaToggle />
+      </div>
+
+      {/* Cartão Central da Comanda com Design Rústico */}
+      <div className="w-full max-w-lg rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-xl overflow-hidden">
+        <ContaAoVivo token={token} inicial={comanda} />
+      </div>
+
+      <footer className="mt-8 text-center text-xs text-stone-500 dark:text-stone-400">
+        Comanda digital &bull; Nenhum cadastro ou aplicativo necessário
+      </footer>
+    </main>
+  );
 }
