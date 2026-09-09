@@ -1,12 +1,12 @@
 export function FundoChopp() {
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-gradient-to-b from-amber-900/40 via-amber-950/90 to-stone-950">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-linear-to-b from-amber-900/40 via-amber-950/90 to-stone-950">
       {/* 1. O Colarinho (Espuma do Chopp no Topo) */}
-      <div className="absolute top-0 inset-x-0 h-24 bg-gradient-to-b from-amber-100/25 via-amber-200/10 to-transparent blur-xl transform-gpu" />
+      <div className="absolute top-0 inset-x-0 h-24 bg-linear-to-b from-amber-100/25 via-amber-200/10 to-transparent blur-xl transform-gpu" />
       <div className="absolute -top-10 left-1/4 w-96 h-20 rounded-full bg-amber-50/15 blur-2xl transform-gpu" />
 
       {/* 2. Glow e Reflexos Dourados do Líquido */}
-      <div className="absolute top-1/3 left-1/4 size-[500px] rounded-full bg-amber-500/15 blur-[120px] transform-gpu" />
+      <div className="absolute top-1/3 left-1/4 size-125 rounded-full bg-amber-500/15 blur-[120px] transform-gpu" />
       <div className="absolute bottom-10 right-10 size-96 rounded-full bg-yellow-600/15 blur-[100px] transform-gpu" />
 
       {/* 3. Efervescência / Bolhas de Cerveja Subindo em Camadas */}
