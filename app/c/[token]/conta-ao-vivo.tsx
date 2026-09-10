@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 import { Miniatura } from "@/components/miniatura";
-import { formatarReais, tempoRestanteComprovante } from "@/lib/format";
+import {
+  formatarDataHora,
+  formatarMomento,
+  formatarReais,
+  tempoRestanteComprovante,
+} from "@/lib/format";
+import { TempoAberto } from "@/components/tempo-aberto";
 import type { ComandaPublica } from "@/lib/types";
 
 const INTERVALO_MS = 8000;
@@ -81,6 +87,18 @@ export function ContaAoVivo({
             </span>
           )}
         </div>
+
+        {/* Desde quando esta mesa está aberta. O cliente também tem direito a
+            essa conta: é ela que explica por que a comanda tem tanto item. */}
+        <p className="mt-3 text-[11px] text-stone-500 dark:text-stone-400">
+          Aberta em {formatarDataHora(comanda.aberta_em)}
+          {!fechada && (
+            <>
+              {" · há "}
+              <TempoAberto desde={comanda.aberta_em} className="font-semibold" />
+            </>
+          )}
+        </p>
       </header>
 
       {/* Seção de Destaque do Saldo */}
@@ -126,6 +144,14 @@ export function ContaAoVivo({
                     </p>
                     <p className="text-xs text-stone-500 dark:text-stone-400">
                       {item.quantidade}x {formatarReais(item.valor_unitario_centavos)}
+                      {item.criado_em && (
+                        <>
+                          <span className="mx-1.5 text-stone-300 dark:text-stone-600" aria-hidden>
+                            ·
+                          </span>
+                          {formatarMomento(item.criado_em)}
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>

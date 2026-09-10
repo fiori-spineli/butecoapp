@@ -47,8 +47,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 npm run dev
 ```
 
-O e-mail do magic link **não sai da máquina**: o Mailpit captura tudo em
-http://127.0.0.1:54324 — abra o link por lá para entrar.
+Nenhum e-mail sai da máquina: o Mailpit captura tudo em http://127.0.0.1:54324
+— é lá que você abre o link de definir senha de uma conta recém-criada.
 
 Toda a configuração de auth já está versionada em `supabase/config.toml`
 (`site_url`, a redirect URL do callback, o limite de e-mails) e em
@@ -72,46 +72,69 @@ Toda a configuração de auth já está versionada em `supabase/config.toml`
    `NEXT_PUBLIC_SITE_URL` a URL pública do app.
 4. Em **Authentication → URL Configuration**, cadastre como *Redirect URLs*
    tanto `http://localhost:3000/auth/callback` quanto a URL de produção.
-5. Em **Authentication → Sign In / Providers**, deixe **`Confirm email` ligado**.
-   O cadastro do dono depende disso: a conta só passa a valer quando a pessoa
-   abre o link na própria caixa postal. Com a opção desligada, qualquer um cria
-   conta com um endereço que não é dele.
-6. Em **Authentication → Emails**, troque o template do *Magic Link* pelo
-   conteúdo de `supabase/templates/magic_link.html`. O `{{ .RedirectTo }}` faz
-   o link apontar direto para o app em vez de passar pelo `/auth/v1/verify` do
-   Supabase — que é onde o scanner de link de alguns provedores de e-mail gasta
-   o token de uso único antes da pessoa clicar. O Supabase só libera a edição de
-   template com SMTP próprio configurado (Authentication → Emails → SMTP).
+5. Em **Authentication → Sign In / Providers**, deixe **`Confirm email` ligado**
+   e **desligue `Allow new users to sign up`**. Não existe mais auto-cadastro: a
+   conta de um bar nasce no painel de admin, e a API de administração (que é o
+   que o painel usa) ignora essa trava. Desligar aqui fecha a porta para quem
+   tentar criar conta chamando a API de auth por fora do app.
+
+   Ainda em **Providers**, ligue o **Google** (Client ID e Secret do Google
+   Cloud Console; a *Authorized redirect URI* é a que o próprio Supabase mostra
+   na tela). Enquanto ele estiver desligado, o botão "Entrar com Google"
+   simplesmente não aparece na tela de login — ver `lib/provedores.ts`.
+
+   E em **Authentication → Attack Protection**, ligue o **CAPTCHA** com provider
+   **Turnstile**, usando a mesma chave secreta do `.env.local`. É isso que
+   protege o endpoint de auth em si, e não só o formulário do app.
+6. Em **Authentication → Emails**, ajuste o template de *Reset Password* para
+   `{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery`. Esse é o
+   template mais importante do sistema hoje: além de atender quem esqueceu a
+   senha, é por ele que o dono de um bar recém-criado define a **primeira**
+   senha. O `{{ .RedirectTo }}` faz o link apontar direto para o app em vez de
+   passar pelo `/auth/v1/verify` do Supabase — que é onde o scanner de link de
+   alguns provedores de e-mail gasta o token de uso único antes da pessoa
+   clicar. O Supabase só libera a edição de template com SMTP próprio
+   configurado (Authentication → Emails → SMTP).
+
+   O `supabase/templates/magic_link.html` continua versionado, mas o app não
+   envia mais magic link — o login é senha ou Google.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Abra http://localhost:3000 — a primeira tela pede o e-mail e envia o magic link.
+Abra http://localhost:3000 — a primeira tela é a **vitrine**, que explica o
+sistema para quem chegou de fora. O login mora discreto no canto, e quem ainda
+não tem conta cai em `/contato`.
 
 ## Estrutura
 
 ```
 app/
-  (auth)/login/          # entrada por magic link
-  onboarding/            # cadastro do bar no primeiro acesso
+  page.tsx               # vitrine pública ("sobre o sistema") ou roteamento de quem já entrou
+  contato/               # pedido de acesso — a única porta de bar novo
+  (auth)/login/          # e-mail e senha, ou Google
+  onboarding/            # conta sem bar: beco sem saída, não formulário
+  (admin)/admin/         # backoffice: telemetria + fila de interessados
   (dashboard)/           # área autenticada do dono
     dashboard/           # resumo do dia + lista de comandas
     comanda/nova/        # abrir comanda
     comanda/[id]/        # lançar itens, dividir, fechar, mostrar QR
     produtos/            # catálogo + cadastro com foto
+    fechamento/          # retrato do que está aberto, para imprimir ou salvar em PDF
   c/[token]/             # página pública do cliente (sem login)
-  auth/callback/         # destino do magic link (troca o token pela sessão)
+  auth/callback/         # destino dos links de e-mail e do Google
   api/produtos/imagem/   # normaliza a foto para .webp e sobe pro Storage
-  actions/               # server actions (auth, bar, comandas, produtos)
+  api/fechamento/csv/    # backup do movimento do dia em planilha
+  actions/               # server actions (auth, bar, comandas, produtos, interesse)
   manifest.ts            # PWA — instalável na tela inicial do celular
 components/              # UI compartilhada (modais, miniatura, tab bar)
 lib/                     # supabase, formatação de dinheiro/data, tipos
 supabase/
   config.toml            # stack local (portas, auth, rate limit)
   migrations/            # schema versionado
-  templates/             # template do e-mail de magic link
+  templates/             # template dos e-mails de autenticação
 proxy.ts                 # renovação de sessão (era "middleware" antes do Next 16)
 ```
 
@@ -126,9 +149,30 @@ proxy.ts                 # renovação de sessão (era "middleware" antes do Nex
 - **A sessão do dono é `httpOnly`.** Nenhum componente cliente lê a sessão, e a
   mesma origem serve a página pública `/c/[token]` — deixar o token legível por
   JavaScript transformaria qualquer XSS futuro ali em tomada de conta.
-- **Criar conta passa por três travas**: formato do endereço, lista de e-mails
-  descartáveis (~121 mil domínios, `lib/email-descartavel.ts`) e um cadastro por
-  IP. A conta só existe de fato depois que a pessoa abre o link de confirmação.
+- **Não existe auto-cadastro.** Bar novo nasce no painel de admin, feito por
+  gente, a partir de um pedido em `/contato`. É a defesa estrutural contra robô
+  de cadastro em massa: não adianta furar validação se não há formulário que
+  crie conta. O que o visitante consegue é entrar numa fila.
+- **O pedido de contato tem quatro camadas**, da mais barata para a mais cara:
+  campo-armadilha invisível (`lib/armadilha.ts`), Turnstile, validação de
+  telefone e de e-mail descartável (~121 mil domínios,
+  `lib/email-descartavel.ts`) e teto de 3 pedidos por IP por dia, conferido
+  dentro do banco. Armadilha preenchida responde **o mesmo texto de sucesso** e
+  não grava nada: dizer "você é um robô" ensina quem escreveu o robô a
+  consertá-lo.
+- **A função que grava o pedido só é executável pelo `service_role`.** A chave
+  anônima é pública — tudo que `anon` executa, um robô também executa direto na
+  API. Com o grant restrito, o único caminho é a server action, que já conferiu
+  o Turnstile antes.
+- **O 2FA do painel vale no banco, não só na tela.** A tela pedia o código, mas
+  as server actions e as funções do Postgres atrás dela conferiam apenas se o
+  `user_id` estava em `administradores`. Quem tivesse a senha do admin — e só a
+  senha — lia tudo pela API. Agora `eh_admin()` exige `aal2` (a sessão passou
+  pelo segundo fator) e o painel não busca dado nenhum antes disso: o HTML que
+  vai para quem não validou o código vem vazio.
+- **Links de e-mail usam fluxo `implicit`; o Google usa `pkce`.** O link do
+  e-mail pode ser aberto em outro navegador (o iOS abre no navegador padrão do
+  aparelho); o login social começa e termina no mesmo. Ver `lib/supabase/server.ts`.
 - **Senha só se cadastra ou troca por link no e-mail.** Nem a tela de perfil
   grava senha direto: quem muda a senha é quem tem a caixa postal, não quem
   está com o celular do balcão na mão.
@@ -142,10 +186,14 @@ proxy.ts                 # renovação de sessão (era "middleware" antes do Nex
 
 ## Deploy
 
-A produção roda na Vercel, com build automático a cada push na `master`. As três
-variáveis de ambiente precisam ser do tipo **Config**, não *Secret*: as
-`NEXT_PUBLIC_*` são congeladas no build, e *Secret* só existe em runtime — o
-build sairia sem elas. Depois do deploy, a URL de produção tem que estar na
+A produção roda na Vercel, com build automático a cada push na `master`. As
+variáveis `NEXT_PUBLIC_*` precisam ser do tipo **Config**, não *Secret*: elas são
+congeladas no build, e *Secret* só existe em runtime — o build sairia sem elas.
+
+Além das três originais, precisam estar lá: `SUPABASE_SERVICE_ROLE_KEY` (sem a
+qual o painel não cria contas e o formulário de contato não grava),
+`IP_HASH_SALT`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` e `TURNSTILE_SECRET_KEY`. Ver
+`.env.example` para o que cada uma faz. Depois do deploy, a URL de produção tem que estar na
 allow list do Supabase (**Authentication → URL Configuration**), senão o magic
 link cai no `Site URL` padrão.
 

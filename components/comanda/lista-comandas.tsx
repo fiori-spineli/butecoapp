@@ -2,18 +2,36 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { formatarReais } from "@/lib/format";
+import { formatarReais, formatarDataHora } from "@/lib/format";
+import { TempoAberto } from "@/components/tempo-aberto";
 import type { ComandaResumo } from "@/lib/types";
+
+/**
+ * O filtro tem duas posições, não três.
+ *
+ * "Todas" existia e vinha selecionado, o que significa que a primeira tela do
+ * dia misturava a mesa que está bebendo agora com a conta paga na semana
+ * passada. Quem está atrás do balcão quer ver o que está ABERTO — o resto é
+ * consulta, e consulta se faz clicando.
+ */
+type FiltroStatus = "aberta" | "fechada";
 
 export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
   const [busca, setBusca] = useState("");
-  const [filtroStatus, setFiltroStatus] = useState<"todas" | "aberta" | "fechada">("todas");
+  const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>("aberta");
+
+  const totais = useMemo(
+    () => ({
+      aberta: comandas.filter((c) => c.status === "aberta").length,
+      fechada: comandas.filter((c) => c.status === "fechada").length,
+    }),
+    [comandas],
+  );
 
   const filtradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
     return comandas.filter((c) => {
-      const bateStatus = filtroStatus === "todas" ? true : c.status === filtroStatus;
-      if (!bateStatus) return false;
+      if (c.status !== filtroStatus) return false;
 
       if (!termo) return true;
       const nomeBate = c.nome.toLowerCase().includes(termo);
@@ -52,20 +70,15 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
           )}
         </label>
 
-        <div className="flex rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold">
+        <div
+          role="tablist"
+          aria-label="Filtrar comandas por situação"
+          className="grid grid-cols-2 sm:flex rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold"
+        >
           <button
             type="button"
-            onClick={() => setFiltroStatus("todas")}
-            className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
-              filtroStatus === "todas"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-            }`}
-          >
-            Todas ({comandas.length})
-          </button>
-          <button
-            type="button"
+            role="tab"
+            aria-selected={filtroStatus === "aberta"}
             onClick={() => setFiltroStatus("aberta")}
             className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
               filtroStatus === "aberta"
@@ -73,10 +86,12 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
-            Abertas
+            Abertas ({totais.aberta})
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={filtroStatus === "fechada"}
             onClick={() => setFiltroStatus("fechada")}
             className={`cursor-pointer min-h-11 px-4 py-2.5 rounded-lg transition-all ${
               filtroStatus === "fechada"
@@ -84,7 +99,7 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
             }`}
           >
-            Fechadas
+            Fechadas ({totais.fechada})
           </button>
         </div>
       </div>
@@ -93,10 +108,16 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
       {filtradas.length === 0 ? (
         <div className="my-8 rounded-2xl border border-dashed border-stone-300 dark:border-stone-800 p-8 text-center bg-white dark:bg-stone-900/50">
           <p className="text-sm font-bold text-stone-700 dark:text-stone-300">
-            Nenhuma comanda encontrada
+            {filtroStatus === "aberta"
+              ? "Nenhuma comanda aberta agora"
+              : "Nenhuma comanda fechada por aqui"}
           </p>
           <p className="text-xs text-stone-400 mt-1">
-            Não encontramos resultados para os filtros selecionados.
+            {busca
+              ? "Não encontramos resultados para essa busca."
+              : filtroStatus === "aberta"
+                ? "Toque em Nova comanda para abrir a primeira mesa."
+                : "As contas que você fechar aparecem nesta aba."}
           </p>
         </div>
       ) : (
@@ -150,16 +171,36 @@ function LinhaComanda({ comanda }: { comanda: ComandaResumo }) {
         </div>
       </div>
 
-      <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between text-xs text-stone-500 dark:text-stone-400">
-        <span>
+      {/*
+        O tempo de mesa aberta fica na linha de baixo, com o relógio contando.
+        É o número que diz qual mesa está pedindo há três horas e qual foi
+        aberta agora — e é o que denuncia a comanda que ninguém fechou ontem.
+      */}
+      <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800/80 flex items-center justify-between gap-2 text-xs text-stone-500 dark:text-stone-400">
+        <span className="shrink-0">
           {comanda.itens} {comanda.itens === 1 ? "item" : "itens"}
         </span>
-        {comanda.pago_centavos > 0 && !fechada && (
-          <span className="font-semibold text-amber-700 dark:text-amber-400">
-            Restam {formatarReais(comanda.restante_centavos)}
+
+        {fechada ? (
+          <span className="truncate">
+            {comanda.fechada_em ? `Fechada ${formatarDataHora(comanda.fechada_em)}` : ""}
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1.5 font-semibold text-stone-600 dark:text-stone-300">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-stone-400">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            <TempoAberto desde={comanda.created_at} />
           </span>
         )}
       </div>
+
+      {comanda.pago_centavos > 0 && !fechada && (
+        <p className="mt-2 text-right text-xs font-semibold text-amber-700 dark:text-amber-400">
+          Restam {formatarReais(comanda.restante_centavos)}
+        </p>
+      )}
     </Link>
   );
 }

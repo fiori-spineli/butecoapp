@@ -1,9 +1,12 @@
 "use server";
 
-import { createHash } from "node:crypto";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/server";
+import {
+  FLUXO_OAUTH,
+  createSupabaseServerClient,
+  supabaseConfigurado,
+} from "@/lib/supabase/server";
 import { COOKIE_LEMBRAR } from "@/lib/sessao";
 import { origemDoApp } from "@/lib/url";
 import { MENSAGEM_DESCARTAVEL, analisarEmail } from "@/lib/email-descartavel";
@@ -11,37 +14,6 @@ import { MENSAGEM_DESCARTAVEL, analisarEmail } from "@/lib/email-descartavel";
 export type EstadoForm = { ok: boolean; mensagem: string } | null;
 
 const MENSAGEM_FORMATO = "Digite um e-mail válido.";
-
-/**
- * Quantas contas podem nascer da mesma conexão.
- *
- * Não é 1 de propósito: operadora de celular põe milhares de aparelhos atrás
- * do mesmo IP (NAT), e prédio ou praça de alimentação com Wi-Fi compartilhado
- * faz o mesmo. Com 1, dois donos de bar na mesma rede se atrapalhariam. Três
- * ainda barra criação em massa e não pune vizinho.
- */
-const CADASTROS_POR_IP = 3;
-
-/**
- * SHA-256 do IP de quem está pedindo o cadastro.
- *
- * Guardamos o hash, nunca o endereço — ver o comentário da migration 0007. O
- * sal vem do ambiente; sem ele o hash continua funcionando para comparar, mas
- * fica reversível por força bruta, já que o espaço de IPv4 é pequeno. Defina
- * IP_HASH_SALT na Vercel para fechar isso.
- */
-async function hashDoIpAtual(): Promise<string | null> {
-  const cabecalhos = await headers();
-  const bruto =
-    cabecalhos.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    cabecalhos.get("x-real-ip")?.trim() ??
-    "";
-
-  if (!bruto) return null;
-
-  const sal = process.env.IP_HASH_SALT ?? "buteco-sal-padrao";
-  return createHash("sha256").update(`${sal}:${bruto}`).digest("hex");
-}
 
 /**
  * Grava a preferência de "manter conectado".
@@ -61,70 +33,20 @@ async function registrarPreferenciaDeSessao(lembrar: boolean) {
   });
 }
 
-/**
- * Envia o link mágico. É só entrada, não cria conta: quem ainda não tem
- * cadastro passa pela aba de cadastro, que é onde ficam as travas de e-mail
- * descartável, limite por IP e confirmação. Uma porta só para criar conta é
- * uma porta só para auditar.
- */
-export async function enviarMagicLink(
-  _anterior: EstadoForm,
-  formData: FormData,
-): Promise<EstadoForm> {
-  const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
-
-  if (problema === "formato") return { ok: false, mensagem: MENSAGEM_FORMATO };
-  if (problema === "descartavel") return { ok: false, mensagem: MENSAGEM_DESCARTAVEL };
-
-  if (!supabaseConfigurado()) {
-    return {
-      ok: false,
-      mensagem: "Supabase ainda não configurado — preencha o .env.local (veja o README).",
-    };
-  }
-
-  await registrarPreferenciaDeSessao(String(formData.get("lembrar") ?? "") === "on");
-
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${await origemDoApp()}/auth/callback`,
-      shouldCreateUser: false,
-    },
-  });
-
-  if (error) {
-    const excedeuCota =
-      error.status === 429 || error.code === "over_email_send_rate_limit";
-
-    // O Supabase recusa com "Signups not allowed for otp" quando o e-mail não
-    // tem cadastro e shouldCreateUser está desligado.
-    const naoCadastrado =
-      error.code === "otp_disabled" || /signups? not allowed/i.test(error.message);
-
-    if (naoCadastrado) {
-      return {
-        ok: false,
-        mensagem: "Não encontrei conta com esse e-mail. Use a aba de cadastro para criar a sua.",
-      };
-    }
-
-    return {
-      ok: false,
-      mensagem: excedeuCota
-        ? "Limite de e-mails atingido. Aguarde alguns minutos antes de pedir outro link."
-        : "Não consegui enviar o link agora. Tente novamente.",
-    };
-  }
-
-  return {
-    ok: true,
-    mensagem: `Link enviado para ${email}. Abra o e-mail e toque no link para entrar.`,
-  };
+/** O token do Turnstile que o formulário mandou junto. */
+function captchaDoFormulario(formData: FormData): string | undefined {
+  const token = String(formData.get("cf-turnstile-response") ?? "").trim();
+  return token || undefined;
 }
 
-/** Login tradicional por e-mail e senha. */
+/**
+ * Login tradicional por e-mail e senha.
+ *
+ * O `captchaToken` vai para o próprio Supabase conferir com a Cloudflare. Por
+ * isso não conferimos aqui: a validação no endpoint de auth vale também para
+ * quem chamar a API por fora deste formulário, que é justamente o que um robô
+ * de força bruta faria.
+ */
 export async function entrarComSenha(
   _anterior: EstadoForm,
   formData: FormData,
@@ -143,7 +65,11 @@ export async function entrarComSenha(
   await registrarPreferenciaDeSessao(String(formData.get("lembrar") ?? "") === "on");
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+    options: { captchaToken: captchaDoFormulario(formData) },
+  });
 
   if (error) {
     if (error.code === "email_not_confirmed" || /not confirmed/i.test(error.message)) {
@@ -151,6 +77,12 @@ export async function entrarComSenha(
         ok: false,
         mensagem:
           "Sua conta ainda não foi confirmada. Abra o e-mail que enviamos e toque no link de confirmação.",
+      };
+    }
+    if (/captcha/i.test(error.message)) {
+      return {
+        ok: false,
+        mensagem: "A verificação de segurança falhou. Recarregue a página e tente de novo.",
       };
     }
     if (
@@ -166,81 +98,42 @@ export async function entrarComSenha(
 }
 
 /**
- * Cadastro do dono do bar.
+ * "Entrar com Google".
  *
- * Três travas, nesta ordem: formato, e-mail descartável e um cadastro por IP.
- * A conta só passa a existir de verdade quando a pessoa abre o link de
- * confirmação na própria caixa — com `Confirm email` ligado no Supabase, o
- * signUp não devolve sessão.
+ * Roda no servidor e devolve a pessoa para o Google. O cliente precisa ser o
+ * de PKCE — ver FLUXO_OAUTH em lib/supabase/server.ts para o porquê de ele
+ * divergir do fluxo dos links de e-mail.
+ *
+ * Não há CAPTCHA aqui de propósito: quem valida a identidade daqui em diante é
+ * o Google, com a própria proteção contra robô dele. Um CAPTCHA antes de sair
+ * do site só atrasaria quem já está sendo verificado do outro lado.
  */
-export async function cadastrarComSenha(
+export async function entrarComGoogle(
   _anterior: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
-  const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
-  const password = String(formData.get("password") ?? "");
-  const confirmPassword = String(formData.get("confirmPassword") ?? "");
-
-  if (problema === "formato") return { ok: false, mensagem: MENSAGEM_FORMATO };
-  if (problema === "descartavel") return { ok: false, mensagem: MENSAGEM_DESCARTAVEL };
-
-  if (password.length < 8) {
-    return { ok: false, mensagem: "A senha precisa ter pelo menos 8 caracteres." };
-  }
-
-  if (password !== confirmPassword) {
-    return { ok: false, mensagem: "As senhas não coincidem." };
-  }
-
   if (!supabaseConfigurado()) {
     return { ok: false, mensagem: "Configuração do servidor ausente." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const ipHash = await hashDoIpAtual();
+  await registrarPreferenciaDeSessao(String(formData.get("lembrar") ?? "") === "on");
 
-  // Consulta antes de criar: um cadastro que falha por outro motivo (e-mail já
-  // existe, senha curta) não pode queimar a cota do IP.
-  if (ipHash) {
-    const { data: jaFeitos } = await supabase.rpc("cadastros_feitos_pelo_ip", {
-      p_ip_hash: ipHash,
-    });
-
-    if (((jaFeitos as number | null) ?? 0) >= CADASTROS_POR_IP) {
-      return {
-        ok: false,
-        mensagem:
-          "Esta conexão já atingiu o limite de cadastros. Se o bar é seu e você perdeu o acesso, entre pelo link no e-mail ou use 'Esqueceu a senha?'.",
-      };
-    }
-  }
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { emailRedirectTo: `${await origemDoApp()}/auth/callback` },
+  const supabase = await createSupabaseServerClient(FLUXO_OAUTH);
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${await origemDoApp()}/auth/callback`,
+      // Sem isso o Google entra direto com a última conta usada. Quem tem a
+      // conta do bar separada da pessoal precisa poder escolher.
+      queryParams: { prompt: "select_account" },
+    },
   });
 
-  if (error) {
-    if (error.message.includes("User already registered")) {
-      return { ok: false, mensagem: "Este e-mail já está cadastrado. Tente entrar." };
-    }
-    return { ok: false, mensagem: "Não foi possível cadastrar. Tente novamente." };
+  if (error || !data?.url) {
+    return { ok: false, mensagem: "Não consegui abrir o login do Google agora. Tente novamente." };
   }
 
-  if (ipHash) {
-    await supabase.rpc("registrar_cadastro_do_ip", { p_ip_hash: ipHash });
-  }
-
-  // Com confirmação ligada o Supabase não devolve sessão — é o caminho normal.
-  if (data.user && !data.session) {
-    return {
-      ok: true,
-      mensagem: `Quase lá! Enviamos um e-mail de confirmação para ${email}. Abra a mensagem e toque no link para ativar o seu bar. Confira também o Spam.`,
-    };
-  }
-
-  redirect("/onboarding");
+  redirect(data.url);
 }
 
 /**
@@ -267,6 +160,7 @@ export async function redefinirSenha(
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${await origemDoApp()}/auth/callback`,
+    captchaToken: captchaDoFormulario(formData),
   });
 
   if (error) {

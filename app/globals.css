@@ -37,6 +37,67 @@ html.dark {
   background-color: #0c0a09; /* stone-950 */
 }
 
+/* ==========================================================
+   IMPRESSÃO — a folha do fechamento
+   ==========================================================
+
+   A tela do app não serve como papel: tem barra de navegação, botão de
+   imprimir, banner de instalação e um tema escuro que sairia com texto claro
+   sobre papel branco (o navegador não imprime o fundo, mas imprime o texto).
+
+   Em vez de marcar cada pedaço com "não imprimir", o caminho é o inverso:
+   esconde tudo e revela só o que está dentro de `.folha`. Assim um componente
+   novo no cabeçalho não vaza para a impressão sem ninguém perceber.
+   ========================================================== */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  html.dark {
+    background: #ffffff !important;
+    color-scheme: light;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .folha,
+  .folha * {
+    visibility: visible !important;
+    color: #111111 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .folha {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  /* Linha ou item de comanda partido no meio pela quebra de página é o tipo de
+     detalhe que faz alguém conferir a conta errada. */
+  .folha tr,
+  .folha li,
+  .folha .bloco-comanda {
+    break-inside: avoid;
+  }
+
+  .folha .borda-papel {
+    border-color: #999999 !important;
+  }
+}
+
 /* Evita zoom indesejado no iOS ao focar campos */
 
 input,

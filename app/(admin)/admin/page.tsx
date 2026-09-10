@@ -1,12 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { checarSeEhAdmin } from "@/app/actions/admin";
+import { listarInteressados } from "@/app/actions/interessados";
 import { verificarStatusMFA } from "@/app/actions/mfa";
-import { formatarReais, formatarDataHora } from "@/lib/format";
-import { TemaToggle } from "@/components/tema-toggle";
-import { LogoButeco } from "@/components/logo-buteco";
-import { AcoesAdmin } from "./acoes-admin";
 import { AdminViewContainer } from "./admin-view-container";
 
 export const dynamic = "force-dynamic";
@@ -43,8 +39,27 @@ export default async function AdminPage() {
   // Checa se o MFA precisa de verificação
   const statusMfa = await verificarStatusMFA();
 
+  /*
+   * Nada é buscado antes do segundo fator — e essa ordem é o conserto de um
+   * vazamento real.
+   *
+   * O painel é renderizado no servidor. Antes, as métricas (com o e-mail do
+   * dono de CADA bar) e a fila de interessados (com nome, e-mail e telefone de
+   * quem pediu acesso) eram buscadas sempre e mandadas como props; a tela do
+   * 2FA só escondia isso no navegador. Quem tivesse a senha do admin abria o
+   * código-fonte da página e lia tudo sem digitar código nenhum.
+   *
+   * Agora quem não passou pelo segundo fator recebe uma página com o cadeado e
+   * mais nada dentro. O MfaGate chama router.refresh() ao destravar, e aí sim
+   * o servidor renderiza de novo — já em aal2 — com os dados.
+   */
+  const liberado = statusMfa.temFatorAtivo && !statusMfa.precisaVerificar;
+
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.rpc("painel_admin_metricas");
+  const [{ data }, interessados] = liberado
+    ? await Promise.all([supabase.rpc("painel_admin_metricas"), listarInteressados()])
+    : [{ data: null }, []];
+
   const metricas = data as TelemetriaAdmin | null;
 
   return (
@@ -52,6 +67,7 @@ export default async function AdminPage() {
       <AdminViewContainer
         statusMfa={statusMfa}
         metricas={metricas}
+        interessados={interessados}
       />
     </main>
   );

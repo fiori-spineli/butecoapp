@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { exigirBar } from "@/lib/bar";
 import { formatarReais } from "@/lib/format";
-import { TabBar } from "@/components/tab-bar";
+import { NavPrincipal, TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import type { Produto } from "@/lib/types";
 import { LogoButeco } from "@/components/logo-buteco";
@@ -36,6 +36,7 @@ export default async function ProdutosPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <NavPrincipal ativo="produtos" />
           <TemaToggle />
           <Link
             href="/produtos/novo"

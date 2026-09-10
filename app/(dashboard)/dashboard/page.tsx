@@ -1,8 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { exigirBar } from "@/lib/bar";
 import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
-import { TabBar } from "@/components/tab-bar";
+import { NavPrincipal, TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoSair } from "@/components/botao-sair";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
@@ -16,7 +15,11 @@ export default async function DashboardPage() {
   const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
     supabase
       .from("comandas_resumo")
-      .select("id, nome, numero_mesa, status, total_centavos, pago_centavos, restante_centavos, itens")
+      // created_at e fechada_em entram para a lista poder contar há quanto
+      // tempo cada mesa está aberta — ver components/tempo-aberto.tsx.
+      .select(
+        "id, nome, numero_mesa, status, created_at, fechada_em, total_centavos, pago_centavos, restante_centavos, itens",
+      )
       .eq("bar_id", bar.id)
       .order("status", { ascending: true })
       .order("created_at", { ascending: false }),
@@ -58,6 +61,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <NavPrincipal ativo="comandas" />
           <TemaToggle />
           <Link
             href="/perfil"
@@ -114,17 +118,35 @@ export default async function DashboardPage() {
             </p>
           </div>
 
-          <Link
-            href="/comanda/nova"
-            prefetch={true}
-            className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 min-h-11 px-5 py-2.5 text-xs md:text-sm font-bold text-white shadow-xs transition-transform active:scale-95 flex items-center justify-center gap-2"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Nova comanda
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Resumo do dia para conferir e imprimir — o backup em papel de
+                quem fecha o caixa à noite. */}
+            <Link
+              href="/fechamento"
+              prefetch={true}
+              className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 min-h-11 px-3 sm:px-4 py-2.5 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors flex items-center justify-center gap-2"
+              title="Fechamento do dia"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M6 9V2h12v7" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" rx="1" />
+              </svg>
+              <span className="hidden sm:inline">Fechamento</span>
+            </Link>
+
+            <Link
+              href="/comanda/nova"
+              prefetch={true}
+              className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 min-h-11 px-4 sm:px-5 py-2.5 text-xs md:text-sm font-bold text-white shadow-xs transition-transform active:scale-95 flex items-center justify-center gap-2"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Nova comanda
+            </Link>
+          </div>
         </div>
 
         {/* Componente Interativo com Filtro */}

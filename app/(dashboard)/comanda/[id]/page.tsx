@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { exigirBar } from "@/lib/bar";
 import { montarMensagem } from "@/lib/mensagem-qr";
-import { formatarDataHora, formatarReais } from "@/lib/format";
+import { formatarDataHora, formatarMomento, formatarReais } from "@/lib/format";
+import { TempoAberto } from "@/components/tempo-aberto";
 import { origemDoApp } from "@/lib/url";
 import { VoltarPara } from "@/components/voltar";
 import { TemaToggle } from "@/components/tema-toggle";
@@ -95,6 +96,14 @@ export default async function ComandaPage({
             </div>
             <p className="text-[11px] text-stone-400 dark:text-stone-500">
               Aberta em {formatarDataHora(comanda.created_at)}
+              {contaAberta ? (
+                <>
+                  {" · há "}
+                  <TempoAberto desde={comanda.created_at} className="font-semibold" />
+                </>
+              ) : (
+                comanda.fechada_em && ` · fechada em ${formatarDataHora(comanda.fechada_em)}`
+              )}
             </p>
           </div>
         </div>
@@ -171,8 +180,15 @@ export default async function ComandaPage({
                         <p className="truncate font-bold text-sm text-stone-900 dark:text-stone-100">
                           {nomeItem}
                         </p>
+                        {/* A hora do lançamento fica ao lado do preço: é o que
+                            responde "isso aí entrou quando?" sem precisar
+                            abrir relatório nenhum. */}
                         <p className="text-xs text-stone-500 dark:text-stone-400">
                           {item.quantidade}x {formatarReais(item.valor_unitario_centavos as number)}
+                          <span className="mx-1.5 text-stone-300 dark:text-stone-600" aria-hidden>
+                            ·
+                          </span>
+                          {formatarMomento(item.created_at as string)}
                         </p>
                       </div>
                     </div>

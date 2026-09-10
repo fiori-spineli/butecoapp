@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { MfaGate } from "./mfa-gate";
 import { TemaToggle } from "@/components/tema-toggle";
@@ -8,18 +9,36 @@ import { LogoButeco } from "@/components/logo-buteco";
 import { BotaoSair } from "@/components/botao-sair";
 import { AcoesAdmin } from "./acoes-admin";
 import { formatarReais, formatarDataHora } from "@/lib/format";
+import { FilaInteressados } from "./fila-interessados";
 import type { StatusMFA } from "@/app/actions/mfa";
+import type { Interessado } from "@/lib/types";
 
 export function AdminViewContainer({
     statusMfa,
     metricas,
+    interessados,
 }: {
     statusMfa: StatusMFA;
     metricas: any;
+    interessados: Interessado[];
 }) {
+    const router = useRouter();
     const [desbloqueado, setDesbloqueado] = useState(
         statusMfa.temFatorAtivo && !statusMfa.precisaVerificar
     );
+
+    /*
+     * Destravar não é só mostrar: é ir buscar.
+     *
+     * Desde que o servidor parou de mandar os dados antes do segundo fator
+     * (ver admin/page.tsx), esta tela sobe vazia de propósito. O refresh
+     * re-renderiza a página no servidor — agora com a sessão já em aal2 — e
+     * é ele que traz as métricas e a fila.
+     */
+    function destravar() {
+        setDesbloqueado(true);
+        router.refresh();
+    }
 
     // Se o 2FA ainda não foi validado, exibe a tela de Admin com a Logo em destaque e o Botão Sair
     if (!desbloqueado) {
@@ -33,10 +52,7 @@ export function AdminViewContainer({
                         <BotaoSair />
                     </div>
                 </div>
-                <MfaGate
-                    statusInicial={statusMfa}
-                    onSucesso={() => setDesbloqueado(true)}
-                />
+                <MfaGate statusInicial={statusMfa} onSucesso={destravar} />
             </div>
         );
     }
@@ -44,7 +60,7 @@ export function AdminViewContainer({
     if (!metricas) {
         return (
             <div className="p-10 text-center text-sm text-stone-500">
-                Não foi possível carregar as métricas de infraestrutura.
+                Carregando o painel... Se esta mensagem ficar na tela, recarregue a página.
             </div>
         );
     }
@@ -73,6 +89,9 @@ export function AdminViewContainer({
                     <BotaoSair />
                 </div>
             </header>
+
+            {/* A fila vem primeiro: métrica se olha, pedido se responde. */}
+            <FilaInteressados interessados={interessados} />
 
             {/* 1. SEÇÃO: SAÚDE DO SERVIDOR E BANCO DE DADOS */}
             <section>

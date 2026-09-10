@@ -1,45 +1,61 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import Link from "next/link";
 import {
-  enviarMagicLink,
+  entrarComGoogle,
   entrarComSenha,
-  cadastrarComSenha,
   redefinirSenha,
   type EstadoForm,
 } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
+import { CampoTurnstile } from "@/components/turnstile";
 
 const MENSAGEM_ERRO: Record<string, string> = {
   expirado:
     "Esse link já foi usado ou expirou. Peça um novo — se seu e-mail faz varredura automática, ele pode ter consumido o link antes de você.",
   navegador:
-    "Abra o link no mesmo navegador em que você pediu — a sessão fica gravada nele.",
+    "Termine o login no mesmo navegador em que você começou — a verificação fica guardada nele.",
+  google:
+    "O login com Google ainda não está habilitado no servidor. Entre com e-mail e senha por enquanto.",
   link: "Não consegui validar esse link. Peça um novo.",
 };
 
-type ModoAcesso = "link" | "senha" | "cadastro" | "recuperar";
+type ModoAcesso = "senha" | "recuperar";
 
-export function LoginForm({ erroInicial }: { erroInicial?: string }) {
-  // Senha é a aba de entrada: é o caminho que funciona sem depender de e-mail
-  // chegar, e é o que o dono usa no dia a dia.
+const CLASSE_CAMPO =
+  "w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm";
+
+const CLASSE_ROTULO =
+  "mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300";
+
+export function LoginForm({
+  erroInicial,
+  /** Ver lib/provedores.ts: o botão só existe se o provider estiver ligado. */
+  mostrarGoogle = false,
+}: {
+  erroInicial?: string;
+  mostrarGoogle?: boolean;
+}) {
   const [modo, setModo] = useState<ModoAcesso>("senha");
   const [lembrar, setLembrar] = useState(true);
+  /*
+   * O e-mail é controlado porque o React 19 limpa o formulário quando a action
+   * termina — inclusive quando ela termina em "senha incorreta". Digitar o
+   * endereço de novo a cada tentativa, em teclado de celular, é castigo por
+   * errar a senha. A senha em si continua sendo apagada, e aí de propósito.
+   */
+  const [email, setEmail] = useState("");
 
-  const [estadoLink, acaoLink, enviandoLink] = useActionState<EstadoForm, FormData>(
-    enviarMagicLink,
+  const [estadoSenha, acaoSenha, enviandoSenha] = useActionState<EstadoForm, FormData>(
+    entrarComSenha,
     erroInicial
       ? { ok: false, mensagem: MENSAGEM_ERRO[erroInicial] ?? MENSAGEM_ERRO.link }
       : null,
   );
 
-  const [estadoSenha, acaoSenha, enviandoSenha] = useActionState<EstadoForm, FormData>(
-    entrarComSenha,
-    null,
-  );
-
-  const [estadoCadastro, acaoCadastro, enviandoCadastro] = useActionState<EstadoForm, FormData>(
-    cadastrarComSenha,
+  const [estadoGoogle, acaoGoogle, enviandoGoogle] = useActionState<EstadoForm, FormData>(
+    entrarComGoogle,
     null,
   );
 
@@ -48,311 +64,181 @@ export function LoginForm({ erroInicial }: { erroInicial?: string }) {
     null,
   );
 
-  return (
-    <div className="w-full flex flex-col gap-6">
-      {/* Abas Alternadoras */}
-      {modo !== "recuperar" && (
-        <div className="grid grid-cols-2 rounded-xl bg-stone-100 dark:bg-stone-800 p-1 border border-stone-200 dark:border-stone-700">
+  if (modo === "recuperar") {
+    return (
+      <form action={acaoRecuperar} className="flex w-full flex-col gap-4">
+        <p className="text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+          Informe o e-mail cadastrado para enviarmos as instruções de redefinição de senha.
+        </p>
+
+        <div>
+          <label htmlFor="email-recuperar" className={CLASSE_ROTULO}>
+            E-mail cadastrado
+          </label>
+          <input
+            id="email-recuperar"
+            name="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="exemplo@buteco.com"
+            className={CLASSE_CAMPO}
+          />
+        </div>
+
+        <CampoTurnstile acao="recuperar-senha" renovarQuando={estadoRecuperar} />
+
+        <button
+          type="submit"
+          disabled={enviandoRecuperar}
+          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
+        >
+          {enviandoRecuperar ? <LoadingButeco /> : "Enviar link de recuperação"}
+        </button>
+
+        {estadoRecuperar && (
+          <Alerta ok={estadoRecuperar.ok} mensagem={estadoRecuperar.mensagem} />
+        )}
+
+        <div className="pt-3 text-center border-t border-stone-200 dark:border-stone-800">
           <button
             type="button"
             onClick={() => setModo("senha")}
-            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
-              modo === "senha" || modo === "cadastro"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-            }`}
+            className="cursor-pointer min-h-11 px-3 text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-            </svg>
-            <span className="truncate">E-mail e senha</span>
+            Voltar ao login
           </button>
+        </div>
+      </form>
+    );
+  }
 
-          <button
-            type="button"
-            onClick={() => setModo("link")}
-            className={`cursor-pointer py-2 px-2 text-[11px] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-1.5 truncate ${
-              modo === "link"
-                ? "bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs border border-stone-200 dark:border-stone-700"
-                : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
-            }`}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-              <polyline points="22,6 12,13 2,6" />
-            </svg>
-            <span className="truncate">Link no e-mail</span>
-          </button>
+  return (
+    <div className="flex w-full flex-col gap-5">
+      {/* Google primeiro: é um toque, sem digitar senha em teclado de celular
+          no meio do movimento do bar. */}
+      {mostrarGoogle && (
+      <form action={acaoGoogle}>
+        <input type="hidden" name="lembrar" value={lembrar ? "on" : ""} />
+        <button
+          type="submit"
+          disabled={enviandoGoogle}
+          className="cursor-pointer w-full rounded-xl border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 px-4 py-3.5 font-bold text-sm text-stone-800 dark:text-stone-100 shadow-xs transition-colors hover:bg-stone-50 dark:hover:bg-stone-700 disabled:opacity-60 flex items-center justify-center gap-3"
+        >
+          {enviandoGoogle ? (
+            <LoadingButeco />
+          ) : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden className="shrink-0">
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+              </svg>
+              Entrar com Google
+            </>
+          )}
+        </button>
+        {estadoGoogle && !estadoGoogle.ok && (
+          <div className="mt-3">
+            <Alerta ok={false} mensagem={estadoGoogle.mensagem} />
+          </div>
+        )}
+      </form>
+      )}
+
+      {mostrarGoogle && (
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
+          <span className="text-[11px] font-bold uppercase tracking-widest text-stone-400">
+            ou com e-mail
+          </span>
+          <span className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
         </div>
       )}
 
-      {/* 1. MODO: LINK MÁGICO */}
-      {modo === "link" && (
-        <form action={acaoLink} className="flex flex-col gap-4">
-          {/* Mesma preferência da aba de senha: quem entra pelo link também
-              escolhe se quer continuar conectado neste aparelho. */}
-          {lembrar && <input type="hidden" name="lembrar" value="on" />}
-          <div>
-            <label
-              htmlFor="email-link"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              E-mail do bar
-            </label>
-            <input
-              id="email-link"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
+      <form action={acaoSenha} className="flex flex-col gap-4">
+        <div>
+          <label htmlFor="email-senha" className={CLASSE_ROTULO}>
+            E-mail
+          </label>
+          <input
+            id="email-senha"
+            name="email"
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="exemplo@buteco.com"
+            className={CLASSE_CAMPO}
+          />
+        </div>
 
-          <button
-            type="submit"
-            disabled={enviandoLink}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
-          >
-            {enviandoLink ? <LoadingButeco /> : "Receber link de acesso"}
-          </button>
-
-          <div className="rounded-xl border border-amber-200/80 dark:border-amber-900/40 bg-amber-50/60 dark:bg-amber-950/20 p-3.5 flex items-start gap-2.5 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
-            <svg className="shrink-0 mt-0.5" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p>
-              <strong>Fique atento:</strong> O e-mail com o link pode chegar na sua pasta de{" "}
-              <strong className="underline decoration-amber-600/50 underline-offset-2">Spam</strong> ou{" "}
-              <strong className="underline decoration-amber-600/50 underline-offset-2">Lixo eletrônico</strong>. Se não aparecer em instantes, confira lá.
-            </p>
-          </div>
-
-          {estadoLink && (
-            <Alerta ok={estadoLink.ok} mensagem={estadoLink.mensagem} />
-          )}
-        </form>
-      )}
-
-      {/* 2. MODO: ENTRAR COM SENHA */}
-      {modo === "senha" && (
-        <form action={acaoSenha} className="flex flex-col gap-4">
-          <div>
-            <label
-              htmlFor="email-senha"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              E-mail
-            </label>
-            <input
-              id="email-senha"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password-login"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              Senha
-            </label>
-            <input
-              id="password-login"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-            {/* Botão de Esqueceu a Senha perfeitamente posicionado abaixo do input */}
-            <div className="mt-1.5 text-right">
-              <button
-                type="button"
-                onClick={() => setModo("recuperar")}
-                className="cursor-pointer text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
-              >
-                Esqueceu a senha?
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between py-0.5">
-            <label className="cursor-pointer flex items-center gap-2.5 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
-              <input
-                type="checkbox"
-                name="lembrar"
-                checked={lembrar}
-                onChange={(e) => setLembrar(e.target.checked)}
-                className="cursor-pointer size-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600 accent-amber-700"
-              />
-              <span>Manter conectado neste aparelho</span>
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={enviandoSenha}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
-          >
-            {enviandoSenha ? <LoadingButeco /> : "Entrar no bar"}
-          </button>
-
-          {estadoSenha && (
-            <Alerta ok={estadoSenha.ok} mensagem={estadoSenha.mensagem} />
-          )}
-
-          <div className="pt-3 text-center border-t border-stone-200 dark:border-stone-800">
+        <div>
+          <label htmlFor="password-login" className={CLASSE_ROTULO}>
+            Senha
+          </label>
+          <input
+            id="password-login"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            placeholder="••••••••"
+            className={CLASSE_CAMPO}
+          />
+          <div className="mt-1.5 text-right">
             <button
               type="button"
-              onClick={() => setModo("cadastro")}
-              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
+              onClick={() => setModo("recuperar")}
+              className="cursor-pointer min-h-11 px-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline"
             >
-              Não tem conta? Cadastrar bar e criar senha
+              Esqueceu a senha?
             </button>
           </div>
-        </form>
-      )}
+        </div>
 
-      {/* 3. MODO: CADASTRO */}
-      {modo === "cadastro" && (
-        <form action={acaoCadastro} className="flex flex-col gap-4">
-          <div>
-            <label
-              htmlFor="email-cadastro"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              E-mail do bar
-            </label>
-            <input
-              id="email-cadastro"
-              name="email"
-              type="email"
-              autoComplete="username"
-              required
-              placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
+        <label className="cursor-pointer flex items-center gap-2.5 text-xs font-medium text-stone-600 dark:text-stone-400 select-none">
+          <input
+            type="checkbox"
+            name="lembrar"
+            checked={lembrar}
+            onChange={(e) => setLembrar(e.target.checked)}
+            className="cursor-pointer size-4 rounded border-stone-300 text-amber-700 focus:ring-amber-600 accent-amber-700"
+          />
+          <span>Manter conectado neste aparelho</span>
+        </label>
 
-          <div>
-            <label
-              htmlFor="senha-cadastro"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              Criar senha (mínimo 8 caracteres)
-            </label>
-            <input
-              id="senha-cadastro"
-              name="password"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              required
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
+        <CampoTurnstile acao="login" renovarQuando={estadoSenha} />
 
-          <div>
-            <label
-              htmlFor="confirm-senha"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              Confirmar senha
-            </label>
-            <input
-              id="confirm-senha"
-              name="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              required
-              placeholder="••••••••"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
+        <button
+          type="submit"
+          disabled={enviandoSenha}
+          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
+        >
+          {enviandoSenha ? <LoadingButeco /> : "Entrar no bar"}
+        </button>
 
-          <button
-            type="submit"
-            disabled={enviandoCadastro}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
-          >
-            {enviandoCadastro ? <LoadingButeco /> : "Cadastrar meu bar"}
-          </button>
+        {estadoSenha && <Alerta ok={estadoSenha.ok} mensagem={estadoSenha.mensagem} />}
+      </form>
 
-          {estadoCadastro && (
-            <Alerta ok={estadoCadastro.ok} mensagem={estadoCadastro.mensagem} />
-          )}
-
-          <div className="pt-3 text-center border-t border-stone-200 dark:border-stone-800">
-            <button
-              type="button"
-              onClick={() => setModo("senha")}
-              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
-            >
-              Já tem conta? Fazer login
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* 4. MODO: RECUPERAR SENHA */}
-      {modo === "recuperar" && (
-        <form action={acaoRecuperar} className="flex flex-col gap-4">
-          <div>
-            <p className="text-xs leading-relaxed text-stone-600 dark:text-stone-400 mb-3">
-              Informe seu e-mail cadastrado para enviarmos as instruções de redefinição de senha.
-            </p>
-            <label
-              htmlFor="email-recuperar"
-              className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-            >
-              E-mail cadastrado
-            </label>
-            <input
-              id="email-recuperar"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              placeholder="exemplo@buteco.com"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50/50 dark:bg-stone-800/60 px-4 py-3 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-700 dark:focus:border-amber-500 focus:bg-white dark:focus:bg-stone-800 transition-all text-sm"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={enviandoRecuperar}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
-          >
-            {enviandoRecuperar ? <LoadingButeco /> : "Enviar link de recuperação"}
-          </button>
-
-          {estadoRecuperar && (
-            <Alerta ok={estadoRecuperar.ok} mensagem={estadoRecuperar.mensagem} />
-          )}
-
-          <div className="pt-3 text-center border-t border-stone-200 dark:border-stone-800">
-            <button
-              type="button"
-              onClick={() => setModo("senha")}
-              className="cursor-pointer text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
-            >
-              Voltar ao login
-            </button>
-          </div>
-        </form>
-      )}
+      {/* Não existe mais "criar conta" aqui. Quem chega sem cadastro fala com a
+          gente, e a conta nasce no nosso painel — é essa porta fechada que
+          impede um robô de abrir mil bares numa madrugada. */}
+      <div className="rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/40 p-4 text-center">
+        <p className="text-xs text-stone-600 dark:text-stone-400">
+          Ainda não tem conta? A gente cria pra você.
+        </p>
+        <Link
+          href="/contato"
+          className="mt-2 inline-flex min-h-11 items-center justify-center px-3 text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
+        >
+          Quero o ButecoApp no meu bar →
+        </Link>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { FLUXO_DE_EMAIL, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+import { FLUXO_DE_EMAIL, FLUXO_OAUTH, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 
 /**
@@ -51,12 +51,21 @@ export async function GET(request: NextRequest) {
   // URL de verificação antes da pessoa e gasta o token de uso único.
   const erroSupabase = searchParams.get("error_code") ?? searchParams.get("error");
   if (erroSupabase) {
+    // "Unsupported provider: provider is not enabled" é o que volta enquanto o
+    // Google não estiver ligado no painel do Supabase. Sem separar esse caso,
+    // um botão que ninguém configurou ainda responde "link inválido", que
+    // manda procurar o problema no lugar errado.
+    const descricao = searchParams.get("error_description") ?? "";
+    if (/provider/i.test(descricao)) return falha("google");
+
     return falha(erroSupabase.includes("expired") ? "expirado" : "link");
   }
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    // Precisa casar com o fluxo usado para enviar o link — ver lib/supabase/server.ts.
-    auth: { flowType: FLUXO_DE_EMAIL },
+    // O fluxo tem de casar com o de quem gerou o que está chegando, e são
+    // dois. `?code=` só nasce do login com Google, que usa PKCE; `token_hash`
+    // vem dos e-mails, que usam implicit. Ver lib/supabase/server.ts.
+    auth: { flowType: code ? FLUXO_OAUTH : FLUXO_DE_EMAIL },
     cookies: {
       getAll() {
         return cookieStore.getAll();

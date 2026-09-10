@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/server";
+import { loginComGoogleDisponivel } from "@/lib/provedores";
 import { LoginForm } from "./login-form";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
@@ -14,6 +15,7 @@ export default async function LoginPage({
   searchParams: Promise<{ erro?: string }>;
 }) {
   const { erro } = await searchParams;
+  const mostrarGoogle = await loginComGoogleDisponivel();
 
   if (supabaseConfigurado()) {
     const supabase = await createSupabaseServerClient();
@@ -48,6 +50,19 @@ export default async function LoginPage({
 
   return (
     <main className="min-h-screen w-full grid grid-cols-1 md:grid-cols-12 bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
+      <div className="absolute top-5 left-5 z-20">
+        <Link
+          href="/"
+          className="cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          <span className="hidden sm:inline">Sobre o sistema</span>
+          <span className="sm:hidden">Voltar</span>
+        </Link>
+      </div>
+
       <div className="absolute top-5 right-5 z-20">
         <TemaToggle />
       </div>
@@ -117,7 +132,9 @@ export default async function LoginPage({
       </section>
 
       {/* LADO DIREITO: Formulário */}
-      <section className="md:col-span-7 lg:col-span-6 flex flex-col justify-center items-center px-5 py-12 lg:px-16">
+      {/* pt-24 no celular: o "Sobre o sistema" e o tema flutuam no topo e
+          passariam por cima da logo com o padding padrão. */}
+      <section className="md:col-span-7 lg:col-span-6 flex flex-col justify-center items-center px-5 pt-24 pb-12 md:py-12 lg:px-16">
         <div className="w-full max-w-md">
           {/* Logo no Mobile */}
           <div className="md:hidden flex flex-col items-center mb-6">
@@ -132,12 +149,14 @@ export default async function LoginPage({
               Entrar no sistema
             </h2>
             <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-              Acesse suas comandas por link direto no e-mail ou com senha.
+              {mostrarGoogle
+                ? "Acesse as comandas do seu bar com a conta Google ou com e-mail e senha."
+                : "Acesse as comandas do seu bar com e-mail e senha."}
             </p>
           </div>
 
           <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
-            <LoginForm erroInicial={erro} />
+            <LoginForm erroInicial={erro} mostrarGoogle={mostrarGoogle} />
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-1.5 text-center text-xs text-stone-500 dark:text-stone-400">

@@ -30,17 +30,34 @@ export function supabaseConfigurado() {
 export const FLUXO_DE_EMAIL = "implicit" as const;
 
 /**
+ * Fluxo do "Entrar com Google" — e por que ele é o oposto do de cima.
+ *
+ * O argumento que derrubou o PKCE nos links de e-mail não vale aqui: o login
+ * social começa e termina no MESMO navegador, em segundos, sem passar por
+ * caixa de entrada nenhuma. O verifier gravado no cookie estará lá quando o
+ * Google devolver a pessoa.
+ *
+ * E o `implicit` sequer funcionaria: sem PKCE o Supabase devolve os tokens no
+ * FRAGMENTO da URL (`#access_token=…`), que o navegador nunca envia ao
+ * servidor. O /auth/callback ficaria olhando uma URL vazia. Com PKCE vem
+ * `?code=`, que é query e chega até nós.
+ */
+export const FLUXO_OAUTH = "pkce" as const;
+
+/**
  * Cliente Supabase para Server Components, Server Actions e Route Handlers.
  * No Next 16 `cookies()` é assíncrono — daí a função ser async.
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(
+  fluxo: typeof FLUXO_DE_EMAIL | typeof FLUXO_OAUTH = FLUXO_DE_EMAIL,
+) {
   const cookieStore = await cookies();
   // Lido aqui, uma vez: é a escolha de "manter conectado" que a action gravou
   // antes de montar este cliente. Ver lib/sessao.ts.
   const sessaoLonga = querSessaoLonga(cookieStore.get(COOKIE_LEMBRAR)?.value);
 
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { flowType: FLUXO_DE_EMAIL },
+    auth: { flowType: fluxo },
     cookies: {
       getAll() {
         return cookieStore.getAll();

@@ -74,7 +74,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
 
       <div>
         <label htmlFor="nome" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
-          Nome do produto
+          Nome do produto <span aria-hidden className="text-rose-600 dark:text-rose-400">*</span>
         </label>
         <input
           id="nome"
@@ -87,7 +87,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
 
       <div>
         <label htmlFor="preco" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
-          Preço (R$)
+          Preço (R$) <span aria-hidden className="text-rose-600 dark:text-rose-400">*</span>
         </label>
         <input
           id="preco"

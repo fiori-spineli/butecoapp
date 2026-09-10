@@ -1,7 +1,7 @@
 import { exigirBar } from "@/lib/bar";
 import { buscarRelatorioVendas } from "@/app/actions/relatorios";
 import { formatarReais, formatarDataHora } from "@/lib/format";
-import { TabBar } from "@/components/tab-bar";
+import { NavPrincipal, TabBar } from "@/components/tab-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
 
@@ -44,7 +44,8 @@ export default async function RelatoriosPage() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+                    <NavPrincipal ativo="relatorios" />
                     <TemaToggle />
                 </div>
             </header>

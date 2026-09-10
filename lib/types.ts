@@ -63,6 +63,8 @@ export type ComandaPublica = {
   cliente_nome: string;
   numero_mesa: string | null;
   status: "aberta" | "fechada";
+  /** Quando a mesa foi aberta. Adicionado na migration 0010. */
+  aberta_em: string;
   fechada_em: string | null;
   total_centavos: number;
   pago_centavos: number;
@@ -75,5 +77,23 @@ export type ComandaPublica = {
     quantidade: number;
     valor_unitario_centavos: number;
     total_centavos: number;
+    /** Data e hora em que o item entrou na comanda. Migration 0010. */
+    criado_em: string;
   }[];
+};
+
+/** Uma linha da fila de interessados — a porta de entrada de bar novo. */
+export type Interessado = {
+  id: string;
+  nome: string;
+  bar_nome: string;
+  email: string;
+  telefone: string;
+  cidade: string | null;
+  mensagem: string | null;
+  status: "novo" | "contatado" | "convertido" | "descartado";
+  observacao: string | null;
+  atendido_em: string | null;
+  bar_id: string | null;
+  created_at: string;
 };

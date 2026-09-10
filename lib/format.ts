@@ -95,12 +95,53 @@ const dataHora = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 
+const diaCurto = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TIMEZONE,
+  day: "2-digit",
+  month: "2-digit",
+});
+
+/** Só a data-calendário em São Paulo, para comparar dois instantes. */
+const diaOrdenavel = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const dataHoraCompleta = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TIMEZONE,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export function formatarHora(iso: string): string {
   return hora.format(new Date(iso));
 }
 
 export function formatarDataHora(iso: string): string {
   return dataHora.format(new Date(iso));
+}
+
+export function formatarDataHoraCompleta(iso: string): string {
+  return dataHoraCompleta.format(new Date(iso));
+}
+
+/**
+ * A hora de um lançamento como quem está no bar quer ler.
+ *
+ * Pedido de hoje mostra só a hora — a data seria ruído, todo mundo sabe que
+ * dia é hoje. Pedido de ontem ou de outro dia mostra a data junto, e é
+ * exatamente aí que a informação vira útil: comanda que atravessou a virada do
+ * dia é a que gera discussão no fechamento.
+ */
+export function formatarMomento(iso: string): string {
+  const data = new Date(iso);
+  const mesmoDia = diaOrdenavel.format(data) === diaOrdenavel.format(new Date());
+  return mesmoDia ? hora.format(data) : `${diaCurto.format(data)} ${hora.format(data)}`;
 }
 
 /** Quanto falta para o link do cliente expirar (24h após o fechamento). */
