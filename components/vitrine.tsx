@@ -358,6 +358,9 @@ export function Vitrine() {
             <Link href="/contato" className="cursor-pointer hover:underline">
               Pedir acesso
             </Link>
+            <Link href="/privacidade" className="cursor-pointer hover:underline">
+              Privacidade
+            </Link>
             <span>ButecoApp &copy; {new Date().getFullYear()}</span>
           </div>
         </div>

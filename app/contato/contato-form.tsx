@@ -222,7 +222,11 @@ export function ContatoForm() {
 
       <p className="text-[11px] leading-relaxed text-stone-500 dark:text-stone-400">
         Usamos esses dados só para falar com você sobre o ButecoApp. Nada de lista de
-        e-mail, nada repassado para terceiros.
+        e-mail, nada repassado para terceiros. Detalhes na{" "}
+        <a href="/privacidade" className="cursor-pointer font-semibold underline">
+          política de privacidade
+        </a>
+        .
       </p>
     </form>
   );
