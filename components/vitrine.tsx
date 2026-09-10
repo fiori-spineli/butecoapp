@@ -10,9 +10,10 @@ import { FundoChopp } from "@/components/fundo-chopp";
  * login — o que só faz sentido para quem já é cliente. Quem ouviu falar do
  * sistema e foi olhar não tinha uma linha explicando o que era.
  *
- * Aqui a ordem se inverte: primeiro o que o sistema faz, depois como pedir. O
- * "Entrar" existe, mas discreto, no canto — quem já usa sabe onde procurar, e
- * quem chegou agora não é empurrado para uma tela de senha.
+ * Aqui a ordem se inverte: primeiro o que o sistema faz, depois como pedir. E
+ * daqui não se chega ao login: a vitrine é um corpo à parte do app, com uma
+ * saída só, que é falar com a gente. Quem já é cliente recebeu de nós o
+ * endereço do /login.
  */
 
 const RECURSOS = [
@@ -128,16 +129,17 @@ export function Vitrine() {
             <TemaToggle />
 
             {/*
-              O login mora aqui, e só aqui, de propósito: texto pequeno, sem
-              cor de botão, no canto. Quem já é dono de bar procura e acha;
-              quem chegou pela primeira vez não é empurrado para uma senha que
-              ainda não tem.
+              Não existe link para o login aqui, e isso é decisão de projeto.
+              Esta página é a vitrine: ela apresenta o sistema e oferece UM
+              caminho, que é falar com a gente. Quem já tem conta recebeu de nós
+              o endereço do /login e vai direto; quem está só olhando não é
+              empurrado para uma porta que ainda não é dele.
             */}
             <Link
-              href="/login"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-stone-500 dark:text-stone-400 underline-offset-4 transition-colors hover:text-stone-900 dark:hover:text-stone-100 hover:underline"
+              href="/contato"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 text-xs font-bold text-white shadow-xs transition-colors"
             >
-              Entrar
+              Quero no meu bar
             </Link>
           </div>
         </div>
@@ -355,9 +357,6 @@ export function Vitrine() {
           <div className="flex items-center gap-4 text-xs text-stone-500 dark:text-stone-400">
             <Link href="/contato" className="cursor-pointer hover:underline">
               Pedir acesso
-            </Link>
-            <Link href="/login" className="cursor-pointer hover:underline">
-              Entrar
             </Link>
             <span>ButecoApp &copy; {new Date().getFullYear()}</span>
           </div>

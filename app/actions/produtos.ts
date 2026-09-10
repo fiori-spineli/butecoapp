@@ -21,6 +21,38 @@ import type { EstadoForm } from "@/app/actions/auth";
  */
 const PREFIXO_DA_FOTO = `${SUPABASE_URL}/storage/v1/object/public/produtos-imagens/`;
 
+/** O caminho dentro do bucket, a partir da URL pública. `null` se não for nossa. */
+function caminhoNoStorage(url: string | null | undefined): string | null {
+  if (!url || !url.startsWith(PREFIXO_DA_FOTO)) return null;
+  const caminho = url.slice(PREFIXO_DA_FOTO.length).split("?")[0];
+  return caminho || null;
+}
+
+/**
+ * Apaga a foto antiga do Storage.
+ *
+ * Trocar a foto de um produto gravava a URL nova e deixava o arquivo velho para
+ * trás. Ninguém mais o enxergava, mas ele continuava ocupando espaço no bucket
+ * — e o plano gratuito tem 1 GB. Com o dono trocando a foto da cerveja algumas
+ * vezes por mês, isso vira lixo que só cresce.
+ *
+ * Falha aqui não derruba a operação: se a remoção do arquivo não for, o produto
+ * já foi salvo e o pior caso é o arquivo órfão que existia antes.
+ */
+async function apagarFoto(
+  supabase: Awaited<ReturnType<typeof exigirBar>>["supabase"],
+  url: string | null | undefined,
+) {
+  const caminho = caminhoNoStorage(url);
+  if (!caminho) return;
+
+  try {
+    await supabase.storage.from("produtos-imagens").remove([caminho]);
+  } catch {
+    // Silêncio de propósito — ver o comentário acima.
+  }
+}
+
 /**
  * Nome e preço são obrigatórios, e preço zero não conta como preço.
  *
@@ -101,6 +133,15 @@ export async function atualizarProduto(
   const { nome, precoCentavos, imagemUrl } = validacao;
   const { supabase, bar } = await exigirBar();
 
+  // Lê a foto atual ANTES de gravar: depois do update ela some da linha e não
+  // haveria mais como saber qual arquivo apagar.
+  const { data: antes } = await supabase
+    .from("produtos")
+    .select("imagem_url")
+    .eq("id", produtoId)
+    .eq("bar_id", bar.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("produtos")
     .update({
@@ -113,13 +154,39 @@ export async function atualizarProduto(
 
   if (error) return { ok: false, mensagem: "Não consegui atualizar o produto." };
 
+  // Só depois de o banco confirmar. Apagar antes deixaria o produto apontando
+  // para um arquivo que já não existe, se o update falhasse.
+  const fotoAntiga = (antes as { imagem_url: string | null } | null)?.imagem_url;
+  if (fotoAntiga && fotoAntiga !== (imagemUrl || null)) {
+    await apagarFoto(supabase, fotoAntiga);
+  }
+
   revalidatePath("/produtos");
   redirect("/produtos");
 }
 
 export async function removerProduto(produtoId: string) {
   const { supabase, bar } = await exigirBar();
-  await supabase.from("produtos").delete().eq("id", produtoId).eq("bar_id", bar.id);
+
+  const { data: produto } = await supabase
+    .from("produtos")
+    .select("imagem_url")
+    .eq("id", produtoId)
+    .eq("bar_id", bar.id)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("produtos")
+    .delete()
+    .eq("id", produtoId)
+    .eq("bar_id", bar.id);
+
+  // Produto apagado leva a foto junto: sem a linha no banco, nada mais no app
+  // aponta para aquele arquivo.
+  if (!error) {
+    await apagarFoto(supabase, (produto as { imagem_url: string | null } | null)?.imagem_url);
+  }
+
   revalidatePath("/produtos");
   redirect("/produtos");
 }

@@ -44,8 +44,8 @@ export default function ContatoPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-stone-600 dark:text-stone-300">
           O ButecoApp não tem cadastro automático. Você conta pra gente quem é e qual
-          é o bar, a gente prepara o acesso e manda pra você — normalmente no mesmo
-          dia. Quem cria a conta somos nós dois, o Samuel e o Lucas.
+          é o bar, a gente prepara o acesso e manda pra você o quanto antes. Quem cria
+          a conta somos nós dois, o Samuel e o Lucas.
         </p>
 
         <ul className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -72,11 +72,10 @@ export default function ContatoPage() {
           <ContatoForm />
         </div>
 
+        {/* Sem link para o login aqui também: esta tela é da pessoa que ainda
+            não é cliente. Quem já é entra pelo endereço que recebeu. */}
         <p className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">
-          Já é cliente?{" "}
-          <Link href="/login" className="cursor-pointer font-semibold hover:underline">
-            Entrar na sua conta
-          </Link>
+          Suas informações ficam só com a gente.
         </p>
       </div>
     </main>

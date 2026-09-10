@@ -11,7 +11,7 @@ import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabas
 export type EstadoInteresse = { ok: boolean; mensagem: string } | null;
 
 const AGRADECIMENTO =
-  "Recebido! Vamos falar com você pelo telefone ou pelo e-mail informado, normalmente no mesmo dia.";
+  "Recebido! Vamos falar com você pelo telefone ou pelo e-mail informado o quanto antes.";
 
 /**
  * Pedido de um bar interessado.
@@ -113,7 +113,7 @@ export async function registrarInteresse(
     case "duplicado":
       return {
         ok: true,
-        mensagem: "Já temos o seu pedido de hoje. Pode deixar que a gente entra em contato.",
+        mensagem: "Já temos o seu pedido de hoje. Pode deixar que a gente entra em contato em breve.",
       };
     case "faltando":
     case "tamanho":
