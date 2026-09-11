@@ -23,7 +23,8 @@ export function MfaGate({
   statusInicial: StatusMFA;
   onSucesso: () => void;
 }) {
-  const [status, setStatus] = useState<StatusMFA>(statusInicial);
+  // O status vem pronto do servidor; quem muda de fase aqui é `dadosCadastro`.
+  const status = statusInicial;
   const [dadosCadastro, setDadosCadastro] = useState<DadosCadastro | null>(null);
   const [codigo, setCodigo] = useState("");
   const [erro, setErro] = useState<string | null>(null);

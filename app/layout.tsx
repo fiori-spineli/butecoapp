@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { SpeedInsightsButeco } from "@/components/speed-insights-buteco";
 import { AnalyticsButeco } from "@/components/analytics-buteco";
 import "./globals.css";
@@ -16,9 +17,14 @@ export const viewport: Viewport = {
   themeColor: "#2b2a28",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // Nonce da CSP desta requisição (ver proxy.ts e lib/csp.ts). O Next.js
+  // carimba os scripts dele sozinho; o registro do service worker logo abaixo
+  // é o único script inline nosso, e sem o nonce a política o bloquearia.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="pt-BR">
       <body className="min-h-dvh bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100 antialiased">
@@ -33,6 +39,7 @@ export default function RootLayout({
         <AnalyticsButeco />
 
         <script
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {

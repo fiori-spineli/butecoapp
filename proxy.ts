@@ -1,20 +1,39 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
+import { gerarNonce, montarCsp } from "@/lib/csp";
 
 /**
  * No Next.js 16 o antigo `middleware` passou a se chamar `proxy`.
- * Aqui ele renova a sessão do Supabase (refresh token) e intercepta
- * administradores para enviá-los direto ao painel /admin.
+ * Aqui ele renova a sessão do Supabase (refresh token), intercepta
+ * administradores para enviá-los direto ao painel /admin e carimba a
+ * Content-Security-Policy com o nonce desta requisição (ver lib/csp.ts).
  */
 export async function proxy(request: NextRequest) {
+  const nonce = gerarNonce();
+  const csp = montarCsp(nonce, process.env.NODE_ENV === "development");
+
+  // O Next.js lê a CSP e o nonce dos cabeçalhos DA REQUISIÇÃO para carimbar os
+  // <script> que ele mesmo gera. Por isso os dois vão nos dois sentidos: na
+  // requisição que segue para a página e na resposta que volta ao navegador.
+  // Os cabeçalhos são copiados na hora de montar a resposta, e não antes,
+  // porque o setAll abaixo altera o cookie da requisição no meio do caminho.
+  const seguir = () => {
+    const cabecalhos = new Headers(request.headers);
+    cabecalhos.set("x-nonce", nonce);
+    cabecalhos.set("Content-Security-Policy", csp);
+    const resposta = NextResponse.next({ request: { headers: cabecalhos } });
+    resposta.headers.set("Content-Security-Policy", csp);
+    return resposta;
+  };
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   // Sem credenciais configuradas, o app roda em modo "não configurado".
-  if (!url || !anonKey) return NextResponse.next({ request });
+  if (!url || !anonKey) return seguir();
 
-  let response = NextResponse.next({ request });
+  let response = seguir();
   const sessaoLonga = querSessaoLonga(request.cookies.get(COOKIE_LEMBRAR)?.value);
 
   const supabase = createServerClient(url, anonKey, {
@@ -26,7 +45,7 @@ export async function proxy(request: NextRequest) {
         for (const { name, value } of cookiesToSet) {
           request.cookies.set(name, value);
         }
-        response = NextResponse.next({ request });
+        response = seguir();
         for (const { name, value, options } of cookiesToSet) {
           // Ver lib/sessao.ts: a sessão nunca é lida pelo navegador, e a
           // validade do cookie segue o "manter conectado" que o dono escolheu.
@@ -90,6 +109,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|.*\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

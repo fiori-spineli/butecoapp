@@ -29,12 +29,20 @@ export function querSessaoLonga(valorDoCookie: string | undefined): boolean {
  * `httpOnly` é inegociável aqui: nenhum componente cliente lê a sessão, e a
  * mesma origem serve a página pública /c/[token] — deixar o token ao alcance
  * do JavaScript transformaria qualquer XSS futuro em tomada de conta.
+ *
+ * `secure` vale em produção: o cookie só viaja por HTTPS. Em desenvolvimento
+ * o app roda em http://localhost, onde um cookie Secure nem seria gravado.
+ * `sameSite: lax` vem do padrão do @supabase/ssr e fica.
  */
 export function opcoesDeCookieDeSessao(
   opcoesOriginais: CookieOptions,
   sessaoLonga: boolean,
 ): CookieOptions {
-  const opcoes: CookieOptions = { ...opcoesOriginais, httpOnly: true };
+  const opcoes: CookieOptions = {
+    ...opcoesOriginais,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+  };
 
   if (sessaoLonga) {
     opcoes.maxAge = TRINTA_DIAS_EM_SEGUNDOS;

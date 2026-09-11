@@ -8,7 +8,7 @@ import { LogoButeco } from "@/components/logo-buteco";
 export const dynamic = "force-dynamic";
 
 export default async function RelatoriosPage() {
-    const { bar } = await exigirBar();
+    await exigirBar();
     const vendas = await buscarRelatorioVendas(30); // Últimos 30 dias
 
     const faturamentoTotal = vendas.reduce((soma, v) => soma + v.total_centavos, 0);

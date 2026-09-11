@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { MfaGate } from "./mfa-gate";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
@@ -10,6 +9,7 @@ import { BotaoSair } from "@/components/botao-sair";
 import { AcoesAdmin } from "./acoes-admin";
 import { FilaInteressados } from "./fila-interessados";
 import { GestaoClientes } from "./gestao-clientes";
+import type { TelemetriaAdmin } from "./page";
 import type { StatusMFA } from "@/app/actions/mfa";
 import type { Interessado } from "@/lib/types";
 
@@ -19,7 +19,7 @@ export function AdminViewContainer({
     interessados,
 }: {
     statusMfa: StatusMFA;
-    metricas: any;
+    metricas: TelemetriaAdmin | null;
     interessados: Interessado[];
 }) {
     const router = useRouter();

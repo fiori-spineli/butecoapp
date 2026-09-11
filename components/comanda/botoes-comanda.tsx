@@ -1,14 +1,31 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import {
   fecharConta,
   reabrirConta,
   removerLancamento,
   removerPagamento,
+  type Resultado,
 } from "@/app/actions/comandas";
 import { formatarReais } from "@/lib/format";
 import { LoadingButeco } from "@/components/loading-buteco";
+import { AvisoFlutuante } from "@/components/aviso-flutuante";
+
+/**
+ * As três ações abaixo (fechar, remover item, desfazer pagamento) podem ser
+ * recusadas pelo banco — comanda fechada, item já coberto por pagamento. A
+ * recusa vem como `{ ok: false, mensagem }`, e a mensagem precisa aparecer:
+ * botão que só para de girar deixa a pessoa achando que o app travou.
+ */
+function useAvisoDeRecusa() {
+  const [aviso, setAviso] = useState<string | null>(null);
+  const limpar = useCallback(() => setAviso(null), []);
+  const registrar = useCallback((resultado: Resultado) => {
+    setAviso(resultado.ok ? null : (resultado.mensagem ?? "Não consegui concluir. Tente de novo."));
+  }, []);
+  return { aviso, limpar, registrar };
+}
 
 export function BotaoFecharConta({
   clienteId,
@@ -21,10 +38,11 @@ export function BotaoFecharConta({
 }) {
   const [confirmando, setConfirmando] = useState(false);
   const [processando, iniciar] = useTransition();
+  const { aviso, limpar, registrar } = useAvisoDeRecusa();
 
   function executarEncerramento() {
     iniciar(async () => {
-      await fecharConta(clienteId);
+      registrar(await fecharConta(clienteId));
       setConfirmando(false);
     });
   }
@@ -34,17 +52,18 @@ export function BotaoFecharConta({
       setConfirmando(true);
     } else if (contaAberta) {
       iniciar(async () => {
-        await fecharConta(clienteId);
+        registrar(await fecharConta(clienteId));
       });
     } else {
       iniciar(async () => {
-        await reabrirConta(clienteId);
+        registrar(await reabrirConta(clienteId));
       });
     }
   }
 
   return (
     <>
+      <AvisoFlutuante mensagem={aviso} aoFechar={limpar} />
       <button
         type="button"
         disabled={processando}
@@ -104,24 +123,28 @@ export function BotaoRemoverItem({
   nome: string;
 }) {
   const [processando, iniciar] = useTransition();
+  const { aviso, limpar, registrar } = useAvisoDeRecusa();
 
   return (
-    <button
-      type="button"
-      disabled={processando}
-      aria-label={`Remover ${nome} da conta`}
-      onClick={() =>
-        iniciar(async () => {
-          await removerLancamento(clienteId, lancamentoId);
-        })
-      }
-      className="cursor-pointer -m-1.5 shrink-0 rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-rose-600 transition-colors disabled:opacity-40"
-    >
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-        <line x1="18" y1="6" x2="6" y2="18" />
-        <line x1="6" y1="6" x2="18" y2="18" />
-      </svg>
-    </button>
+    <>
+      <AvisoFlutuante mensagem={aviso} aoFechar={limpar} />
+      <button
+        type="button"
+        disabled={processando}
+        aria-label={`Remover ${nome} da conta`}
+        onClick={() =>
+          iniciar(async () => {
+            registrar(await removerLancamento(clienteId, lancamentoId));
+          })
+        }
+        className="cursor-pointer -m-1.5 shrink-0 rounded-lg p-1.5 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 hover:text-rose-600 transition-colors disabled:opacity-40"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </>
   );
 }
 
@@ -133,19 +156,23 @@ export function BotaoDesfazerPagamento({
   pagamentoId: string;
 }) {
   const [processando, iniciar] = useTransition();
+  const { aviso, limpar, registrar } = useAvisoDeRecusa();
 
   return (
-    <button
-      type="button"
-      disabled={processando}
-      onClick={() =>
-        iniciar(async () => {
-          await removerPagamento(clienteId, pagamentoId);
-        })
-      }
-      className="cursor-pointer text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline disabled:opacity-40"
-    >
-      Desfazer
-    </button>
+    <>
+      <AvisoFlutuante mensagem={aviso} aoFechar={limpar} />
+      <button
+        type="button"
+        disabled={processando}
+        onClick={() =>
+          iniciar(async () => {
+            registrar(await removerPagamento(clienteId, pagamentoId));
+          })
+        }
+        className="cursor-pointer text-xs font-semibold text-rose-600 dark:text-rose-400 hover:underline disabled:opacity-40"
+      >
+        Desfazer
+      </button>
+    </>
   );
 }

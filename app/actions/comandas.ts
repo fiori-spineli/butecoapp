@@ -12,6 +12,29 @@ export type ItemParaLancar =
 
 export type Resultado = { ok: boolean; mensagem?: string };
 
+/** Tetos que espelham os CHECKs da migration 0013. Recusar aqui dá mensagem melhor. */
+const LIMITES = {
+  nomeComanda: 80,
+  numeroMesa: 20,
+  descricaoItem: 120,
+  quantidadeMax: 999,
+  valorUnitarioMax: 10_000_000,
+  descricaoPagamento: 120,
+} as const;
+
+/**
+ * As regras da comanda vivem no banco (triggers da migration 0013) e ele fala
+ * português nas exceções. Quando a recusa vem de lá, a mensagem dele é a certa
+ * para mostrar — é a regra explicada, não um "não consegui". Qualquer outro
+ * erro cai no texto genérico da action.
+ */
+function mensagemDoBanco(error: { code?: string; message?: string } | null, generica: string) {
+  if (error?.code === "23514" && error.message && !/violates|constraint/i.test(error.message)) {
+    return error.message;
+  }
+  return generica;
+}
+
 /** Abre uma comanda nova (individual ou de mesa) e leva direto pro QR. */
 export async function criarComanda(
   _anterior: EstadoForm,
@@ -22,6 +45,12 @@ export async function criarComanda(
 
   if (nome.length < 1) {
     return { ok: false, mensagem: "Dê um nome pra comanda (cliente ou mesa)." };
+  }
+  if (nome.length > LIMITES.nomeComanda) {
+    return { ok: false, mensagem: `O nome pode ter até ${LIMITES.nomeComanda} caracteres.` };
+  }
+  if (numeroMesa.length > LIMITES.numeroMesa) {
+    return { ok: false, mensagem: `O número da mesa pode ter até ${LIMITES.numeroMesa} caracteres.` };
   }
 
   const { supabase, bar } = await exigirBar();
@@ -69,28 +98,48 @@ export async function lancarItens(
     }
   }
 
-  const linhas = itens.map((item) => {
-    const quantidade = Math.max(1, Math.trunc(item.quantidade));
+  const linhas = [];
+
+  for (const item of itens) {
+    const quantidade = Math.trunc(Number(item.quantidade));
+    if (!Number.isFinite(quantidade) || quantidade < 1 || quantidade > LIMITES.quantidadeMax) {
+      return { ok: false, mensagem: `Quantidade precisa ser de 1 a ${LIMITES.quantidadeMax}.` };
+    }
+
     if (item.tipo === "produto") {
-      return {
+      const preco = precos.get(item.produto_id);
+      // Produto que o catálogo deste bar não devolveu: apagado, de outro bar
+      // ou id inventado. Antes entrava com preço zero — item de graça na conta
+      // por um id errado. Agora é recusa.
+      if (preco === undefined) {
+        return { ok: false, mensagem: "Um dos produtos não existe mais no catálogo. Atualize a tela." };
+      }
+      linhas.push({
         cliente_id: clienteId,
         produto_id: item.produto_id,
         descricao: null,
         quantidade,
-        valor_unitario_centavos: precos.get(item.produto_id) ?? 0,
-      };
+        valor_unitario_centavos: preco,
+      });
+      continue;
     }
-    return {
+
+    const valor = Math.trunc(Number(item.valor_centavos));
+    if (!Number.isFinite(valor) || valor <= 0 || valor > LIMITES.valorUnitarioMax) {
+      return { ok: false, mensagem: "Item avulso precisa de um valor maior que zero." };
+    }
+    const descricao = item.descricao.trim().slice(0, LIMITES.descricaoItem) || "Item avulso";
+    linhas.push({
       cliente_id: clienteId,
       produto_id: null,
-      descricao: item.descricao.trim() || "Item avulso",
+      descricao,
       quantidade,
-      valor_unitario_centavos: Math.max(0, Math.trunc(item.valor_centavos)),
-    };
-  });
+      valor_unitario_centavos: valor,
+    });
+  }
 
   const { error } = await supabase.from("lancamentos").insert(linhas);
-  if (error) return { ok: false, mensagem: "Não consegui lançar o item." };
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui lançar o item.") };
 
   revalidatePath(`/comanda/${clienteId}`);
   revalidatePath("/dashboard");
@@ -104,7 +153,7 @@ export async function removerLancamento(
   const { supabase } = await exigirBar();
 
   const { error } = await supabase.from("lancamentos").delete().eq("id", lancamentoId);
-  if (error) return { ok: false, mensagem: "Não consegui remover o item." };
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui remover o item.") };
 
   revalidatePath(`/comanda/${clienteId}`);
   revalidatePath("/dashboard");
@@ -152,10 +201,10 @@ export async function registrarPagamento(
     lancamento_id: null,
     quantidade_paga: null,
     valor_centavos: valor,
-    descricao: descricao.trim() || null,
+    descricao: descricao.trim().slice(0, LIMITES.descricaoPagamento) || null,
   });
 
-  if (error) return { ok: false, mensagem: "Não consegui registrar o pagamento." };
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui registrar o pagamento.") };
 
   revalidatePath(`/comanda/${clienteId}`);
   revalidatePath("/dashboard");
@@ -244,10 +293,10 @@ export async function registrarPagamentoDeItem(
     lancamento_id: lancamentoId,
     quantidade_paga: qtd,
     valor_centavos: valorDoPagamento,
-    descricao: `${qtd}x ${nomeDoItem}`,
+    descricao: `${qtd}x ${nomeDoItem}`.slice(0, LIMITES.descricaoPagamento),
   });
 
-  if (error) return { ok: false, mensagem: "Não consegui registrar o pagamento." };
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui registrar o pagamento.") };
 
   revalidatePath(`/comanda/${clienteId}`);
   revalidatePath("/dashboard");
@@ -261,7 +310,7 @@ export async function removerPagamento(
   const { supabase } = await exigirBar();
 
   const { error } = await supabase.from("pagamentos").delete().eq("id", pagamentoId);
-  if (error) return { ok: false, mensagem: "Não consegui desfazer o pagamento." };
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui desfazer o pagamento.") };
 
   revalidatePath(`/comanda/${clienteId}`);
   revalidatePath("/dashboard");
@@ -282,11 +331,18 @@ export async function fecharConta(clienteId: string): Promise<Resultado> {
   // retry recalcula o restante como zero e não duplica o pagamento.
   const { data: resumo } = await supabase
     .from("comandas_resumo")
-    .select("restante_centavos")
+    .select("restante_centavos, status")
     .eq("id", clienteId)
     .maybeSingle();
 
-  const restante = (resumo?.restante_centavos as number | undefined) ?? 0;
+  if (!resumo) return { ok: false, mensagem: "Comanda não encontrada." };
+
+  // Dois toques no "Fechar" (ou duas abas) chegam aqui em sequência. O segundo
+  // não tem o que fazer — e sem esta saída ele tentaria um acerto de novo, que
+  // o trigger do banco recusaria com uma mensagem assustadora.
+  if (resumo.status === "fechada") return { ok: true };
+
+  const restante = (resumo.restante_centavos as number | undefined) ?? 0;
 
   if (restante > 0) {
     const { error: erroAcerto } = await supabase.from("pagamentos").insert({
@@ -298,7 +354,7 @@ export async function fecharConta(clienteId: string): Promise<Resultado> {
     });
 
     if (erroAcerto) {
-      return { ok: false, mensagem: "Não consegui registrar o acerto final." };
+      return { ok: false, mensagem: mensagemDoBanco(erroAcerto, "Não consegui registrar o acerto final.") };
     }
   }
 

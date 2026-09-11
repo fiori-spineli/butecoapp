@@ -128,14 +128,16 @@ app/
   api/produtos/imagem/   # normaliza a foto para .webp e sobe pro Storage
   api/fechamento/csv/    # backup do movimento do dia em planilha
   actions/               # server actions (auth, bar, comandas, produtos, interesse)
+  error.tsx / not-found.tsx  # erro inesperado e 404 com a cara do app
   manifest.ts            # PWA — instalável na tela inicial do celular
 components/              # UI compartilhada (modais, miniatura, tab bar)
-lib/                     # supabase, formatação de dinheiro/data, tipos
+lib/                     # supabase, formatação de dinheiro/data, tipos, CSP
 supabase/
   config.toml            # stack local (portas, auth, rate limit)
   migrations/            # schema versionado
   templates/             # template dos e-mails de autenticação
-proxy.ts                 # renovação de sessão (era "middleware" antes do Next 16)
+proxy.ts                 # renovação de sessão + CSP com nonce (era "middleware" antes do Next 16)
+next.config.ts           # cabeçalhos fixos de segurança
 ```
 
 ## Decisões que valem saber
@@ -182,7 +184,23 @@ proxy.ts                 # renovação de sessão (era "middleware" antes do Nex
   contava duas histórias: o cliente saía com o comprovante do total e o
   "Recebido hoje" do dono só somava o que tinha sido lançado à mão.
 - **A foto do produto aceita câmera ou galeria** (input sem `capture`), é
-  convertida para WebP no navegador e reprocessada com `sharp` no servidor.
+  convertida para WebP no navegador e reprocessada com `sharp` no servidor —
+  com teto de 6 MB, 30 megapixels e 400 arquivos por bar. Foto salva apaga a
+  anterior; a que sobrou de formulário abandonado sai pelo botão "Limpar fotos
+  sem produto" do painel de admin.
+- **As regras da comanda valem no banco** (migration 0013): pagamento só em
+  comanda aberta e nunca além do total; item não sai se já está coberto por
+  pagamento; comanda fechada não muda. As server actions conferem antes para
+  dar mensagem boa, mas quem garante é o trigger — ele roda em toda escrita,
+  venha de onde vier, e tranca a linha da comanda para dois toques ao mesmo
+  tempo entrarem um depois do outro.
+- **Toda resposta sai com Content-Security-Policy de nonce** (`lib/csp.ts`,
+  aplicada em `proxy.ts`). Só roda script com o nonce daquela resposta; o Next
+  carimba os dele sozinho, e o único inline nosso (registro do service worker)
+  recebe o nonce no layout. Isso obriga todas as páginas a renderizar por
+  requisição — é o custo, e é pequeno. Turnstile, Analytics e Speed Insights
+  entram por `'strict-dynamic'`. Os cabeçalhos fixos (nosniff, Referrer-Policy,
+  Permissions-Policy, X-Frame-Options) ficam em `next.config.ts`.
 
 ## Deploy
 

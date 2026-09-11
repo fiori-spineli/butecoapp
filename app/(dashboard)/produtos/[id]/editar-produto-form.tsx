@@ -4,7 +4,6 @@ import { useActionState, useRef, useState, useTransition } from "react";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import { atualizarProduto, removerProduto } from "@/app/actions/produtos";
-import { formatarReais } from "@/lib/format";
 import { LoadingButeco } from "@/components/loading-buteco";
 import { EditorDeFoto } from "@/components/produto/editor-de-foto";
 import type { Produto } from "@/lib/types";

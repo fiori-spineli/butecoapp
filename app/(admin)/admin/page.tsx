@@ -8,7 +8,7 @@ import type { ClienteAdmin } from "./gestao-clientes";
 
 export const dynamic = "force-dynamic";
 
-interface TelemetriaAdmin {
+export interface TelemetriaAdmin {
   infra: {
     tamanho_banco: string;
     conexoes_ativas: number;
