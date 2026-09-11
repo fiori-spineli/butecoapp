@@ -79,7 +79,7 @@ export function AdminViewContainer({
                             </span>
                         </div>
                         <h1 className="text-xl md:text-3xl font-black tracking-tight mt-0.5">
-                            Infraestrutura & Negócio
+                            Backoffice de clientes
                         </h1>
                     </div>
                 </div>
@@ -90,10 +90,19 @@ export function AdminViewContainer({
                 </div>
             </header>
 
-            {/* A fila vem primeiro: métrica se olha, pedido se responde. */}
+            {/* Ordem da tela: o que pede ação em cima, o que se consulta embaixo.
+                Fila de pedidos -> clientes -> números -> manutenção. A gestão de
+                clientes é o motivo desta tela existir; ela estava por último. */}
             <FilaInteressados interessados={interessados} />
 
-            {/* 1. SEÇÃO: SAÚDE DO SERVIDOR E BANCO DE DADOS */}
+            {/* GESTÃO DE CLIENTES
+
+                A tabela que existia aqui era so leitura: nome, dono, contagens.
+                Virou a tela onde a gestao acontece de fato -- criar, renomear,
+                suspender, reativar, reenviar link de senha e excluir. Ver
+                gestao-clientes.tsx. */}
+            <GestaoClientes clientes={metricas.bares ?? []} />
+            {/* Telemetria — consulta, não ação. */}
             <section>
                 <div className="flex items-center gap-2 mb-4">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-700 dark:text-amber-400" aria-hidden>
@@ -131,7 +140,7 @@ export function AdminViewContainer({
                 </div>
             </section>
 
-            {/* 2. SEÇÃO: MÉTRICAS GLOBAIS DE NEGÓCIO */}
+            {/* Uso da plataforma — consulta, não ação. */}
             <section>
                 <div className="flex items-center gap-2 mb-4">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-700 dark:text-amber-400" aria-hidden>
@@ -175,7 +184,7 @@ export function AdminViewContainer({
                 </div>
             </section>
 
-            {/* 3. SEÇÃO: MANUTENÇÃO REMOTA */}
+            {/* Manutenção do banco. */}
             <section className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6">
                 <h3 className="text-sm font-bold uppercase tracking-wider text-stone-700 dark:text-stone-300 mb-2">
                     Manutenção Remota do Banco de Dados
@@ -188,13 +197,6 @@ export function AdminViewContainer({
                 <AcoesAdmin />
             </section>
 
-            {/* 4. GESTÃO DE CLIENTES
-
-                A tabela que existia aqui era so leitura: nome, dono, contagens.
-                Virou a tela onde a gestao acontece de fato -- criar, renomear,
-                suspender, reativar, reenviar link de senha e excluir. Ver
-                gestao-clientes.tsx. */}
-            <GestaoClientes clientes={metricas.bares ?? []} />
         </div>
     );
 }

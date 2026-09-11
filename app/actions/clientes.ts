@@ -3,7 +3,6 @@
 import { randomBytes } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { exigirAdminVerificado } from "@/app/actions/admin";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabase/admin";
 import { gerarSlug } from "@/lib/bar";
 import { origemDoApp } from "@/lib/url";
@@ -14,7 +13,7 @@ import type { EstadoForm } from "@/app/actions/auth";
  * Gestão dos nossos clientes — os donos de bar.
  *
  * O que o backoffice PODE fazer: criar o acesso, renomear o bar, suspender,
- * reativar, reenviar o link de senha e excluir o cliente inteiro.
+ * reativar, gerar link de acesso e excluir o cliente inteiro.
  *
  * O que ele NÃO faz, de propósito: entrar nas comandas, ver faturamento, mexer
  * em produto ou em pagamento. Somos o fornecedor do sistema, não sócios do bar.
@@ -37,13 +36,42 @@ const SEM_CHAVE: EstadoForm = {
     "SUPABASE_SERVICE_ROLE_KEY ausente neste ambiente. Sem ela o painel não cria nem remove contas.",
 };
 
-/** Manda o link para a pessoa definir a senha. Mesmo caminho do "esqueci a senha". */
-async function enviarLinkDeSenha(email: string): Promise<boolean> {
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${await origemDoApp()}/auth/callback`,
-  });
-  return !error;
+/**
+ * Gera o link de definir senha e DEVOLVE a URL, em vez de mandar e-mail.
+ *
+ * Duas paredes derrubaram o caminho do e-mail, e as duas de uma vez:
+ *
+ * 1. O Turnstile passou a proteger o endpoint /recover do Supabase. O widget
+ *    vive no navegador; o backoffice roda no servidor e não tem como produzir
+ *    token. Descoberto no QA: a conta era criada e o e-mail voltava
+ *    "captcha protection: request disallowed (no captcha_token found)" — conta
+ *    criada, dono sem meio de entrar.
+ * 2. Sem domínio próprio verificado no Resend, o remetente de teste só entrega
+ *    para o dono da conta. Ou seja: mesmo sem o captcha, o e-mail não chegaria
+ *    a um bar novo.
+ *
+ * `generateLink` é da API de administração e não passa por captcha nenhum. Com
+ * o hashed_token a gente monta a MESMA URL que o template de e-mail montaria, e
+ * o admin manda pelo WhatsApp — que é por onde ele já está falando com o dono.
+ *
+ * Quando houver domínio verificado, dá para voltar a enviar sozinho; o link
+ * continua o mesmo.
+ */
+async function gerarLinkDeSenha(email: string): Promise<string | null> {
+  try {
+    const { data, error } = await createSupabaseAdminClient().auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo: `${await origemDoApp()}/auth/callback` },
+    });
+
+    const hash = data?.properties?.hashed_token;
+    if (error || !hash) return null;
+
+    return `${await origemDoApp()}/auth/callback?token_hash=${hash}&type=recovery`;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -56,7 +84,9 @@ async function enviarLinkDeSenha(email: string): Promise<boolean> {
 async function provisionarBar(
   nomeDoBar: string,
   email: string,
-): Promise<{ ok: true; barId: string; emailEnviado: boolean } | { ok: false; mensagem: string }> {
+): Promise<
+  { ok: true; barId: string; link: string | null } | { ok: false; mensagem: string }
+> {
   const admin = createSupabaseAdminClient();
 
   const { data: criado, error: erroUsuario } = await admin.auth.admin.createUser({
@@ -93,7 +123,7 @@ async function provisionarBar(
     return { ok: false, mensagem: "Criei o usuário mas não consegui criar o bar. Nada foi salvo." };
   }
 
-  return { ok: true, barId: barCriado.id, emailEnviado: await enviarLinkDeSenha(email) };
+  return { ok: true, barId: barCriado.id, link: await gerarLinkDeSenha(email) };
 }
 
 /** Cadastro direto, sem passar pela fila de interessados. */
@@ -118,9 +148,9 @@ export async function criarClienteDoZero(
   revalidatePath("/admin");
   return {
     ok: true,
-    mensagem: resultado.emailEnviado
-      ? `"${nomeDoBar}" criado. Link para definir a senha enviado a ${email}.`
-      : `"${nomeDoBar}" criado, mas o e-mail não saiu. Use "Reenviar link de senha" na lista.`,
+    mensagem: resultado.link
+      ? `"${nomeDoBar}" criado. Mande este link para o dono definir a senha: ${resultado.link}`
+      : `"${nomeDoBar}" criado, mas não consegui gerar o link. Use "Gerar link de acesso" na lista.`,
   };
 }
 
@@ -190,8 +220,8 @@ export async function alternarSuspensao(
   };
 }
 
-/** Reenvia o link de definir senha — para quem perdeu ou nunca recebeu o primeiro. */
-export async function reenviarLinkDeSenha(
+/** Gera um link novo de definir senha, para copiar e mandar ao dono. */
+export async function gerarLinkDeAcesso(
   _anterior: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
@@ -200,10 +230,10 @@ export async function reenviarLinkDeSenha(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { ok: false, mensagem: "E-mail não informado." };
 
-  const enviado = await enviarLinkDeSenha(email);
-  return enviado
-    ? { ok: true, mensagem: `Link enviado para ${email}.` }
-    : { ok: false, mensagem: "Não consegui enviar agora. O Supabase limita e-mails por hora." };
+  const link = await gerarLinkDeSenha(email);
+  return link
+    ? { ok: true, mensagem: link }
+    : { ok: false, mensagem: "Não consegui gerar o link agora. Tente de novo." };
 }
 
 /**
@@ -280,8 +310,8 @@ export async function criarClienteDoPedido(
   revalidatePath("/admin");
   return {
     ok: true,
-    mensagem: resultado.emailEnviado
-      ? `Bar "${nomeDoBar}" criado e link para definir a senha enviado para ${email}.`
-      : `Bar "${nomeDoBar}" criado. O e-mail não saiu — use "Reenviar link de senha" na lista de clientes.`,
+    mensagem: resultado.link
+      ? `Bar "${nomeDoBar}" criado. Mande este link para o dono definir a senha: ${resultado.link}`
+      : `Bar "${nomeDoBar}" criado, mas não consegui gerar o link. Use "Gerar link de acesso" na lista de clientes.`,
   };
 }

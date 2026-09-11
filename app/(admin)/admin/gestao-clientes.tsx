@@ -6,7 +6,7 @@ import {
   criarClienteDoZero,
   excluirCliente,
   renomearBar,
-  reenviarLinkDeSenha,
+  gerarLinkDeAcesso,
 } from "@/app/actions/clientes";
 import type { EstadoForm } from "@/app/actions/auth";
 import { formatarDataHora } from "@/lib/format";
@@ -159,8 +159,8 @@ export function GestaoClientes({ clientes }: { clientes: ClienteAdmin[] }) {
           className="border-b border-stone-200 dark:border-stone-800 bg-amber-50/60 dark:bg-amber-950/20 px-5 sm:px-6 py-4"
         >
           <p className="mb-3 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
-            Cria o usuário já confirmado, cria o bar e manda o link de definir senha. Use
-            para quem falou com a gente por fora da fila.
+            Cria o usuário já confirmado, cria o bar e devolve o link de definir senha
+            para você mandar ao dono. Use para quem falou com a gente por fora da fila.
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs font-bold text-stone-700 dark:text-stone-300">
@@ -207,19 +207,61 @@ export function GestaoClientes({ clientes }: { clientes: ClienteAdmin[] }) {
   );
 }
 
+/**
+ * Aviso de resultado — com tratamento especial para link.
+ *
+ * Quando a resposta traz uma URL de definir senha, ela precisa sair daqui para
+ * o WhatsApp do dono. URL crua dentro de um parágrafo é um convite a selecionar
+ * torto e mandar pela metade, então ela ganha caixa própria e botão de copiar.
+ */
 function Aviso({ estado }: { estado: EstadoForm }) {
+  const [copiado, setCopiado] = useState(false);
   if (!estado) return null;
+
+  const link = estado.mensagem.match(/https?:\/\/\S+/)?.[0] ?? null;
+  const texto = link ? estado.mensagem.replace(link, "").trim() : estado.mensagem;
+
   return (
-    <p
+    <div
       role="status"
-      className={`mt-3 rounded-xl border px-4 py-2.5 text-xs font-medium ${
+      className={`mt-3 rounded-xl border px-4 py-3 text-xs font-medium ${
         estado.ok
           ? "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/20 text-emerald-900 dark:text-emerald-300"
           : "border-rose-200 dark:border-rose-900/50 bg-rose-50/80 dark:bg-rose-950/20 text-rose-900 dark:text-rose-300"
       }`}
     >
-      {estado.mensagem}
-    </p>
+      {texto && <p className="leading-relaxed">{texto}</p>}
+
+      {link && (
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <code className="min-w-0 flex-1 break-all rounded-lg bg-white/70 dark:bg-stone-900/70 px-3 py-2 text-[11px] text-stone-700 dark:text-stone-300">
+            {link}
+          </code>
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(link).then(
+                () => {
+                  setCopiado(true);
+                  setTimeout(() => setCopiado(false), 2500);
+                },
+                () => setCopiado(false),
+              );
+            }}
+            className="cursor-pointer shrink-0 min-h-11 rounded-xl bg-stone-900 dark:bg-stone-100 px-4 text-xs font-bold text-white dark:text-stone-900 transition-opacity hover:opacity-90"
+          >
+            {copiado ? "Copiado!" : "Copiar link"}
+          </button>
+        </div>
+      )}
+
+      {link && (
+        <p className="mt-2 text-[11px] opacity-80">
+          Link de uso único. Mande pelo WhatsApp — enquanto não houver domínio próprio,
+          o e-mail automático não chega a quem não é dono da conta do Resend.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -229,11 +271,10 @@ function LinhaCliente({ cliente }: { cliente: ClienteAdmin }) {
 
   const [estadoNome, acaoNome, salvandoNome] = useActionState<EstadoForm, FormData>(renomearBar, null);
   const [estadoSusp, acaoSusp, mudandoSusp] = useActionState<EstadoForm, FormData>(alternarSuspensao, null);
-  const [estadoLink, acaoLink, enviandoLink] = useActionState<EstadoForm, FormData>(reenviarLinkDeSenha, null);
+  const [estadoLink, acaoLink, enviandoLink] = useActionState<EstadoForm, FormData>(gerarLinkDeAcesso, null);
   const [estadoExcluir, acaoExcluir, excluindo] = useActionState<EstadoForm, FormData>(excluirCliente, null);
 
   const saude = saudeDoCliente(cliente);
-  const ultimoAviso = estadoExcluir ?? estadoSusp ?? estadoLink ?? estadoNome;
 
   return (
     <li className="px-5 sm:px-6 py-4">
@@ -321,6 +362,15 @@ function LinhaCliente({ cliente }: { cliente: ClienteAdmin }) {
             >
               Salvar nome
             </button>
+            {/* Cada aviso fica colado no controle que o gerou. Uma caixa de
+                mensagem compartilhada obriga a escolher qual das quatro ações
+                mostrar, e a escolhida acaba sendo a errada: no QA, renomear
+                salvou no banco e a tela seguiu exibindo o link gerado antes. */}
+            {estadoNome && (
+              <div className="w-full">
+                <Aviso estado={estadoNome} />
+              </div>
+            )}
           </form>
 
           <div className="flex flex-wrap gap-2">
@@ -331,7 +381,7 @@ function LinhaCliente({ cliente }: { cliente: ClienteAdmin }) {
                 disabled={enviandoLink || !cliente.owner_email}
                 className="cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 px-4 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-white dark:hover:bg-stone-800 transition-colors disabled:opacity-60"
               >
-                Reenviar link de senha
+                Gerar link de acesso
               </button>
             </form>
 
@@ -359,6 +409,9 @@ function LinhaCliente({ cliente }: { cliente: ClienteAdmin }) {
               {confirmandoExclusao ? "Cancelar exclusão" : "Excluir cliente"}
             </button>
           </div>
+
+          {estadoLink && <Aviso estado={estadoLink} />}
+          {estadoSusp && <Aviso estado={estadoSusp} />}
 
           {confirmandoExclusao && (
             <form
@@ -390,7 +443,7 @@ function LinhaCliente({ cliente }: { cliente: ClienteAdmin }) {
             </form>
           )}
 
-          {ultimoAviso && <Aviso estado={ultimoAviso} />}
+          {estadoExcluir && <Aviso estado={estadoExcluir} />}
         </div>
       )}
     </li>
