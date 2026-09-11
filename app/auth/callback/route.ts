@@ -5,6 +5,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { FLUXO_DE_EMAIL, FLUXO_OAUTH, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
  * Apaga a conta que o OAuth criou para alguém sem acesso.
@@ -21,6 +22,55 @@ async function descartarContaSemAcesso(userId: string) {
   } catch {
     // Nunca derruba o fluxo: a sessão já foi encerrada, que é o que importa.
   }
+}
+
+/**
+ * Este usuário tem bar ou cargo de admin? Decide a entrada e autoriza a faxina.
+ *
+ * A pergunta é respondida com a CHAVE DE SERVIÇO, que enxerga o banco inteiro
+ * sem depender de a sessão recém-criada já estar gravada nos cookies desta
+ * requisição.
+ *
+ * A versão anterior perguntava isso pela ótica RLS do próprio usuário. Só que
+ * as políticas de `bars` e `administradores` exigem o papel `authenticated` e
+ * `auth.uid()`, e logo depois do exchangeCodeForSession o token da sessão nova
+ * ainda não tinha sido aplicado a este cliente — as duas consultas voltavam
+ * vazias. Resultado: um dono LEGÍTIMO era tratado como intruso, recusado e,
+ * com a chave de serviço presente, APAGADO com o bar inteiro em cascata. Foi
+ * exatamente isso que apagou a conta de teste e o bar dela no login com Google.
+ *
+ * `podeApagar` só é verdadeiro quando a chave de serviço confirmou, sem
+ * ambiguidade, que a conta não tem nada. Sem a chave, ou diante de erro, a
+ * conta órfã permanece: recusar já protege; apagar por engano é irreversível.
+ */
+async function verificarAcesso(
+  userId: string,
+  sessao: SupabaseClient,
+): Promise<{ temAcesso: boolean; podeApagar: boolean }> {
+  if (serviceRoleConfigurado()) {
+    try {
+      const admin = createSupabaseAdminClient();
+      const [{ data: bar }, { data: cargo }] = await Promise.all([
+        admin.from("bars").select("id").eq("owner_id", userId).maybeSingle(),
+        admin.from("administradores").select("id").eq("user_id", userId).maybeSingle(),
+      ]);
+      const temAcesso = Boolean(bar || cargo);
+      return { temAcesso, podeApagar: !temAcesso };
+    } catch {
+      // Erro de rede não pode virar exclusão nem entrada indevida: recusa a
+      // entrada (a pessoa tenta de novo) e não apaga nada.
+      return { temAcesso: false, podeApagar: false };
+    }
+  }
+
+  // Sem chave de serviço não dá para afirmar nada com autoridade. Faz o melhor
+  // esforço pela ótica do usuário e NUNCA apaga — o pior caso vira uma recusa
+  // que a pessoa refaz, não uma conta destruída.
+  const [{ data: cargo }, { data: bar }] = await Promise.all([
+    sessao.from("administradores").select("id").eq("user_id", userId).maybeSingle(),
+    sessao.from("bars").select("id").eq("owner_id", userId).maybeSingle(),
+  ]);
+  return { temAcesso: Boolean(bar || cargo), podeApagar: false };
 }
 
 /**
@@ -138,16 +188,14 @@ export async function GET(request: NextRequest) {
      */
     const usuario = data.user;
     if (usuario) {
-      const [{ data: admin }, { data: bar }] = await Promise.all([
-        supabase.from("administradores").select("id").eq("user_id", usuario.id).maybeSingle(),
-        supabase.from("bars").select("id").eq("owner_id", usuario.id).maybeSingle(),
-      ]);
+      const { temAcesso, podeApagar } = await verificarAcesso(usuario.id, supabase);
 
-      if (!admin && !bar) {
+      if (!temAcesso) {
         await supabase.auth.signOut();
-        // Se o Supabase chegou a criar a conta, ela some junto: ninguém pediu
-        // para ficar com o e-mail de quem só clicou num botão.
-        await descartarContaSemAcesso(usuario.id);
+        // Só apaga quando a chave de serviço garantiu que a conta não tem bar
+        // nem cargo — ninguém pediu para ficar com o e-mail de quem só clicou
+        // num botão, mas apagar dono de verdade é o que não pode acontecer.
+        if (podeApagar) await descartarContaSemAcesso(usuario.id);
         return recusar("sem_acesso");
       }
     }
