@@ -67,9 +67,16 @@ html.dark {
     margin: 12mm;
   }
 
+  /* O tema escuro pinta html E body (ver acima, o overscroll do iOS). Na
+     impressão os dois têm que voltar ao branco — só o html não bastava: o
+     body continuava stone-950 e a folha saía preta, com o texto #111 em
+     cima. Foi assim que o fechamento do dia chegou ilegível no celular. */
   html,
-  html.dark {
+  html.dark,
+  body,
+  html.dark body {
     background: #ffffff !important;
+    color: #111111 !important;
     color-scheme: light;
   }
 

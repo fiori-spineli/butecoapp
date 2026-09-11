@@ -2,6 +2,7 @@ import Link from "next/link";
 import { LogoButeco } from "@/components/logo-buteco";
 import { TemaToggle } from "@/components/tema-toggle";
 import { FundoChopp } from "@/components/fundo-chopp";
+import { CtaDoTopo } from "@/components/cta-do-topo";
 
 /**
  * A porta da rua do ButecoApp.
@@ -138,12 +139,9 @@ export function Vitrine() {
               o endereço do /login e vai direto; quem está só olhando não é
               empurrado para uma porta que ainda não é dele.
             */}
-            <Link
-              href="/contato"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-800 px-4 text-xs font-bold text-white shadow-xs transition-colors"
-            >
-              Quero no meu bar
-            </Link>
+            {/* Só aparece depois que o botão da chamada some da tela — ver
+                components/cta-do-topo.tsx. */}
+            <CtaDoTopo alvo="cta-principal" />
           </div>
         </div>
       </header>
@@ -172,17 +170,24 @@ export function Vitrine() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link
+                id="cta-principal"
                 href="/contato"
                 className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-800 px-7 text-sm font-bold text-white shadow-lg shadow-amber-950/40 transition-all active:scale-95"
               >
                 Quero no meu bar
               </Link>
-              <Link
+              {/*
+                <a> comum, não <Link>: é rolagem dentro da própria página. O
+                Link do Next transformava o toque numa navegação suave que
+                refazia a página antes de rolar — no iPhone parecia que o
+                botão não fazia nada. A âncora nativa rola na hora.
+              */}
+              <a
                 href="#como-funciona"
                 className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl border border-stone-600 bg-stone-900/40 px-7 text-sm font-bold text-stone-100 backdrop-blur-xs transition-colors hover:border-amber-500 hover:text-amber-300"
               >
                 Como funciona
-              </Link>
+              </a>
             </div>
 
             <p className="mt-5 text-xs text-stone-400">
@@ -193,7 +198,7 @@ export function Vitrine() {
       </section>
 
       {/* ---------- Sobre o sistema ---------- */}
-      <section id="sobre" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <section id="sobre" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-16 sm:scroll-mt-20 sm:px-6 sm:py-20">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-start">
           <div>
             <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
@@ -286,7 +291,7 @@ export function Vitrine() {
       </section>
 
       {/* ---------- Como funciona ---------- */}
-      <section id="como-funciona" className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
+      <section id="como-funciona" className="mx-auto max-w-6xl scroll-mt-16 px-4 py-16 sm:scroll-mt-20 sm:px-6 sm:py-20">
         <h2 className="text-2xl sm:text-3xl font-black tracking-tight">Como funciona</h2>
         <p className="mt-3 max-w-2xl text-sm sm:text-base leading-relaxed text-stone-600 dark:text-stone-300">
           Do primeiro contato até a primeira mesa aberta são quatro passos, e o

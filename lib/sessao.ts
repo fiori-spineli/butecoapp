@@ -44,6 +44,11 @@ export function opcoesDeCookieDeSessao(
     secure: process.env.NODE_ENV === "production",
   };
 
+  // maxAge 0 é o @supabase/ssr apagando o cookie (signOut, sessão inválida).
+  // Não pode virar 30 dias: o cookie ficaria no aparelho, vazio, até expirar
+  // — inofensivo para a sessão, mas sujeira que engana quem for depurar.
+  if (opcoesOriginais.maxAge === 0) return opcoes;
+
   if (sessaoLonga) {
     opcoes.maxAge = TRINTA_DIAS_EM_SEGUNDOS;
   } else {

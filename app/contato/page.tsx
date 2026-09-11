@@ -39,10 +39,12 @@ export default function ContatoPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+        {/* text-balance: no celular o título quebra em duas linhas de qualquer
+            jeito; sem isso a segunda ficava só com "ar", que parece erro. */}
+        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-balance">
           Vamos colocar o seu bar no ar
         </h1>
-        <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-stone-600 dark:text-stone-300">
+        <p className="mt-4 max-w-2xl text-sm sm:text-base leading-relaxed text-pretty text-stone-600 dark:text-stone-300">
           O ButecoApp não tem cadastro automático. Você conta pra gente quem é e qual
           é o bar, a gente prepara o acesso e manda pra você o quanto antes. Quem cria
           a conta somos nós dois, o Samuel e o Lucas.

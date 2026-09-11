@@ -13,6 +13,8 @@ import {
   BotaoRemoverItem,
 } from "@/components/comanda/botoes-comanda";
 import { AcoesComanda } from "@/components/comanda/acoes-comanda";
+import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
+import { BotaoImprimir } from "@/components/botao-imprimir";
 import type { ComandaResumo, Produto } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -77,8 +79,41 @@ export default async function ComandaPage({
 
   const linkPublico = `${await origemDoApp()}/c/${comanda.token}`;
 
+  // A mesma folha que o cliente imprime pelo QR, com a hora da emissão — é o
+  // que o dono manda pelo WhatsApp quando alguém pede "me passa a conta".
+  const comprovante = {
+    barNome: bar.nome,
+    clienteNome: comanda.nome,
+    numeroMesa: comanda.numero_mesa,
+    status: comanda.status,
+    abertaEm: comanda.created_at,
+    fechadaEm: comanda.fechada_em,
+    itens: lancamentos.map((l) => ({
+      id: l.id as string,
+      nome:
+        ((l as { produtos?: { nome?: string } | null }).produtos?.nome ??
+          (l.descricao as string | null)) ||
+        "Item",
+      quantidade: l.quantidade as number,
+      valorUnitarioCentavos: l.valor_unitario_centavos as number,
+      criadoEm: l.created_at as string,
+    })),
+    pagamentos: pagamentos.map((p) => ({
+      id: p.id as string,
+      descricao: p.descricao as string | null,
+      valorCentavos: p.valor_centavos as number,
+      criadoEm: p.created_at as string,
+    })),
+    totalCentavos: comanda.total_centavos,
+    pagoCentavos: comanda.pago_centavos,
+    restanteCentavos: comanda.restante_centavos,
+    emitidoEm: new Date().toISOString(),
+  };
+
   return (
     <>
+      <ComprovanteComanda dados={comprovante} />
+
       {/* Cabeçalho */}
       <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
@@ -110,6 +145,7 @@ export default async function ComandaPage({
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <TemaToggle />
+          <BotaoImprimir apenasIcone rotulo="Imprimir ou salvar PDF da comanda" />
           <BotaoFecharConta
             clienteId={comanda.id}
             contaAberta={contaAberta}

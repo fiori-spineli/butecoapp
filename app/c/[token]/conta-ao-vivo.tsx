@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { createSupabaseAnonClient } from "@/lib/supabase/publico";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Miniatura } from "@/components/miniatura";
 import {
   formatarDataHora,
@@ -10,9 +9,21 @@ import {
   tempoRestanteComprovante,
 } from "@/lib/format";
 import { TempoAberto } from "@/components/tempo-aberto";
+import { BotaoImprimir } from "@/components/botao-imprimir";
+import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
 import type { ComandaPublica } from "@/lib/types";
 
-const INTERVALO_MS = 8000;
+/**
+ * Cadência da atualização ao vivo.
+ *
+ * Com a aba na frente, busca a cada 5 s — perto do "tempo real" que o cliente
+ * espera quando olha a tela logo depois de pedir, e barato: uma consulta por
+ * chave. Com a aba escondida (outro app, outra aba, tela apagada) não busca
+ * nada; ao voltar, busca na hora. Se a rede falhar, o intervalo dobra a cada
+ * erro até 1 min e a tela avisa — atualizar a página continua sendo a saída.
+ */
+const INTERVALO_MS = 5000;
+const INTERVALO_MAXIMO_MS = 60000;
 
 export function ContaAoVivo({
   token,
@@ -23,33 +34,65 @@ export function ContaAoVivo({
 }) {
   const [comanda, setComanda] = useState(inicial);
   const [expirou, setExpirou] = useState(false);
+  const [semConexao, setSemConexao] = useState(false);
+  const falhas = useRef(0);
 
   const buscar = useCallback(async () => {
-    const supabase = createSupabaseAnonClient();
-    const { data, error } = await supabase.rpc("comanda_publica", { p_token: token });
-    if (error) return;
-    if (!data) {
-      setExpirou(true);
-      return;
+    try {
+      const resposta = await fetch(`/api/comanda/${token}`, { cache: "no-store" });
+      if (!resposta.ok) throw new Error(String(resposta.status));
+      const dados = (await resposta.json()) as ComandaPublica | null;
+      falhas.current = 0;
+      setSemConexao(false);
+      if (!dados) {
+        setExpirou(true);
+        return;
+      }
+      setComanda(dados);
+    } catch {
+      falhas.current += 1;
+      // Uma falha isolada é normal em rede de bar; duas seguidas é aviso.
+      if (falhas.current >= 2) setSemConexao(true);
     }
-    setComanda(data as ComandaPublica);
   }, [token]);
 
   useEffect(() => {
     if (expirou) return;
 
-    const intervalo = setInterval(() => {
-      if (!document.hidden) void buscar();
-    }, INTERVALO_MS);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let ativo = true;
 
-    function aoVoltarPraAba() {
-      if (!document.hidden) void buscar();
+    function agendar() {
+      if (!ativo) return;
+      const espera = Math.min(INTERVALO_MS * 2 ** falhas.current, INTERVALO_MAXIMO_MS);
+      timer = setTimeout(async () => {
+        if (!document.hidden) await buscar();
+        agendar();
+      }, espera);
     }
 
-    document.addEventListener("visibilitychange", aoVoltarPraAba);
+    // Voltou para a aba (ou o iOS restaurou a página do histórico): busca já,
+    // sem esperar o próximo tique, e recomeça a contagem do zero.
+    function aoVoltar() {
+      if (document.hidden) return;
+      clearTimeout(timer);
+      falhas.current = 0;
+      void buscar().then(agendar);
+    }
+
+    agendar();
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
+    window.addEventListener("pageshow", aoVoltar);
+    window.addEventListener("online", aoVoltar);
+
     return () => {
-      clearInterval(intervalo);
-      document.removeEventListener("visibilitychange", aoVoltarPraAba);
+      ativo = false;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
+      window.removeEventListener("pageshow", aoVoltar);
+      window.removeEventListener("online", aoVoltar);
     };
   }, [buscar, expirou]);
 
@@ -60,6 +103,29 @@ export function ContaAoVivo({
 
   return (
     <div className="flex flex-col text-stone-900 dark:text-stone-100">
+      <ComprovanteComanda
+        dados={{
+          barNome: comanda.bar_nome,
+          clienteNome: comanda.cliente_nome,
+          numeroMesa: comanda.numero_mesa,
+          status: comanda.status,
+          abertaEm: comanda.aberta_em,
+          fechadaEm: comanda.fechada_em,
+          itens: comanda.itens.map((item) => ({
+            id: item.id,
+            nome: item.nome,
+            quantidade: item.quantidade,
+            valorUnitarioCentavos: item.valor_unitario_centavos,
+            criadoEm: item.criado_em,
+          })),
+          // A visão pública não detalha pagamentos, só o quanto já foi pago.
+          pagamentos: [],
+          totalCentavos: comanda.total_centavos,
+          pagoCentavos: comanda.pago_centavos,
+          restanteCentavos: comanda.restante_centavos,
+        }}
+      />
+
       {/* Cabeçalho do Cartão com Status */}
       <header className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/50 p-6 text-center">
         <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-700 dark:text-amber-500">
@@ -79,6 +145,11 @@ export function ContaAoVivo({
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Conta Paga
+            </span>
+          ) : semConexao ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 dark:bg-rose-950/80 border border-rose-300/60 dark:border-rose-800 px-3 py-1 text-[11px] font-bold text-rose-800 dark:text-rose-300">
+              <span className="size-2 rounded-full bg-rose-600 dark:bg-rose-400" aria-hidden />
+              Sem conexão — atualize a página
             </span>
           ) : (
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300/60 dark:border-emerald-800 px-3 py-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
@@ -167,6 +238,11 @@ export function ContaAoVivo({
 
       {/* Rodapé Informativo */}
       <footer className="p-6 pt-2 pb-6 text-center border-t border-stone-100 dark:border-stone-800/60">
+        {!expirou && (
+          <div className="mb-4 flex justify-center">
+            <BotaoImprimir rotulo={fechada ? "Salvar comprovante (PDF)" : "Salvar extrato (PDF)"} />
+          </div>
+        )}
         {expirou ? (
           <p className="text-xs leading-relaxed text-stone-500">
             Esta conta foi encerrada e o comprovante não está mais disponível.

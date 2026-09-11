@@ -81,7 +81,7 @@ export default async function LoginPage({
           <span className="inline-block px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-[11px] font-black text-amber-300 uppercase tracking-widest mb-4">
             Painel do Balcão
           </span>
-          <h1 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight text-white">
+          <h1 className="text-3xl lg:text-4xl font-black tracking-tight leading-tight text-balance text-white">
             Comandas ágeis e sem complicação.
           </h1>
           <p className="mt-4 text-sm lg:text-base leading-relaxed text-stone-300">

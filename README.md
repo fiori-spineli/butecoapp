@@ -124,6 +124,7 @@ app/
     produtos/            # catálogo + cadastro com foto
     fechamento/          # retrato do que está aberto, para imprimir ou salvar em PDF
   c/[token]/             # página pública do cliente (sem login)
+  api/comanda/[token]/   # a mesma comanda em JSON, para a atualização ao vivo dessa página
   auth/callback/         # destino dos links de e-mail e do Google
   api/produtos/imagem/   # normaliza a foto para .webp e sobe pro Storage
   api/fechamento/csv/    # backup do movimento do dia em planilha
@@ -146,7 +147,10 @@ next.config.ts           # cabeçalhos fixos de segurança
 - **Datas em UTC no banco**, convertidas para `America/Sao_Paulo` só na exibição.
 - **O cliente anônimo não tem SELECT em tabela nenhuma.** A página pública passa
   pela função `comanda_publica(token)` — assim ninguém consegue listar as
-  comandas abertas de todos os bares só por ter a chave anônima.
+  comandas abertas de todos os bares só por ter a chave anônima. A atualização
+  ao vivo dessa página busca `/api/comanda/[token]` a cada 5 s enquanto a aba
+  está visível (nada com a aba escondida; busca imediata ao voltar). O
+  navegador nunca fala com o Supabase direto — é o que a CSP exige.
 - **Preço vem sempre do catálogo no banco**, nunca do que o navegador mandou.
 - **A sessão do dono é `httpOnly`.** Nenhum componente cliente lê a sessão, e a
   mesma origem serve a página pública `/c/[token]` — deixar o token legível por
