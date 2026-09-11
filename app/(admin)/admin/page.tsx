@@ -4,6 +4,7 @@ import { checarSeEhAdmin } from "@/app/actions/admin";
 import { listarInteressados } from "@/app/actions/interessados";
 import { verificarStatusMFA } from "@/app/actions/mfa";
 import { AdminViewContainer } from "./admin-view-container";
+import type { ClienteAdmin } from "./gestao-clientes";
 
 export const dynamic = "force-dynamic";
 
@@ -19,17 +20,9 @@ interface TelemetriaAdmin {
     total_produtos: number;
     comandas_abertas: number;
     comandas_fechadas: number;
-    volume_total_centavos: number;
   };
-  bares: Array<{
-    id: string;
-    nome: string;
-    slug: string;
-    created_at: string;
-    owner_email: string;
-    total_produtos: number;
-    total_comandas: number;
-  }>;
+  // Ver gestao-clientes.tsx: o painel mede uso, nunca faturamento.
+  bares: ClienteAdmin[];
 }
 
 export default async function AdminPage() {

@@ -8,8 +8,8 @@ import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
 import { BotaoSair } from "@/components/botao-sair";
 import { AcoesAdmin } from "./acoes-admin";
-import { formatarReais, formatarDataHora } from "@/lib/format";
 import { FilaInteressados } from "./fila-interessados";
+import { GestaoClientes } from "./gestao-clientes";
 import type { StatusMFA } from "@/app/actions/mfa";
 import type { Interessado } from "@/lib/types";
 
@@ -139,7 +139,7 @@ export function AdminViewContainer({
                         <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                     </svg>
                     <h2 className="text-sm font-black uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                        Volume Geral do Ecossistema
+                        Uso da Plataforma
                     </h2>
                 </div>
 
@@ -159,10 +159,18 @@ export function AdminViewContainer({
                         valor={`${metricas.negocio.comandas_abertas} abertas`}
                         detalhe={`${metricas.negocio.comandas_fechadas} contas já encerradas`}
                     />
+                    {/* Existia aqui um card de "Volume Financeiro Registrado" com a
+                        soma dos pagamentos de TODOS os bares. Saiu: o faturamento e do
+                        dono do bar, nao nosso. O painel responde "esse cliente esta
+                        usando o sistema?", e para isso bastam as contagens. */}
                     <CardMetrica
-                        rotulo="Volume Financeiro Registrado"
-                        valor={formatarReais(metricas.negocio.volume_total_centavos)}
-                        detalhe="Total contábil transitado pelo app"
+                        rotulo="Produtos por Bar"
+                        valor={
+                            metricas.negocio.total_bares > 0
+                                ? (metricas.negocio.total_produtos / metricas.negocio.total_bares).toFixed(1)
+                                : "0"
+                        }
+                        detalhe="Média de itens cadastrados"
                     />
                 </div>
             </section>
@@ -180,60 +188,13 @@ export function AdminViewContainer({
                 <AcoesAdmin />
             </section>
 
-            {/* 4. SEÇÃO: AUDITORIA DE BARES */}
-            <section className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 overflow-hidden shadow-xs">
-                <div className="p-6 border-b border-stone-200 dark:border-stone-800 flex items-center justify-between">
-                    <div>
-                        <h3 className="text-base font-black text-stone-900 dark:text-stone-100">
-                            Lista de Bares Cadastrados
-                        </h3>
-                        <p className="text-xs text-stone-500 dark:text-stone-400 mt-0.5">
-                            Auditoria de estabelecimentos e proprietários
-                        </p>
-                    </div>
-                    <span className="text-xs font-bold rounded-lg bg-stone-100 dark:bg-stone-800 px-3 py-1 text-stone-600 dark:text-stone-300">
-                        {metricas.bares.length} bares
-                    </span>
-                </div>
+            {/* 4. GESTÃO DE CLIENTES
 
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                        <thead className="bg-stone-50 dark:bg-stone-800/60 text-stone-500 dark:text-stone-400 border-b border-stone-200 dark:border-stone-800 font-bold uppercase tracking-wider">
-                            <tr>
-                                <th className="px-6 py-3">Nome do Bar</th>
-                                <th className="px-6 py-3">E-mail do Dono</th>
-                                <th className="px-6 py-3">Produtos</th>
-                                <th className="px-6 py-3">Comandas</th>
-                                <th className="px-6 py-3">Criado em</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-stone-100 dark:divide-stone-800/80 text-stone-800 dark:text-stone-200">
-                            {metricas.bares.map((b: any) => (
-                                <tr key={b.id} className="hover:bg-stone-50 dark:hover:bg-stone-800/40 transition-colors">
-                                    <td className="px-6 py-4 font-bold text-sm">
-                                        {b.nome}
-                                        <span className="block text-[11px] font-mono font-normal text-stone-400 mt-0.5">
-                                            /{b.slug}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 font-mono text-stone-600 dark:text-stone-300">
-                                        {b.owner_email || "E-mail não vinculado"}
-                                    </td>
-                                    <td className="px-6 py-4 font-black tabular-nums">
-                                        {b.total_produtos}
-                                    </td>
-                                    <td className="px-6 py-4 font-black tabular-nums">
-                                        {b.total_comandas}
-                                    </td>
-                                    <td className="px-6 py-4 text-stone-500">
-                                        {formatarDataHora(b.created_at)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+                A tabela que existia aqui era so leitura: nome, dono, contagens.
+                Virou a tela onde a gestao acontece de fato -- criar, renomear,
+                suspender, reativar, reenviar link de senha e excluir. Ver
+                gestao-clientes.tsx. */}
+            <GestaoClientes clientes={metricas.bares ?? []} />
         </div>
     );
 }
