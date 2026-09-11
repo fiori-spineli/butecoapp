@@ -58,3 +58,15 @@ npm-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Rede de seguranca para segredo que cai aqui por engano.
+# Este repositorio e PUBLICO e o fluxo usa `git add -A`: um arquivo de codigo
+# de recuperacao ou chave salvo na pasta do projeto iria para o GitHub no
+# proximo commit, e no historico ele fica recuperavel mesmo depois de apagado.
+*recovery*code*
+*recovery-codes*
+*backup-codes*
+*.kdbx
+*.pem
+*.key
+*secret*.txt
