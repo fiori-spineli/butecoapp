@@ -119,7 +119,10 @@ const PASSOS = [
 
 export function Vitrine() {
   return (
-    <div className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
+    // <main> e nao <div>: o Lighthouse acusou "Document does not have a main
+    // landmark". Leitor de tela usa esse marco para pular direto ao conteudo
+    // em vez de percorrer o cabecalho a cada pagina.
+    <main className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
       {/* ---------- Topo ---------- */}
       <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100/85 dark:bg-stone-950/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
@@ -137,7 +140,7 @@ export function Vitrine() {
             */}
             <Link
               href="/contato"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 text-xs font-bold text-white shadow-xs transition-colors"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-800 px-4 text-xs font-bold text-white shadow-xs transition-colors"
             >
               Quero no meu bar
             </Link>
@@ -170,7 +173,7 @@ export function Vitrine() {
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/contato"
-                className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-500 px-7 text-sm font-bold text-white shadow-lg shadow-amber-950/40 transition-all active:scale-95"
+                className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-800 px-7 text-sm font-bold text-white shadow-lg shadow-amber-950/40 transition-all active:scale-95"
               >
                 Quero no meu bar
               </Link>
@@ -296,7 +299,7 @@ export function Vitrine() {
               key={passo.titulo}
               className="relative rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-xs"
             >
-              <span className="inline-flex size-9 items-center justify-center rounded-full bg-stone-900 dark:bg-amber-600 text-sm font-black text-white">
+              <span className="inline-flex size-9 items-center justify-center rounded-full bg-stone-900 dark:bg-amber-700 text-sm font-black text-white">
                 {indice + 1}
               </span>
               <h3 className="mt-4 text-sm font-black text-stone-900 dark:text-stone-100">
@@ -324,7 +327,7 @@ export function Vitrine() {
 
           <Link
             href="/contato"
-            className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-600 hover:bg-amber-500 px-8 text-sm font-bold text-white shadow-lg shadow-black/30 transition-all active:scale-95"
+            className="mt-8 inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-800 px-8 text-sm font-bold text-white shadow-lg shadow-black/30 transition-all active:scale-95"
           >
             Falar com a gente
           </Link>
@@ -365,6 +368,6 @@ export function Vitrine() {
           </div>
         </div>
       </footer>
-    </div>
+    </main>
   );
 }
