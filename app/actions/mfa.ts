@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { segundoFatorAindaVale } from "@/lib/mfa-frescor";
 
 export interface StatusMFA {
   temFatorAtivo: boolean;
@@ -23,9 +24,16 @@ export async function verificarStatusMFA(): Promise<StatusMFA> {
     return { temFatorAtivo: false, precisaVerificar: false };
   }
 
-  // Checa o nível da sessão atual
+  // Checa o nível da sessão atual — e há quanto tempo o código foi digitado.
+  //
+  // O nível aal2 não vence: uma vez elevado, a sessão segue elevada enquanto
+  // existir (e ela não tem expiração absoluta). Para um painel que exclui
+  // clientes, isso é frouxo demais. Ver lib/mfa-frescor.ts.
   const { data: nivelAal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  const precisaVerificar = nivelAal?.currentLevel !== "aal2";
+  const { data: sessao } = await supabase.auth.getSession();
+
+  const precisaVerificar =
+    nivelAal?.currentLevel !== "aal2" || !segundoFatorAindaVale(sessao.session?.access_token);
 
   return {
     temFatorAtivo: true,

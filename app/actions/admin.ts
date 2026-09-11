@@ -7,6 +7,7 @@ import {
   createSupabaseAdminClient,
   serviceRoleConfigurado,
 } from "@/lib/supabase/admin";
+import { segundoFatorAindaVale } from "@/lib/mfa-frescor";
 
 /**
  * "Essa pessoa é admin?" — usado só para ROTEAR.
@@ -62,7 +63,13 @@ export async function exigirAdminVerificado(): Promise<boolean> {
   if (!cargo) return false;
 
   const { data: nivel } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  return nivel?.currentLevel === "aal2";
+  if (nivel?.currentLevel !== "aal2") return false;
+
+  // Esconder a tela não basta: quem já esteve em aal2 poderia chamar as
+  // actions por POST para sempre. A janela do segundo fator vale aqui, que é
+  // onde o dado sai. Ver lib/mfa-frescor.ts.
+  const { data: sessao } = await supabase.auth.getSession();
+  return segundoFatorAindaVale(sessao.session?.access_token);
 }
 
 /**
