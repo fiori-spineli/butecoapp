@@ -124,7 +124,7 @@ export function Vitrine() {
     // em vez de percorrer o cabecalho a cada pagina.
     <main className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
       {/* ---------- Topo ---------- */}
-      <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100/85 dark:bg-stone-950/85 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100 dark:bg-stone-950 sm:bg-stone-100/85 sm:dark:bg-stone-950/85 sm:backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
 

@@ -18,6 +18,8 @@ const MENSAGEM_ERRO: Record<string, string> = {
     "Termine o login no mesmo navegador em que você começou — a verificação fica guardada nele.",
   google:
     "O login com Google ainda não está habilitado no servidor. Entre com e-mail e senha por enquanto.",
+  sem_acesso:
+    "Essa conta Google não tem acesso ao ButecoApp. O cadastro é criado por nós — peça o seu em /contato e a gente prepara.",
   link: "Não consegui validar esse link. Peça um novo.",
 };
 

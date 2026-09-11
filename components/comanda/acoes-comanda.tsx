@@ -35,7 +35,7 @@ export function AcoesComanda({
 
   return (
     <>
-      <div className="sticky bottom-0 z-20 flex flex-col gap-2.5 border-t border-stone-200 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 px-6 pt-4 pb-6 backdrop-blur-sm">
+      <div className="sticky bottom-0 z-20 flex flex-col gap-2.5 border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 pt-4 pb-6 sm:bg-white/95 sm:dark:bg-stone-900/95 sm:backdrop-blur-sm">
         {contaAberta ? (
           <button
             type="button"

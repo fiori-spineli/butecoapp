@@ -75,7 +75,7 @@ export function TabBar({ ativo }: { ativo: AbaAtiva }) {
   return (
     <nav
       aria-label="Navegação principal"
-      className="sticky bottom-0 z-20 flex border-t border-stone-200 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md transition-all sm:hidden"
+      className="sticky bottom-0 z-20 flex border-t border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 sm:hidden"
     >
       {abas.map((aba) => {
         const selecionada = aba.chave === ativo;

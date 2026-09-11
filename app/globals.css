@@ -13,7 +13,18 @@ html.dark {
 html,
 body {
   min-height: 100%;
-  scroll-behavior: smooth;
+}
+
+/*
+ * Rolagem suave só onde ela é pedida (âncora do "Como funciona"), só no
+ * elemento que de fato rola, e só para quem não pediu menos movimento.
+ * Estava em `html, body` ao mesmo tempo, o que faz o navegador manter duas
+ * caixas de rolagem candidatas na conta.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 /*

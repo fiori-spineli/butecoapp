@@ -4,6 +4,24 @@ import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { FLUXO_DE_EMAIL, FLUXO_OAUTH, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
+import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabase/admin";
+
+/**
+ * Apaga a conta que o OAuth criou para alguém sem acesso.
+ *
+ * Só é chamada quando já ficou provado que a conta não tem bar nem cargo de
+ * admin — ou seja, ninguém do backoffice a criou. Sem a chave de serviço o app
+ * apenas recusa a entrada e a conta órfã fica lá; recusar é o que protege, a
+ * faxina é só higiene.
+ */
+async function descartarContaSemAcesso(userId: string) {
+  if (!serviceRoleConfigurado()) return;
+  try {
+    await createSupabaseAdminClient().auth.admin.deleteUser(userId);
+  } catch {
+    // Nunca derruba o fluxo: a sessão já foi encerrada, que é o que importa.
+  }
+}
 
 /**
  * Destino do magic link. Aceita as duas formas que o Supabase pode enviar:
@@ -46,6 +64,26 @@ export async function GET(request: NextRequest) {
 
   const falha = (motivo: string) => responder(`/login?erro=${motivo}`);
 
+  /**
+   * Recusa a entrada e não deixa rastro de sessão.
+   *
+   * Não dá para reaproveitar `falha()` aqui: ela aplica os cookies coletados
+   * com opcoesDeCookieDeSessao, que força validade de 30 dias. O signOut grava
+   * cookie vazio com validade zero, e essa validade seria sobrescrita — o
+   * navegador ficaria um mês reapresentando um cookie morto a cada requisição.
+   * Aqui os cookies de sessão são apagados de verdade.
+   */
+  const recusar = (motivo: string) => {
+    const resposta = NextResponse.redirect(`${origin}/login?erro=${motivo}`);
+    for (const { name } of cookieStore.getAll()) {
+      if (name.startsWith("sb-")) resposta.cookies.delete(name);
+    }
+    for (const { name } of paraGravar) {
+      if (name.startsWith("sb-")) resposta.cookies.delete(name);
+    }
+    return resposta;
+  };
+
   // O próprio Supabase já rejeitou o token antes de nos redirecionar.
   // Acontece bastante quando um scanner de link do provedor de e-mail abre a
   // URL de verificação antes da pessoa e gasta o token de uso único.
@@ -77,10 +115,44 @@ export async function GET(request: NextRequest) {
   });
 
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) return responder(proximo);
-    // O verifier do PKCE vive num cookie do navegador que pediu o link.
-    return falha("navegador");
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      // O verifier do PKCE vive num cookie do navegador que pediu o link.
+      return falha("navegador");
+    }
+
+    /*
+     * A tranca do "Entrar com Google".
+     *
+     * O botão do Google abre a porta para QUALQUER conta Google do mundo —
+     * basta chegar em /login e clicar. O desligamento de cadastro no painel do
+     * Supabase deveria barrar conta nova por OAuth, mas a documentação não
+     * garante isso (o próprio Supabase vende um hook pago para exatamente este
+     * caso), e regra de negócio nossa não pode depender de um comportamento
+     * que eu não consigo provar.
+     *
+     * Então a regra mora aqui, onde ela é nossa: sessão só vale para quem já
+     * tem bar ou é admin. Conta só nasce no backoffice, feita por gente. Quem
+     * clicar no Google sem ter recebido acesso entra e sai no mesmo instante,
+     * com uma mensagem que diz o que fazer.
+     */
+    const usuario = data.user;
+    if (usuario) {
+      const [{ data: admin }, { data: bar }] = await Promise.all([
+        supabase.from("administradores").select("id").eq("user_id", usuario.id).maybeSingle(),
+        supabase.from("bars").select("id").eq("owner_id", usuario.id).maybeSingle(),
+      ]);
+
+      if (!admin && !bar) {
+        await supabase.auth.signOut();
+        // Se o Supabase chegou a criar a conta, ela some junto: ninguém pediu
+        // para ficar com o e-mail de quem só clicou num botão.
+        await descartarContaSemAcesso(usuario.id);
+        return recusar("sem_acesso");
+      }
+    }
+
+    return responder(proximo);
   }
 
   if (tokenHash && type) {

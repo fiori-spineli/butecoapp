@@ -60,7 +60,7 @@ export function BannerPwa() {
   return (
     <aside
       aria-label="Instalação do aplicativo"
-      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 backdrop-blur-md animate-in slide-in-from-top-2"
+      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 animate-in slide-in-from-top-2"
     >
       <div className="flex items-center gap-2 min-w-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-700 dark:text-amber-400" aria-hidden>
