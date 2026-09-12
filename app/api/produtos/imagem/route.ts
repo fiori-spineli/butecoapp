@@ -51,17 +51,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ erro: "arquivo ausente" }, { status: 400 });
   }
   if (arquivo.size > TAMANHO_MAXIMO) {
-    return NextResponse.json({ erro: "imagem muito grande" }, { status: 413 });
+    return NextResponse.json(
+      { erro: "Essa imagem é grande demais (máximo 6 MB). Tente outra foto." },
+      { status: 413 },
+    );
   }
 
+  // O teto de fotos é higiene, não é controle de segurança — então ele FALHA
+  // ABERTO. Na versão anterior um erro ao listar o Storage (uma instabilidade
+  // de rede, um timeout) derrubava o upload inteiro com 500, e o dono via
+  // "não consegui subir a foto" numa imagem perfeitamente boa; na segunda
+  // tentativa funcionava. Contar arquivos nunca pode impedir alguém de
+  // trabalhar: se a contagem falha, deixa passar.
   const { data: existentes, error: erroLista } = await supabase.storage
     .from(BUCKET)
     .list(bar.id, { limit: LIMITE_DE_FOTOS_POR_BAR });
-  if (erroLista) {
-    return NextResponse.json({ erro: "não consegui conferir as fotos do bar" }, { status: 500 });
-  }
-  if ((existentes?.length ?? 0) >= LIMITE_DE_FOTOS_POR_BAR) {
-    return NextResponse.json({ erro: "limite de fotos do bar atingido" }, { status: 429 });
+
+  if (!erroLista && (existentes?.length ?? 0) >= LIMITE_DE_FOTOS_POR_BAR) {
+    return NextResponse.json(
+      { erro: `Este bar já tem ${LIMITE_DE_FOTOS_POR_BAR} fotos guardadas. Apague alguma antes de subir outra.` },
+      { status: 429 },
+    );
   }
 
   let webp: Buffer;
@@ -72,7 +82,12 @@ export async function POST(request: NextRequest) {
       .webp({ quality: 78 })
       .toBuffer();
   } catch {
-    return NextResponse.json({ erro: "não consegui processar a imagem" }, { status: 422 });
+    // Formato que o servidor não decodifica (HEIC sem conversão, arquivo
+    // corrompido) ou imagem absurdamente grande em pixels.
+    return NextResponse.json(
+      { erro: "Não consegui ler essa imagem. Tente tirar a foto de novo ou escolher outra." },
+      { status: 422 },
+    );
   }
 
   const caminho = `${bar.id}/${crypto.randomUUID()}.webp`;
@@ -82,7 +97,10 @@ export async function POST(request: NextRequest) {
     .upload(caminho, webp, { contentType: "image/webp", upsert: false });
 
   if (erroUpload) {
-    return NextResponse.json({ erro: "não consegui subir a imagem" }, { status: 500 });
+    return NextResponse.json(
+      { erro: "O servidor de imagens não respondeu. Tente de novo em alguns segundos." },
+      { status: 500 },
+    );
   }
 
   const {

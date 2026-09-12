@@ -60,12 +60,23 @@ export function NovoProdutoForm() {
       corpo.append("arquivo", paraEnviar, "produto.webp");
 
       const resposta = await fetch("/api/produtos/imagem", { method: "POST", body: corpo });
-      if (!resposta.ok) throw new Error("Upload falhou");
+
+      // O servidor diz POR QUE recusou (tamanho, formato, indisponibilidade).
+      // Repetir esse motivo é a diferença entre a pessoa trocar a foto e a
+      // pessoa achar que o app está quebrado.
+      if (!resposta.ok) {
+        const { erro } = (await resposta.json().catch(() => ({}))) as { erro?: string };
+        throw new Error(erro || "Não consegui subir a foto. Tente de novo.");
+      }
 
       const { url } = (await resposta.json()) as { url: string };
       setImagemUrl(url);
-    } catch {
-      setErroFoto("Não consegui subir a foto. Você pode salvar o produto sem ela.");
+    } catch (e) {
+      setErroFoto(
+        e instanceof Error && e.message
+          ? `${e.message} Você pode salvar o produto sem ela.`
+          : "Não consegui subir a foto. Você pode salvar o produto sem ela.",
+      );
       setImagemUrl("");
     } finally {
       setSubindo(false);

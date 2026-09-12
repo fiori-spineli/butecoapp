@@ -11,16 +11,21 @@ export function LoadingButeco({
   atrasoMs?: number;
 }) {
   const [visivel, setVisivel] = useState(false);
+  // Texto fixo no primeiro render — o MESMO no servidor e no navegador.
+  // Sortear aqui daria hidratação divergente: o HTML viria com uma frase e o
+  // cliente montaria outra. O sorteio acontece no temporizador abaixo.
   const [frase, setFrase] = useState(fraseFixa ?? "Carregando...");
 
   useEffect(() => {
     // Só exibe se a requisição demorar mais do que o atraso estipulado
     const timerVisivel = setTimeout(() => {
       setVisivel(true);
+      // A primeira frase sai junto com a exibição, dentro do callback: não há
+      // render em cascata na montagem nem divergência com o HTML do servidor.
+      if (!fraseFixa) setFrase(fraseAleatoria());
     }, atrasoMs);
 
     if (!fraseFixa) {
-      setFrase(fraseAleatoria());
       const intervalo = setInterval(() => {
         setFrase(fraseAleatoria());
       }, 2000);

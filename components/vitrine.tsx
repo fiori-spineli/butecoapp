@@ -2,7 +2,7 @@ import Link from "next/link";
 import { LogoButeco } from "@/components/logo-buteco";
 import { TemaToggle } from "@/components/tema-toggle";
 import { FundoChopp } from "@/components/fundo-chopp";
-import { CtaDoTopo } from "@/components/cta-do-topo";
+import { CtaDoTopo, ID_CTA_PRINCIPAL } from "@/components/cta-do-topo";
 
 /**
  * A porta da rua do ButecoApp.
@@ -129,19 +129,21 @@ export function Vitrine() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            <TemaToggle />
+          {/*
+            Ordem proposital: o CTA cresce para a ESQUERDA do botão de tema.
+            O CTA aparece e some conforme a rolagem (ver cta-do-topo.tsx); se o
+            tema viesse depois dele, mudaria de lugar toda vez. Ancorado na
+            ponta, o tema fica parado e nunca aparece sozinho e solto no canto.
 
-            {/*
-              Não existe link para o login aqui, e isso é decisão de projeto.
-              Esta página é a vitrine: ela apresenta o sistema e oferece UM
-              caminho, que é falar com a gente. Quem já tem conta recebeu de nós
-              o endereço do /login e vai direto; quem está só olhando não é
-              empurrado para uma porta que ainda não é dele.
-            */}
-            {/* Só aparece depois que o botão da chamada some da tela — ver
-                components/cta-do-topo.tsx. */}
-            <CtaDoTopo alvo="cta-principal" />
+            Não existe link para o login aqui, e isso é decisão de projeto.
+            Esta página é a vitrine: ela apresenta o sistema e oferece UM
+            caminho, que é falar com a gente. Quem já tem conta recebeu de nós
+            o endereço do /login e vai direto; quem está só olhando não é
+            empurrado para uma porta que ainda não é dele.
+          */}
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <CtaDoTopo alvo={ID_CTA_PRINCIPAL} />
+            <TemaToggle />
           </div>
         </div>
       </header>
@@ -170,7 +172,7 @@ export function Vitrine() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link
-                id="cta-principal"
+                id={ID_CTA_PRINCIPAL}
                 href="/contato"
                 className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-800 px-7 text-sm font-bold text-white shadow-lg shadow-amber-950/40 transition-all active:scale-95"
               >

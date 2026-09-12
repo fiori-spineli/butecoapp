@@ -2,10 +2,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { exigirBar } from "@/lib/bar";
 import { formatarReais } from "@/lib/format";
-import { NavPrincipal, TabBar } from "@/components/tab-bar";
-import { TemaToggle } from "@/components/tema-toggle";
+import { TabBar } from "@/components/tab-bar";
+import { CabecalhoDono } from "@/components/cabecalho-dono";
 import type { Produto } from "@/lib/types";
-import { LogoButeco } from "@/components/logo-buteco";
+import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export const dynamic = "force-dynamic";
 
@@ -22,22 +22,12 @@ export default async function ProdutosPage() {
 
   return (
     <>
-      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <LogoButeco className="w-28 sm:w-40 md:w-52 lg:w-60 h-10 sm:h-14 md:h-18 lg:h-20" priority />
-          <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
-            <h1 className="text-lg md:text-2xl font-black text-stone-900 dark:text-stone-100">
-              Catálogo de Produtos
-            </h1>
-            <p className="text-xs text-stone-500 dark:text-stone-400">
-              {produtos.length} item{produtos.length === 1 ? "" : "s"} cadastrado{produtos.length === 1 ? "" : "s"}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <NavPrincipal ativo="produtos" />
-          <TemaToggle />
+      <AtualizacaoAoVivo />
+      <CabecalhoDono
+        ativo="produtos"
+        titulo="Catálogo de Produtos"
+        subtitulo={`${produtos.length} item${produtos.length === 1 ? "" : "s"} cadastrado${produtos.length === 1 ? "" : "s"}`}
+        acoes={
           <Link
             href="/produtos/novo"
             prefetch={true}
@@ -47,10 +37,11 @@ export default async function ProdutosPage() {
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
-            Novo produto
+            <span className="hidden lg:inline">Novo produto</span>
+            <span className="lg:hidden">Novo</span>
           </Link>
-        </div>
-      </header>
+        }
+      />
 
       <main className="flex-1 px-6 py-6">
         {produtos.length === 0 ? (

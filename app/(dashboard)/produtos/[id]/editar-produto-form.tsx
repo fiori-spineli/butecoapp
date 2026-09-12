@@ -53,15 +53,24 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
       corpo.append("arquivo", paraEnviar, "produto.webp");
 
       const res = await fetch("/api/produtos/imagem", { method: "POST", body: corpo });
-      if (!res.ok) throw new Error();
+
+      if (!res.ok) {
+        const { erro } = (await res.json().catch(() => ({}))) as { erro?: string };
+        throw new Error(erro || "");
+      }
 
       const { url } = (await res.json()) as { url: string };
       setImagemUrl(url);
       setPrevia(url);
-    } catch {
+    } catch (e) {
       // Antes isso era engolido em silêncio: a foto não subia e o dono ficava
-      // olhando para a foto antiga sem entender o que houve.
-      setErroFoto("Não consegui subir a foto. A anterior foi mantida.");
+      // olhando para a foto antiga sem entender o que houve. Agora o motivo
+      // vem do servidor quando ele soube dizer qual foi.
+      setErroFoto(
+        e instanceof Error && e.message
+          ? `${e.message} A foto anterior foi mantida.`
+          : "Não consegui subir a foto. A anterior foi mantida.",
+      );
     } finally {
       setSubindo(false);
     }

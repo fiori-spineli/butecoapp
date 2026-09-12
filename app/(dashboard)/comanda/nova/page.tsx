@@ -1,6 +1,5 @@
 import { VoltarPara } from "@/components/voltar";
 import { NovaComandaForm } from "./nova-comanda-form";
-import { TemaToggle } from "@/components/tema-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,6 @@ export default function NovaComandaPage() {
             Nova Comanda
           </h1>
         </div>
-        <TemaToggle />
       </header>
 
       <NovaComandaForm />

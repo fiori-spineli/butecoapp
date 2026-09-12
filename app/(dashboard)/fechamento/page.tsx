@@ -8,7 +8,6 @@ import {
 } from "@/lib/format";
 import { descreverDuracao } from "@/lib/tempo";
 import { VoltarPara } from "@/components/voltar";
-import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoImprimir } from "@/components/botao-imprimir";
 import type { ComandaResumo } from "@/lib/types";
 
@@ -104,7 +103,6 @@ export default async function FechamentoPage() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <TemaToggle />
           <Link
             href="/api/fechamento/csv"
             prefetch={false}

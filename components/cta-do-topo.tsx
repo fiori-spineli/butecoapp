@@ -13,15 +13,20 @@ import { useEffect, useState } from "react";
  *
  * `alvo` é o id do botão da chamada que ele observa.
  */
+/** O id do botão da chamada. Uma ponta só, para os dois lados não divergirem. */
+export const ID_CTA_PRINCIPAL = "cta-principal";
+
 export function CtaDoTopo({ alvo }: { alvo: string }) {
   const [visivel, setVisivel] = useState(false);
 
   useEffect(() => {
+    // O alvo é garantido: quem o renderiza é a mesma vitrine, com o id
+    // exportado aqui (ID_CTA_PRINCIPAL) — não há como as duas pontas
+    // divergirem sem quebrar o build. Por isso não existe caminho de
+    // emergência com setState aqui dentro: o observador é a única fonte do
+    // estado, e ele dispara sozinho na montagem com a situação atual.
     const botaoDaChamada = document.getElementById(alvo);
-    if (!botaoDaChamada || typeof IntersectionObserver === "undefined") {
-      setVisivel(true);
-      return;
-    }
+    if (!botaoDaChamada) return;
 
     const observador = new IntersectionObserver(
       ([entrada]) => setVisivel(!entrada.isIntersecting),

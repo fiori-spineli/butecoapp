@@ -47,6 +47,11 @@ export function EditorDeFoto({
   const [pronta, setPronta] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [giro, setGiro] = useState(0);
+  // Espelhar é diferente de girar: girar roda a foto, espelhar troca o lado.
+  // Rótulo escrito ao contrário, foto tirada pela câmera frontal, garrafa que
+  // ficou com a etiqueta para o lado errado — nada disso se resolve girando.
+  const [espelhoX, setEspelhoX] = useState(false);
+  const [espelhoY, setEspelhoY] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [deslocamento, setDeslocamento] = useState<Deslocamento>({ x: 0, y: 0 });
 
@@ -141,6 +146,9 @@ export function EditorDeFoto({
 
       ctx.translate(lado / 2 + dx * proporcao, lado / 2 + dy * proporcao);
       ctx.rotate((giro * Math.PI) / 180);
+      // Depois de transladar e girar: assim o arrasto continua seguindo o dedo
+      // na direção da tela, mesmo com a foto espelhada.
+      ctx.scale(espelhoX ? -1 : 1, espelhoY ? -1 : 1);
 
       const largura = img.naturalWidth * escala;
       const altura = img.naturalHeight * escala;
@@ -148,7 +156,7 @@ export function EditorDeFoto({
 
       ctx.restore();
     },
-    [deslocamento.x, deslocamento.y, escalaBase, giro, limiteDeArrasto, zoom],
+    [deslocamento.x, deslocamento.y, escalaBase, espelhoX, espelhoY, giro, limiteDeArrasto, zoom],
   );
 
   /** Redesenha o preview sempre que algum controle muda. */
@@ -247,6 +255,14 @@ export function EditorDeFoto({
     setGiro((atual) => (atual + 90) % 360);
   }
 
+  function espelharHorizontal() {
+    setEspelhoX((atual) => !atual);
+  }
+
+  function espelharVertical() {
+    setEspelhoY((atual) => !atual);
+  }
+
   function confirmar() {
     const img = imagemRef.current;
     if (!img) return;
@@ -312,17 +328,60 @@ export function EditorDeFoto({
           aria-label="Zoom da foto"
           className="flex-1 cursor-pointer accent-amber-700 dark:accent-amber-500 h-6"
         />
+      </div>
+
+      {/* Girar e espelhar em linha própria: no celular os três não cabiam ao
+          lado do zoom sem apertar o alvo de toque abaixo dos 44px. */}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={girar}
           aria-label="Girar a foto 90 graus"
-          className="cursor-pointer shrink-0 flex items-center gap-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2.5 text-xs font-bold text-stone-800 dark:text-stone-200 active:scale-95 transition-transform"
+          className="cursor-pointer flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 py-2.5 text-xs font-bold text-stone-800 dark:text-stone-200 active:scale-95 transition-transform"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <path d="M21 2v6h-6" />
             <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
           </svg>
           Girar
+        </button>
+
+        <button
+          type="button"
+          onClick={espelharHorizontal}
+          aria-pressed={espelhoX}
+          aria-label="Espelhar a foto na horizontal"
+          className={`cursor-pointer flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold active:scale-95 transition-transform ${
+            espelhoX
+              ? "border-amber-600 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300"
+              : "border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200"
+          }`}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 3v18" />
+            <path d="M8 7L4 12l4 5" />
+            <path d="M16 7l4 5-4 5" />
+          </svg>
+          Espelhar
+        </button>
+
+        <button
+          type="button"
+          onClick={espelharVertical}
+          aria-pressed={espelhoY}
+          aria-label="Virar a foto de cabeça para baixo"
+          className={`cursor-pointer flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold active:scale-95 transition-transform ${
+            espelhoY
+              ? "border-amber-600 dark:border-amber-500 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300"
+              : "border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-800 dark:text-stone-200"
+          }`}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 12h18" />
+            <path d="M7 8l5-4 5 4" />
+            <path d="M7 16l5 4 5-4" />
+          </svg>
+          Virar
         </button>
       </div>
 

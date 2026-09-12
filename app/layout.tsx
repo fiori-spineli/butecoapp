@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
+import { SCRIPT_TEMA } from "@/lib/tema";
 import { SpeedInsightsButeco } from "@/components/speed-insights-buteco";
 import { AnalyticsButeco } from "@/components/analytics-buteco";
 import "./globals.css";
@@ -28,6 +29,10 @@ export default async function RootLayout({
   return (
     <html lang="pt-BR">
       <body className="min-h-dvh bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100 antialiased">
+        {/* Antes de qualquer pixel: ver lib/tema.ts. Precisa ser síncrono e
+            vir primeiro, senão a página pinta clara e escurece depois. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+
         {children}
 
         {/* Ver components/speed-insights-buteco.tsx: mede tudo menos a

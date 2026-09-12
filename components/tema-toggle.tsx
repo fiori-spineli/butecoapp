@@ -1,40 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+import { aplicarTema } from "@/lib/tema";
+
+/**
+ * Botão de tema das telas PÚBLICAS (vitrine, contato, privacidade, login,
+ * comanda do cliente). Quem tem conta ajusta o tema em Ajustes do bar —
+ * ver components/seletor-de-tema.tsx.
+ *
+ * Quem aplica o tema salvo é o script do layout, antes da primeira pintura
+ * (lib/tema.ts). Este botão só alterna e lê o estado da própria classe do
+ * <html>, via useSyncExternalStore: assim ele nunca discorda do que está na
+ * tela, nem quando outro controle muda o tema na mesma página.
+ */
+
+function assinar(aoMudar: () => void) {
+  const observador = new MutationObserver(aoMudar);
+  observador.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["class"],
+  });
+  return () => observador.disconnect();
+}
+
+const lerDoDom = () => document.documentElement.classList.contains("dark");
+/** No servidor não há DOM; o script do layout corrige antes de aparecer. */
+const lerNoServidor = () => false;
 
 export function TemaToggle() {
-  const [escuro, setEscuro] = useState(false);
-
-  useEffect(() => {
-    const salvo = localStorage.getItem("buteco_tema");
-    const prefere = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const deveSerEscuro = salvo === "dark" || (!salvo && prefere);
-
-    if (deveSerEscuro) {
-      document.documentElement.classList.add("dark");
-      setEscuro(true);
-    } else {
-      document.documentElement.classList.remove("dark");
-      setEscuro(false);
-    }
-  }, []);
-
-  function alternar() {
-    if (escuro) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("buteco_tema", "light");
-      setEscuro(false);
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("buteco_tema", "dark");
-      setEscuro(true);
-    }
-  }
+  const escuro = useSyncExternalStore(assinar, lerDoDom, lerNoServidor);
 
   return (
     <button
       type="button"
-      onClick={alternar}
+      onClick={() => aplicarTema(escuro ? "claro" : "escuro")}
       aria-label="Alternar tema claro e escuro"
       className="cursor-pointer flex items-center gap-2 rounded-full border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 min-h-11 min-w-11 justify-center px-0 sm:px-4 py-2.5 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
     >

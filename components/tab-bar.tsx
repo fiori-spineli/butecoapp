@@ -122,7 +122,12 @@ export function NavPrincipal({ ativo }: { ativo: AbaAtiva }) {
             }`}
           >
             <Icone>{aba.icone}</Icone>
-            <span className="hidden md:inline">{aba.rotulo}</span>
+            {/* Rótulo só a partir de lg. Entre 768 e 1023 o cabeçalho ainda
+                carrega logo, navegação, a ação da página, Perfil e Sair: com
+                as três palavras escritas o conjunto não cabia e o botão da
+                página passava POR CIMA de "Relatórios". Ícone sozinho resolve
+                sem tirar nada da tela — e o alvo de toque continua o mesmo. */}
+            <span className="hidden lg:inline">{aba.rotulo}</span>
           </Link>
         );
       })}

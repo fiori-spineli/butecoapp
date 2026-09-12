@@ -1,9 +1,9 @@
 import { exigirBar } from "@/lib/bar";
 import { buscarRelatorioVendas } from "@/app/actions/relatorios";
 import { formatarReais, formatarDataHora } from "@/lib/format";
-import { NavPrincipal, TabBar } from "@/components/tab-bar";
-import { TemaToggle } from "@/components/tema-toggle";
-import { LogoButeco } from "@/components/logo-buteco";
+import { TabBar } from "@/components/tab-bar";
+import { CabecalhoDono } from "@/components/cabecalho-dono";
+import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export const dynamic = "force-dynamic";
 
@@ -31,24 +31,12 @@ export default async function RelatoriosPage() {
     return (
         <div className="flex flex-1 flex-col animate-in fade-in duration-150">
             {/* Cabeçalho */}
-            <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-                <div className="flex items-center gap-4">
-                    <LogoButeco className="w-28 sm:w-40 md:w-52 lg:w-60 h-10 sm:h-14 md:h-18 lg:h-20" priority />
-                    <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
-                        <h1 className="text-lg md:text-2xl font-black text-stone-900 dark:text-stone-100">
-                            Relatório de Vendas
-                        </h1>
-                        <p className="text-xs text-stone-500 dark:text-stone-400">
-                            Faturamento e histórico do bar
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-                    <NavPrincipal ativo="relatorios" />
-                    <TemaToggle />
-                </div>
-            </header>
+            <AtualizacaoAoVivo />
+            <CabecalhoDono
+                ativo="relatorios"
+                titulo="Relatório de Vendas"
+                subtitulo="Faturamento e histórico do bar"
+            />
 
             {/* Resumo Gerencial */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 border-b border-stone-200 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/40">

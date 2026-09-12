@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import { exigirBar } from "@/lib/bar";
 import { VoltarPara } from "@/components/voltar";
-import { TemaToggle } from "@/components/tema-toggle";
 import { EditarProdutoForm } from "./editar-produto-form";
 import type { Produto } from "@/lib/types";
 
@@ -33,7 +32,6 @@ export default async function EditarProdutoPage({
             Editar Produto
           </h1>
         </div>
-        <TemaToggle />
       </header>
 
       <EditarProdutoForm produto={produto as Produto} />

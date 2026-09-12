@@ -5,7 +5,6 @@ import { formatarDataHora, formatarMomento, formatarReais } from "@/lib/format";
 import { TempoAberto } from "@/components/tempo-aberto";
 import { origemDoApp } from "@/lib/url";
 import { VoltarPara } from "@/components/voltar";
-import { TemaToggle } from "@/components/tema-toggle";
 import { Miniatura } from "@/components/miniatura";
 import {
   BotaoDesfazerPagamento,
@@ -16,6 +15,7 @@ import { AcoesComanda } from "@/components/comanda/acoes-comanda";
 import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
 import { BotaoImprimir } from "@/components/botao-imprimir";
 import type { ComandaResumo, Produto } from "@/lib/types";
+import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +112,7 @@ export default async function ComandaPage({
 
   return (
     <>
+      <AtualizacaoAoVivo />
       <ComprovanteComanda dados={comprovante} />
 
       {/* Cabeçalho */}
@@ -144,7 +145,6 @@ export default async function ComandaPage({
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <TemaToggle />
           <BotaoImprimir apenasIcone rotulo="Imprimir ou salvar PDF da comanda" />
           <BotaoFecharConta
             clienteId={comanda.id}

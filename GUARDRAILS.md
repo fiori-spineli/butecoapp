@@ -161,6 +161,50 @@ continuou executável por `authenticated` por grant padrão.
 
 ---
 
+## 9. O app abre como página estática abre
+
+**Pedido do dono, 2026-09-11:** "tem que continuar rápido, como se fosse um
+arquivo HTML único: a pessoa clica e já reflete". É requisito, não desejo.
+
+**Regras:**
+
+- Nada que o usuário espera pode depender de ida ao servidor quando a resposta
+  já está no aparelho. Tema é o exemplo: fica em `localStorage` e é aplicado por
+  script síncrono **antes da primeira pintura** (`lib/tema.ts`) — guardar no
+  banco custaria uma espera antes de pintar.
+- Atualização automática roda **só com a aba à vista**, e busca na hora em que
+  ela volta (`components/atualizacao-ao-vivo.tsx`, `app/c/[token]`). Aba em
+  segundo plano não gasta rede, bateria nem servidor.
+- Para refazer dados, `router.refresh()` — nunca `location.reload()`: o
+  primeiro troca só a parte servidora e preserva modal aberto, texto digitado e
+  rolagem; o segundo joga fora o que a pessoa estava fazendo.
+- Funcionalidade nova não pode introduzir piscada nem pulo de layout. Se
+  introduziu, o conserto faz parte da mesma entrega.
+
+---
+
+## 10. Controle não muda de lugar entre telas
+
+**Incidente — 2026-09-11.** As três telas do dono montavam cada uma o seu
+cabeçalho, e o lado direito variava (Perfil e Sair numa, botão de novo produto
+noutra, nada na terceira). Como o cabeçalho distribuía o espaço entre as pontas,
+a navegação caía num x diferente em cada tela: trocar de aba movia os próprios
+botões debaixo do dedo.
+
+**Regras:**
+
+- Controle que existe em várias telas mora em **um componente só**
+  (`components/cabecalho-dono.tsx`), nunca copiado em cada página.
+- Posição de navegação não pode depender do conteúdo ao redor: coluna própria
+  numa grade (`1fr auto 1fr`), com as pontas truncando.
+- Elemento que aparece e some (CTA que surge ao rolar) não pode empurrar o
+  vizinho — reserva espaço ou fica ancorado na ponta.
+- **Verificação obrigatória:** medir `getBoundingClientRect().x` do controle nas
+  telas envolvidas, em pelo menos 1440, 1024, 768 e 390, e comparar os números.
+  "Parece igual" não conta.
+
+---
+
 ## Checklist antes de commitar
 
 1. `git status` — só o que eu pretendia mudar está aí?
@@ -170,3 +214,7 @@ continuou executável por `authenticated` por grant padrão.
 5. Se toca em auth/autorização: vale no servidor **e** no banco (seção 6).
 6. Se toca em dinheiro: existe constraint/trigger (seção 5).
 7. O comentário explica **por quê**, não o quê.
+8. Se mexeu em layout compartilhado: as posições foram **medidas** em 1440,
+   1024, 768 e 390 (seção 10).
+9. Se adicionou algo que roda sozinho: só com a aba à vista, e sem piscada
+   nem pulo de layout (seção 9).

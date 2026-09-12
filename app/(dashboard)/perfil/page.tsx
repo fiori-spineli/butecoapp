@@ -1,9 +1,9 @@
 import { exigirBar } from "@/lib/bar";
 import { VoltarPara } from "@/components/voltar";
-import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
 import { SenhaForm } from "./senha-form";
 import { MensagemQrForm } from "./mensagem-qr-form";
+import { SeletorDeTema } from "@/components/seletor-de-tema";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,6 @@ export default async function PerfilPage() {
           <VoltarPara href="/dashboard" />
           <LogoButeco className="w-24 sm:w-32 h-9 sm:h-10" />
         </div>
-        <TemaToggle />
       </header>
 
       <main className="flex-1 p-6 md:p-8 max-w-2xl w-full mx-auto">
@@ -42,6 +41,19 @@ export default async function PerfilPage() {
           </p>
 
           <SenhaForm />
+        </div>
+
+        <div className="mt-6 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
+            Aparência
+          </h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+            Escolha como o app aparece neste aparelho. O salão à noite pede tela escura;
+            o computador do caixa, de dia, costuma pedir clara — por isso a escolha vale
+            por aparelho, e não para a conta inteira.
+          </p>
+
+          <SeletorDeTema />
         </div>
 
         <div className="mt-6 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">

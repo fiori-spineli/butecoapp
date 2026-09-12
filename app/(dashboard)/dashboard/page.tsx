@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { exigirBar } from "@/lib/bar";
 import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
-import { NavPrincipal, TabBar } from "@/components/tab-bar";
-import { TemaToggle } from "@/components/tema-toggle";
-import { BotaoSair } from "@/components/botao-sair";
+import { TabBar } from "@/components/tab-bar";
+import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
 import type { ComandaResumo } from "@/lib/types";
-import { LogoButeco } from "@/components/logo-buteco";
+import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
@@ -50,29 +49,8 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
       {/* Topo */}
-      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-          <LogoButeco className="w-28 sm:w-40 md:w-52 lg:w-60 h-10 sm:h-14 md:h-18 lg:h-20" priority />
-          <div className="border-l border-stone-200 dark:border-stone-800 pl-4 hidden sm:block">
-            <h1 className="text-lg md:text-2xl font-black leading-tight text-stone-900 dark:text-stone-100">
-              {bar.nome}
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <NavPrincipal ativo="comandas" />
-          <TemaToggle />
-          <Link
-            href="/perfil"
-            prefetch={true}
-            className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 min-h-11 inline-flex items-center px-4 py-2.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
-          >
-            Perfil
-          </Link>
-          <BotaoSair />
-        </div>
-      </header>
+      <AtualizacaoAoVivo />
+      <CabecalhoDono ativo="comandas" titulo={bar.nome} />
       {/* Métricas */}
       <section
         aria-label="Métricas de hoje"

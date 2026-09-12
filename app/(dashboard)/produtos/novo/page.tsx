@@ -1,6 +1,5 @@
 import { VoltarPara } from "@/components/voltar";
 import { NovoProdutoForm } from "./novo-produto-form";
-import { TemaToggle } from "@/components/tema-toggle";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +13,6 @@ export default function NovoProdutoPage() {
             Novo Produto
           </h1>
         </div>
-        <TemaToggle />
       </header>
 
       <NovoProdutoForm />
