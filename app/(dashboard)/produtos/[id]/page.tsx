@@ -34,7 +34,12 @@ export default async function EditarProdutoPage({
         </div>
       </header>
 
-      <EditarProdutoForm produto={produto as Produto} />
+      {/* <main>: o Lighthouse acusou "Document does not have a main
+          landmark" nesta tela. Sem o marco, quem usa leitor de tela
+          percorre o cabeçalho inteiro antes de chegar ao conteúdo. */}
+      <main className="flex flex-1 flex-col">
+        <EditarProdutoForm produto={produto as Produto} />
+      </main>
     </>
   );
 }

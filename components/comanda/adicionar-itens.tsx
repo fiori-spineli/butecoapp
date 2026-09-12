@@ -163,7 +163,7 @@ export function AdicionarItens({
                     type="button"
                     onClick={() => ajustar(produto.id, 1)}
                     aria-label={`Adicionar um ${produto.nome}`}
-                    className="cursor-pointer size-9 rounded-lg border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-600 text-sm font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-500 flex items-center justify-center transition-colors"
+                    className="cursor-pointer size-9 rounded-lg border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-700 text-sm font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-600 flex items-center justify-center transition-colors"
                   >
                     +
                   </button>
@@ -219,7 +219,7 @@ export function AdicionarItens({
         type="button"
         onClick={enviar}
         disabled={enviando}
-        className="cursor-pointer mt-4 w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-5 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+        className="cursor-pointer mt-4 w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-5 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
       >
         {enviando ? (
           <LoadingButeco />

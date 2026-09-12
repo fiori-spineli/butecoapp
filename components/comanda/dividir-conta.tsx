@@ -161,7 +161,7 @@ export function DividirConta({
                 registrarPagamento(clienteId, porPessoa, `Parte paga (1 de ${pessoas} pessoas)`),
               )
             }
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
           >
             {processando ? <LoadingButeco /> : `Registrar 1 parte de ${formatarReais(porPessoa)}`}
           </button>
@@ -211,7 +211,7 @@ export function DividirConta({
                 return res;
               });
             }}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
           >
             {processando ? <LoadingButeco /> : "Registrar abatimento de valor"}
           </button>
@@ -266,7 +266,7 @@ export function DividirConta({
                       onClick={() =>
                         executar(() => registrarPagamentoDeItem(clienteId, item.id, 1))
                       }
-                      className="cursor-pointer shrink-0 rounded-xl border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="cursor-pointer shrink-0 rounded-xl border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       Pagar 1 un.
                     </button>

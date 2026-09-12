@@ -67,7 +67,7 @@ export function NovaSenhaForm() {
       <button
         type="submit"
         disabled={enviando}
-        className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-5 py-3.5 font-bold text-white shadow-xs transition-colors disabled:opacity-60 text-sm"
+        className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-5 py-3.5 font-bold text-white shadow-xs transition-colors disabled:opacity-60 text-sm"
       >
         {enviando ? <LoadingButeco /> : "Salvar e entrar no bar"}
       </button>

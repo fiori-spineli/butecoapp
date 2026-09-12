@@ -76,7 +76,7 @@ export function BannerPwa() {
         <button
           type="button"
           onClick={instalar}
-          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 min-h-11 px-3.5 py-2 font-bold text-white shadow-xs transition-colors"
+          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 min-h-11 px-3.5 py-2 font-bold text-white shadow-xs transition-colors"
         >
           {manual ? "Como instalar?" : "Instalar"}
         </button>

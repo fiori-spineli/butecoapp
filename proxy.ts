@@ -77,7 +77,15 @@ export async function proxy(request: NextRequest) {
     // "Invalid Refresh Token: Refresh Token Not Found".
     const codigo = (error as { code?: string }).code;
 
-    if (codigo === "refresh_token_not_found" || codigo === "refresh_token_already_used") {
+    // Só o token que NÃO EXISTE MAIS autoriza apagar o cookie.
+    //
+    // `refresh_token_already_used` era tratado igual, e é caso de CORRIDA: duas
+    // requisições da mesma aba renovam ao mesmo tempo, uma ganha e grava a
+    // sessão nova, a outra recebe "já usado". Apagar os cookies ali jogava
+    // fora a sessão que a primeira acabou de gravar — deslogando alguém que
+    // estava trabalhando. Com a tela se atualizando a cada 2 s (ver
+    // components/atualizacao-ao-vivo.tsx), essa corrida deixou de ser rara.
+    if (codigo === "refresh_token_not_found") {
       for (const { name } of request.cookies.getAll()) {
         if (name.startsWith("sb-")) response.cookies.delete(name);
       }

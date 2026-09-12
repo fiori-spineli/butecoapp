@@ -187,7 +187,7 @@ export default function PrivacidadePage() {
         <div className="mt-12 border-t border-stone-200 dark:border-stone-800 pt-6 text-center">
           <Link
             href="/contato"
-            className="cursor-pointer inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-6 text-xs font-bold text-white shadow-xs transition-colors"
+            className="cursor-pointer inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-6 text-xs font-bold text-white shadow-xs transition-colors"
           >
             Quero o ButecoApp no meu bar
           </Link>

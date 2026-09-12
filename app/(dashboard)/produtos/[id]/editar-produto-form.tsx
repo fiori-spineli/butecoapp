@@ -169,7 +169,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
         <button
           type="submit"
           disabled={enviando || subindo}
-          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 py-4 font-bold text-white shadow-xs"
+          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 py-4 font-bold text-white shadow-xs"
         >
           {enviando ? <LoadingButeco /> : "Salvar alterações"}
         </button>

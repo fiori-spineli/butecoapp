@@ -180,7 +180,7 @@ export function MfaGate({
         <button
           type="submit"
           disabled={carregando || codigo.length < 6}
-          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 py-3.5 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+          className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 py-3.5 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
         >
           {carregando ? <LoadingButeco fraseFixa="Verificando chave..." /> : "Liberar painel de admin"}
         </button>

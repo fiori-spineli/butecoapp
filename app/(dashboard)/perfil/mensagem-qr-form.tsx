@@ -131,7 +131,7 @@ export function MensagemQrForm({
         <button
           type="submit"
           disabled={salvando}
-          className="cursor-pointer min-h-11 flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-5 py-3 text-sm font-bold text-white shadow-xs active:scale-95 transition-transform disabled:opacity-60"
+          className="cursor-pointer min-h-11 flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-5 py-3 text-sm font-bold text-white shadow-xs active:scale-95 transition-transform disabled:opacity-60"
         >
           {salvando ? <LoadingButeco /> : "Salvar mensagem"}
         </button>

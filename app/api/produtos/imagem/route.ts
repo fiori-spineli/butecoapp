@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import sharp from "sharp";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { SESSAO_INDISPONIVEL, usuarioAtual } from "@/lib/supabase/usuario";
 
 const BUCKET = "produtos-imagens";
 
@@ -28,9 +29,13 @@ const LIMITE_DE_FOTOS_POR_BAR = 400;
 export async function POST(request: NextRequest) {
   const supabase = await createSupabaseServerClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // "Não verifiquei" não é "não autenticado": no primeiro caso a foto é boa e
+  // vale tentar de novo; no segundo não há o que tentar. Dizer 401 para os
+  // dois mandava o dono procurar problema na imagem.
+  const { user, indisponivel } = await usuarioAtual(supabase);
+  if (indisponivel) {
+    return NextResponse.json({ erro: SESSAO_INDISPONIVEL }, { status: 503 });
+  }
   if (!user) {
     return NextResponse.json({ erro: "não autenticado" }, { status: 401 });
   }

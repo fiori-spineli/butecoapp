@@ -56,7 +56,7 @@ export function NovaComandaForm() {
       <button
         type="submit"
         disabled={enviando}
-        className="cursor-pointer mt-auto w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-60"
+        className="cursor-pointer mt-auto w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 py-4 font-bold text-white shadow-xs transition-colors disabled:opacity-60"
       >
         {enviando ? <LoadingButeco /> : "Abrir comanda"}
       </button>

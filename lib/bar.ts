@@ -1,14 +1,22 @@
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { SESSAO_INDISPONIVEL, usuarioAtual } from "@/lib/supabase/usuario";
 import type { Bar } from "@/lib/types";
 
-/** Sessão + bar do dono logado. Redireciona para /login se não houver sessão. */
+/**
+ * Sessão + bar do dono logado. Manda para /login quem não tem sessão.
+ *
+ * Quem NÃO tem sessão e quem a gente não conseguiu verificar são casos
+ * diferentes (ver lib/supabase/usuario.ts). O segundo estoura, e aí o
+ * app/error.tsx oferece "tentar de novo" — antes ele caía no mesmo
+ * `redirect("/login")`, e uma instabilidade de dez segundos no provedor
+ * deslogava todo mundo que estivesse com a tela aberta.
+ */
 export async function contextoDoDono() {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, indisponivel } = await usuarioAtual(supabase);
 
+  if (indisponivel) throw new Error(SESSAO_INDISPONIVEL);
   if (!user) redirect("/login");
 
   const { data: bar } = await supabase

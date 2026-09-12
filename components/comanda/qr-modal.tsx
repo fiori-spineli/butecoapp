@@ -72,7 +72,7 @@ export function QRModal({
         <button
           type="button"
           onClick={compartilhar}
-          className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-3 text-xs md:text-sm font-bold text-white shadow-xs transition-colors flex items-center justify-center gap-2"
+          className="cursor-pointer rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 py-3 text-xs md:text-sm font-bold text-white shadow-xs transition-colors flex items-center justify-center gap-2"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
             <circle cx="18" cy="5" r="3" />

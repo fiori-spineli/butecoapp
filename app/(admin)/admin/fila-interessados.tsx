@@ -177,7 +177,7 @@ function CartaoInteressado({ interessado }: { interessado: Interessado }) {
           <button
             type="button"
             onClick={() => setAbrirCriacao((v) => !v)}
-            className="cursor-pointer min-h-11 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 text-xs font-bold text-white shadow-xs transition-colors"
+            className="cursor-pointer min-h-11 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 text-xs font-bold text-white shadow-xs transition-colors"
           >
             {abrirCriacao ? "Cancelar" : "Criar conta deste bar"}
           </button>

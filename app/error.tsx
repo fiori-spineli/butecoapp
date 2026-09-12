@@ -47,7 +47,7 @@ export default function PaginaDeErro({
         <button
           type="button"
           onClick={reset}
-          className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-6 text-sm font-bold text-white shadow-xs transition-all active:scale-95 cursor-pointer"
+          className="mt-7 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-6 text-sm font-bold text-white shadow-xs transition-all active:scale-95 cursor-pointer"
         >
           Tentar de novo
         </button>

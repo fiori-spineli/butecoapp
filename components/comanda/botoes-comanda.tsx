@@ -101,7 +101,7 @@ export function BotaoFecharConta({
                 type="button"
                 disabled={processando}
                 onClick={executarEncerramento}
-                className="cursor-pointer flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 py-2.5 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+                className="cursor-pointer flex-1 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 py-2.5 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50"
               >
                 {processando ? <LoadingButeco /> : "Confirmar e fechar"}
               </button>

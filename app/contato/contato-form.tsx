@@ -206,7 +206,7 @@ export function ContatoForm() {
       <button
         type="submit"
         disabled={enviando}
-        className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-600 dark:hover:bg-amber-500 px-4 py-4 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
+        className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 py-4 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
       >
         {enviando ? <LoadingButeco /> : "Enviar pedido"}
       </button>
