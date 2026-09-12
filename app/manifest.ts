@@ -14,19 +14,15 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#f5f5f4",
     theme_color: "#2b2a28",
+    // WebP primeiro, PNG logo atrás: o navegador escolhe o primeiro formato
+    // que entende. O PNG fica como garantia — instalação de PWA é o único
+    // lugar do app onde um formato não suportado não degrada, simplesmente
+    // não instala. O arquivo antigo tinha 842 KB e nem era 512x512.
     icons: [
-      {
-        src: "/buteco_logo_pwa.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/buteco_logo_pwa.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
-      },
+      { src: "/icone-512.webp", sizes: "512x512", type: "image/webp", purpose: "any" },
+      { src: "/icone-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icone-512.webp", sizes: "512x512", type: "image/webp", purpose: "maskable" },
+      { src: "/icone-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

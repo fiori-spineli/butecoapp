@@ -205,6 +205,33 @@ botões debaixo do dedo.
 
 ---
 
+## 11. Imagem é WebP, salvo exigência da plataforma
+
+**Incidente — 2026-09-11.** `public/` carregava 2,8 MB em PNG: a logo em duas
+versões de 733 KB e 597 KB e um ícone de PWA de 842 KB que nem era 512×512,
+mais cinco SVGs do template do Next que ninguém referenciava. Nada disso
+aparecia no navegador do usuário (o `next/image` converte na entrega), mas
+pesava no repositório, no build e no otimizador a cada deploy.
+
+**Regras:**
+
+- Toda imagem nasce e é guardada em **WebP** — foto de produto, logo, ícone.
+  A foto do produto já é convertida no navegador e reprocessada com `sharp` no
+  servidor (`app/api/produtos/imagem/route.ts`): o que entra no Storage é
+  sempre `.webp`, venha de onde vier.
+- **A exceção é escrita, não presumida**: `app/apple-icon.png` continua PNG
+  porque o `apple-touch-icon` do iOS não aceita outra coisa, e o manifesto do
+  PWA lista WebP **e** PNG, nessa ordem — o navegador pega o primeiro que
+  entende, e instalação é o único lugar onde formato não suportado não degrada,
+  simplesmente não instala.
+- Resolução tem teto: guardar mais pixels do que a tela pode mostrar é peso
+  morto. A logo aparece com no máximo 208px de CSS, então a origem tem 1024px
+  — o bastante para densidade 3×.
+- Arquivo sem referência sai do repositório. Se voltar a ser preciso, o
+  histórico do git tem.
+
+---
+
 ## Checklist antes de commitar
 
 1. `git status` — só o que eu pretendia mudar está aí?
@@ -218,3 +245,4 @@ botões debaixo do dedo.
    1024, 768 e 390 (seção 10).
 9. Se adicionou algo que roda sozinho: só com a aba à vista, e sem piscada
    nem pulo de layout (seção 9).
+10. Se adicionou imagem: está em WebP, com teto de resolução (seção 11).

@@ -11,7 +11,7 @@ export function LogoButeco({
     <div className={`relative ${className} shrink-0 transition-all`}>
       {/* Versão para o tema Claro */}
       <Image
-        src="/buteco_logo_clear.png"
+        src="/buteco_logo_clear.webp"
         alt="ButecoApp"
         fill
         priority={priority}
@@ -19,7 +19,7 @@ export function LogoButeco({
       />
       {/* Versão para o tema Noturno */}
       <Image
-        src="/buteco_logo.png"
+        src="/buteco_logo.webp"
         alt="ButecoApp"
         fill
         priority={priority}
