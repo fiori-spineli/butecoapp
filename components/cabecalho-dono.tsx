@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { LogoButeco } from "@/components/logo-buteco";
 import { BotaoSair } from "@/components/botao-sair";
 import { NavPrincipal, type AbaAtiva } from "@/components/tab-bar";
@@ -7,45 +8,54 @@ export function CabecalhoDono({
   ativo,
   titulo,
   subtitulo,
+  fotoUrl,
   acoes,
 }: {
   ativo: AbaAtiva;
-  titulo?: string; // Tornamos opcional se quiser esconder
+  titulo?: string;
   subtitulo?: string;
+  fotoUrl?: string | null;
   acoes?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-y-3 gap-x-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4 md:grid md:grid-cols-[auto_1fr_auto]">
+    <header className="flex flex-wrap items-center justify-between gap-y-3 gap-x-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-3.5 md:grid md:grid-cols-[auto_1fr_auto]">
       
+      {/* Lado Esquerdo: Logo do Buteco + Foto e Nome do Bar */}
       <div className="flex items-center gap-3 sm:gap-4">
-        <LogoButeco
-          className="w-28 sm:w-32 md:w-44 lg:w-48 h-10 sm:h-12 md:h-14 lg:h-16 shrink-0"
-          priority
-        />
+        <LogoButeco className="w-28 sm:w-36 h-9 sm:h-11 shrink-0" priority />
+
+        {fotoUrl && (
+          <div className="relative size-9 sm:size-10 rounded-full border border-amber-600/40 overflow-hidden shrink-0 shadow-xs">
+            <Image src={fotoUrl} alt="Logo do Bar" fill className="object-cover" />
+          </div>
+        )}
+
         {titulo && (
-            <div className="hidden min-w-0 border-l border-stone-200 dark:border-stone-800 pl-4 lg:block">
-            <h1 className="text-[clamp(1.125rem,2vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 wrap-break-word">
-                {titulo}
+          <div className="hidden min-w-0 border-l border-stone-200 dark:border-stone-800 pl-3.5 lg:block">
+            <h1 className="text-sm sm:text-base font-black leading-tight text-stone-900 dark:text-stone-100 truncate">
+              {titulo}
             </h1>
             {subtitulo && (
-                <p className="text-[clamp(0.7rem,1vw,0.75rem)] text-stone-500 dark:text-stone-400 mt-0.5 text-balance wrap-break-word">
+              <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-0.5 truncate">
                 {subtitulo}
-                </p>
+              </p>
             )}
-            </div>
+          </div>
         )}
       </div>
 
+      {/* Centro: Abas Principais */}
       <div className="flex justify-center w-full md:w-auto order-1 md:order-0 pt-2 md:pt-0">
         <NavPrincipal ativo={ativo} />
       </div>
 
+      {/* Lado Direito: Ações + Perfil + Sair */}
       <div className="flex shrink-0 items-center justify-end gap-2 sm:gap-3">
         {acoes}
         <Link
           href="/perfil"
           prefetch={true}
-          className="cursor-pointer rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 min-h-11 inline-flex items-center px-4 py-2 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+          className="cursor-pointer inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-4 sm:px-5 py-2.5 text-xs md:text-sm font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
         >
           Perfil
         </Link>

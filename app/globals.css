@@ -95,6 +95,51 @@ html.dark ::-webkit-scrollbar-thumb {
 }
 
 /* ==========================================================
+   SISTEMA DE ACESSIBILIDADE (FONTE, CONTRASTE E DALTONISMO)
+   ========================================================== */
+
+/* 1. Escala de Fonte */
+html[data-fonte="medio"] {
+  font-size: 110%;
+}
+html[data-fonte="grande"] {
+  font-size: 125%;
+}
+
+/* 2. Alto Contraste */
+html[data-contraste="alto"] {
+  --color-stone-200: #000000;
+  --color-stone-300: #000000;
+  --color-stone-400: #2b251f;
+  --color-stone-500: #1a1613;
+}
+html[data-contraste="alto"] .border,
+html[data-contraste="alto"] [class*="border-"] {
+  border-width: 2px !important;
+  border-color: currentColor !important;
+}
+
+/* 3. Daltonismo: Protanopia / Deuteranopia (Substitui Verde/Vermelho por Azul/Laranja vibrantes) */
+html[data-daltonico="protanopia"] .bg-emerald-500,
+html[data-daltonico="protanopia"] .bg-emerald-600,
+html[data-daltonico="protanopia"] .bg-emerald-700 {
+  background-color: #2563eb !important;
+}
+html[data-daltonico="protanopia"] .text-emerald-700,
+html[data-daltonico="protanopia"] .text-emerald-800 {
+  color: #1d4ed8 !important;
+}
+html[data-daltonico="protanopia"] .bg-rose-500,
+html[data-daltonico="protanopia"] .bg-rose-600,
+html[data-daltonico="protanopia"] .bg-rose-700 {
+  background-color: #ea580c !important;
+}
+html[data-daltonico="protanopia"] .text-rose-700,
+html[data-daltonico="protanopia"] .text-rose-800 {
+  color: #c2410c !important;
+}
+
+/* ==========================================================
    IMPRESSÃO — Fechamento do dia e comprovantes
    ========================================================== */
 @media print {

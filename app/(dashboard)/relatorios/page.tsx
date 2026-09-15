@@ -74,8 +74,7 @@ export default async function RelatoriosPage() {
             {/* Cabeçalho com o Botão de Imprimir/Exportar reincorporado */}
             <CabecalhoDono
                 ativo="relatorios"
-                titulo="Relatório de Vendas"
-                subtitulo="Faturamento e histórico do bar"
+                fotoUrl={bar.foto_url}
                 acoes={
                     <BotaoImprimir
                         nomeArquivo={`relatorio-${bar.slug}`}

@@ -1,25 +1,33 @@
 import { exigirBar } from "@/lib/bar";
 import { VoltarPara } from "@/components/voltar";
 import { LogoButeco } from "@/components/logo-buteco";
+import { TemaToggle } from "@/components/tema-toggle";
+import { BotaoSair } from "@/components/botao-sair";
 import { SenhaForm } from "./senha-form";
 import { MensagemQrForm } from "./mensagem-qr-form";
 import { BarConfigForm } from "./bar-config-form";
 import { SeletorDeTema } from "@/components/seletor-de-tema";
+import { AcessibilidadeForm } from "./acessibilidade-form";
+import { BarFotoForm } from "./bar-foto-form";
 
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
   const { supabase, bar } = await exigirBar();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
+      {/* Cabeçalho Unificado e Proporcional */}
+      <header className="flex items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-3.5">
+        <div className="flex min-w-0 shrink items-center gap-3 sm:gap-4">
           <VoltarPara href="/dashboard" />
-          <LogoButeco className="w-24 sm:w-32 h-9 sm:h-10" />
+          <LogoButeco className="w-28 sm:w-36 h-9 sm:h-11 shrink-0" priority />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <TemaToggle />
+          <BotaoSair />
         </div>
       </header>
 
@@ -33,44 +41,54 @@ export default async function PerfilPage() {
           </p>
         </div>
 
-        {/* Informações e Horários do Bar */}
+        {/* 1. Logotipo e Foto do Bar */}
+        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
+            Logotipo / Foto do Bar
+          </h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+            Esta imagem aparecerá no topo do sistema e nas comandas dos seus clientes.
+          </p>
+          <BarFotoForm fotoAtual={bar.foto_url} />
+        </div>
+
+        {/* 2. Dados do Bar */}
         <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Dados e Horário de Funcionamento
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Altere o nome do estabelecimento e defina o horário padrão de atendimento do seu bar.
-          </p>
           <BarConfigForm bar={bar as any} />
         </div>
 
+        {/* 3. Senha com botão preenchendo a largura total */}
         <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Cadastrar ou alterar senha fixa
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Com uma senha cadastrada você entra tanto pelo link no e-mail quanto digitando e-mail e senha.
-          </p>
           <SenhaForm />
         </div>
 
+        {/* 4. Acessibilidade */}
+        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
+            Acessibilidade e Legibilidade
+          </h2>
+          <AcessibilidadeForm />
+        </div>
+
+        {/* 5. Aparência e Tema */}
         <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Aparência
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Escolha como o app aparece neste aparelho.
-          </p>
           <SeletorDeTema />
         </div>
 
+        {/* 6. Mensagem QR */}
         <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Mensagem enviada com o QR Code
           </h2>
-          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Quando você compartilha a comanda pelo WhatsApp, este texto vai junto com o link.
-          </p>
           <MensagemQrForm mensagemAtual={bar.mensagem_qr} nomeDoBar={bar.nome} />
         </div>
       </main>

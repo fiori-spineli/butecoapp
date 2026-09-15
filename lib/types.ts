@@ -3,12 +3,17 @@ export type Bar = {
   owner_id: string;
   nome: string;
   slug: string;
-  /** Texto enviado junto ao link da comanda. Nulo = usar o padrão do app. */
   mensagem_qr: string | null;
   horario_abertura?: string;
   horario_fechamento?: string;
   telefone?: string | null;
   cidade?: string | null;
+  foto_url?: string | null;
+  acessibilidade?: {
+    tamanho_fonte?: "padrao" | "medio" | "grande";
+    alto_contraste?: boolean;
+    modo_daltonico?: "nenhum" | "protanopia" | "tritanopia";
+  };
   created_at: string;
 };
 
