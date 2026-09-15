@@ -317,13 +317,16 @@ export async function criarClienteDoPedido(
 }
 
 /** Cadastro manual completo feito pela página /admin/novo-bar */
-/** Cadastro manual completo feito pela página /admin/novo-bar */
 export async function criarClienteManual(
   _anterior: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
-  if (!serviceRoleConfigurado()) return SEM_CHAVE;
+  if (!(await exigirAdminVerificado())) {
+    return { ok: false, mensagem: "[Erro 403] Acesso negado. Valide o segundo fator de admin." };
+  }
+  if (!serviceRoleConfigurado()) {
+    return { ok: false, mensagem: "[Erro 500] Chave de serviço (service_role) ausente." };
+  }
 
   const nomeDoBar = String(formData.get("bar_nome") ?? "").trim();
   const nomeDono = String(formData.get("nome_dono") ?? "").trim();
@@ -331,14 +334,13 @@ export async function criarClienteManual(
   const senhaInformada = String(formData.get("senha") ?? "").trim();
   const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
 
-  if (nomeDoBar.length < 2) return { ok: false, mensagem: "Informe o nome do bar." };
-  if (problema === "formato") return { ok: false, mensagem: "Digite um e-mail válido." };
-  if (problema === "descartavel") return { ok: false, mensagem: MENSAGEM_DESCARTAVEL };
+  if (nomeDoBar.length < 2) return { ok: false, mensagem: "[Erro 400] O nome do bar deve ter ao menos 2 caracteres." };
+  if (problema === "formato") return { ok: false, mensagem: "[Erro 400] O formato do e-mail é inválido." };
+  if (problema === "descartavel") return { ok: false, mensagem: "[Erro 400] E-mails descartáveis/temporários não são permitidos." };
 
   const senhaFinal = senhaInformada || randomBytes(16).toString("base64url");
   const admin = createSupabaseAdminClient();
 
-  // Tenta criar o usuário
   let userId: string | null = null;
   const { data: criado, error: erroUsuario } = await admin.auth.admin.createUser({
     email,
@@ -355,7 +357,7 @@ export async function criarClienteManual(
   if (criado?.user) {
     userId = criado.user.id;
   } else {
-    // Se o usuário já existia no Auth (ex: foi importado do banco antigo), reaproveita a conta
+    // Detecta se o e-mail já existe para vincular ao bar
     const jaExiste =
       erroUsuario?.code === "email_exists" ||
       erroUsuario?.code === "user_already_exists" ||
@@ -367,7 +369,6 @@ export async function criarClienteManual(
 
       if (usuarioExistente) {
         userId = usuarioExistente.id;
-        // Atualiza a senha e os metadados do dono
         await admin.auth.admin.updateUserById(userId, {
           password: senhaFinal,
           user_metadata: {
@@ -383,12 +384,12 @@ export async function criarClienteManual(
     if (!userId) {
       return {
         ok: false,
-        mensagem: erroUsuario?.message || "Não foi possível criar o usuário. Verifique os dados.",
+        mensagem: `[Erro ${erroUsuario?.status || 500}] Falha ao registrar usuário: ${erroUsuario?.message || "Erro desconhecido no Auth"}`,
       };
     }
   }
 
-  // Cria o bar vinculado ao ID do dono
+  // Criação do estabelecimento
   const { data: barCriado, error: erroBar } = await admin
     .from("bars")
     .insert({
@@ -400,7 +401,10 @@ export async function criarClienteManual(
     .single();
 
   if (erroBar || !barCriado) {
-    return { ok: false, mensagem: "Usuário pronto, mas falhou ao criar o bar. Verifique o nome do estabelecimento." };
+    return {
+      ok: false,
+      mensagem: `[Erro 500] Usuário criado, mas falhou ao registrar o bar: ${erroBar?.message || "Erro de banco"}`,
+    };
   }
 
   const link = senhaInformada ? null : await gerarLinkDeSenha(email);

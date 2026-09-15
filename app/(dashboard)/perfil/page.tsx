@@ -1,7 +1,6 @@
 import { exigirBar } from "@/lib/bar";
 import { VoltarPara } from "@/components/voltar";
 import { LogoButeco } from "@/components/logo-buteco";
-import { AvatarBar } from "@/components/avatar-bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoSair } from "@/components/botao-sair";
 import { SenhaForm } from "./senha-form";
@@ -19,15 +18,11 @@ export default async function PerfilPage() {
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-      {/* Cabeçalho com Logo do Buteco + Avatar do Bar (com fallback de cerveja) */}
-      <header className="flex items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-3.5">
-        <div className="flex min-w-0 shrink items-center gap-3 sm:gap-4">
+      {/* Cabeçalho nivelado com o mesmo tamanho de logo de todo o sistema */}
+      <header className="flex items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 min-h-16">
+        <div className="flex items-center gap-3">
           <VoltarPara href="/dashboard" />
-          <LogoButeco className="w-28 sm:w-36 h-9 sm:h-11 shrink-0" priority />
-          <AvatarBar url={bar.foto_url} nome={bar.nome} tamanho={38} />
-          <span className="hidden sm:inline font-bold text-xs text-stone-600 dark:text-stone-300 truncate max-w-40">
-            {bar.nome}
-          </span>
+          <LogoButeco className="w-32 sm:w-36 h-10 sm:h-11 shrink-0" priority />
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">

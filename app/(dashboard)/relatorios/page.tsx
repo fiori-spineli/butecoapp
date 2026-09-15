@@ -70,17 +70,14 @@ export default async function RelatoriosPage() {
     return (
         <div className="flex flex-1 flex-col animate-in fade-in duration-150">
             <AtualizacaoAoVivo />
-            
+
             {/* Cabeçalho com o Botão de Imprimir/Exportar reincorporado */}
-            <CabecalhoDono
-                ativo="relatorios"
-                fotoUrl={bar.foto_url}
-                acoes={
-                    <BotaoImprimir
-                        nomeArquivo={`relatorio-${bar.slug}`}
-                        conteudoParaImprimir={conteudoRelatorio}
-                    />
-                }
+            <CabecalhoDono ativo="relatorios" fotoUrl={bar.foto_url} nomeBar={bar.nome} acoes={
+                <BotaoImprimir
+                    nomeArquivo={`relatorio-${bar.slug}`}
+                    conteudoParaImprimir={conteudoRelatorio}
+                />
+            }
             />
 
             {/* Resumo Gerencial */}
@@ -105,10 +102,10 @@ export default async function RelatoriosPage() {
             </section>
 
             {/* Modelos Estatísticos (Curva S, Sazonalidade e Horários de Pico) */}
-            <EstatisticasDashboard 
-                vendas={vendas} 
-                horarioAbertura={bar.horario_abertura} 
-                horarioFechamento={bar.horario_fechamento} 
+            <EstatisticasDashboard
+                vendas={vendas}
+                horarioAbertura={bar.horario_abertura}
+                horarioFechamento={bar.horario_fechamento}
             />
 
             {/* Conteúdo Principal (Ranking e Extrato Detalhado) */}

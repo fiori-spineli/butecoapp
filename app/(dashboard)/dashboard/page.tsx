@@ -47,7 +47,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
       <AtualizacaoAoVivo />
-      <CabecalhoDono ativo="comandas" titulo={bar.nome} />
+      <CabecalhoDono ativo="comandas" fotoUrl={bar.foto_url} nomeBar={bar.nome} />
 
       <main className="flex flex-1 flex-col">
         {/* Métricas de Hoje */}

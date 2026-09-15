@@ -122,69 +122,71 @@ html[data-contraste="alto"] [class*="border-"] {
    MODOS DALTÔNICOS CLÍNICOS E ACESSIBILIDADE VISUAL
    ========================================================== */
 
-/* 1. Deuteranopia (Dificuldade com verde - 6% dos homens)
-   Substitui Verde/Vermelho por Azul Royal e Laranja Fogo */
-html[data-daltonico="deuteranopia"] .bg-emerald-500,
-html[data-daltonico="deuteranopia"] .bg-emerald-600,
-html[data-daltonico="deuteranopia"] .bg-emerald-700 {
-  background-color: #2563eb !important;
-}
-html[data-daltonico="deuteranopia"] .text-emerald-700,
-html[data-daltonico="deuteranopia"] .text-emerald-400 {
-  color: #3b82f6 !important;
-}
-html[data-daltonico="deuteranopia"] .bg-rose-600,
-html[data-daltonico="deuteranopia"] .bg-rose-700 {
-  background-color: #ea580c !important;
-}
-html[data-daltonico="deuteranopia"] .text-rose-700,
-html[data-daltonico="deuteranopia"] .text-rose-400 {
-  color: #f97316 !important;
+html[data-contraste="alto"] {
+  font-weight: 500;
 }
 
-/* 2. Protanopia (Dificuldade com vermelho - 2% dos homens)
-   Substitui Verde/Vermelho por Azul Celeste e Amarelo Mostarda */
-html[data-daltonico="protanopia"] .bg-emerald-500,
-html[data-daltonico="protanopia"] .bg-emerald-600,
-html[data-daltonico="protanopia"] .bg-emerald-700 {
-  background-color: #0284c7 !important;
+/* Alto contraste no Tema Claro: Fundo 100% Branco, Textos e Bordas 100% Pretos */
+html[data-contraste="alto"]:not(.dark) {
+  --color-stone-50: #ffffff;
+  --color-stone-100: #ffffff;
+  --color-stone-200: #000000;
+  --color-stone-300: #000000;
+  --color-stone-400: #000000;
+  --color-stone-500: #000000;
+  --color-stone-600: #000000;
+  color: #000000 !important;
 }
-html[data-daltonico="protanopia"] .text-emerald-700,
-html[data-daltonico="protanopia"] .text-emerald-400 {
-  color: #38bdf8 !important;
-}
-html[data-daltonico="protanopia"] .bg-rose-600,
-html[data-daltonico="protanopia"] .bg-rose-700 {
-  background-color: #eab308 !important;
-}
-html[data-daltonico="protanopia"] .text-rose-700,
-html[data-daltonico="protanopia"] .text-rose-400 {
-  color: #fde047 !important;
+html[data-contraste="alto"]:not(.dark) input,
+html[data-contraste="alto"]:not(.dark) textarea,
+html[data-contraste="alto"]:not(.dark) select {
+  border-color: #000000 !important;
+  color: #000000 !important;
 }
 
-/* 3. Tritanopia (Dificuldade com azul/amarelo - Raro)
-   Substitui tons por Turquesa Escuro e Magenta Carmesim */
-html[data-daltonico="tritanopia"] .bg-emerald-500,
-html[data-daltonico="tritanopia"] .bg-emerald-600,
-html[data-daltonico="tritanopia"] .bg-emerald-700 {
-  background-color: #0d9488 !important;
+/* Alto contraste no Tema Escuro: Fundo Preto Absoluto, Textos e Bordas Branco Puro */
+html[data-contraste="alto"].dark {
+  --color-stone-50: #000000;
+  --color-stone-100: #000000;
+  --color-stone-200: #ffffff;
+  --color-stone-300: #ffffff;
+  --color-stone-400: #ffffff;
+  --color-stone-500: #ffffff;
+  --color-stone-600: #ffffff;
+  color: #ffffff !important;
 }
-html[data-daltonico="tritanopia"] .text-emerald-700,
-html[data-daltonico="tritanopia"] .text-emerald-400 {
-  color: #14b8a6 !important;
-}
-html[data-daltonico="tritanopia"] .bg-rose-600,
-html[data-daltonico="tritanopia"] .bg-rose-700 {
-  background-color: #e11d48 !important;
-}
-html[data-daltonico="tritanopia"] .text-rose-700,
-html[data-daltonico="tritanopia"] .text-rose-400 {
-  color: #fb7185 !important;
+html[data-contraste="alto"].dark input,
+html[data-contraste="alto"].dark textarea,
+html[data-contraste="alto"].dark select {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
 }
 
-/* 4. Acromatopsia / Monocromático (Ausência total de percepção de cor) */
+html[data-contraste="alto"] [class*="border"] {
+  border-width: 2px !important;
+}
+
+/* ==========================================================
+   ACESSIBILIDADE: MODOS DALTÔNICOS UNIVERSAIS
+   ========================================================== */
+/* Deuteranopia (Verde fraco) */
+html[data-daltonico="deuteranopia"] {
+  filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="f"><feColorMatrix type="matrix" values="0.625,0.375,0,0,0 0.7,0.3,0,0,0 0,0.3,0.7,0,0 0,0,0,1,0"/></filter></svg>#f');
+}
+
+/* Protanopia (Vermelho fraco) */
+html[data-daltonico="protanopia"] {
+  filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="f"><feColorMatrix type="matrix" values="0.567,0.433,0,0,0 0.558,0.442,0,0,0 0,0.242,0.758,0,0 0,0,0,1,0"/></filter></svg>#f');
+}
+
+/* Tritanopia (Azul/Amarelo) */
+html[data-daltonico="tritanopia"] {
+  filter: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"><filter id="f"><feColorMatrix type="matrix" values="0.95,0.05,0,0,0 0,0.433,0.567,0,0 0,0.475,0.525,0,0 0,0,0,1,0"/></filter></svg>#f');
+}
+
+/* Monocromático (Ausência total de cores) */
 html[data-daltonico="monocromatico"] {
-  filter: grayscale(100%);
+  filter: grayscale(100%) contrast(110%);
 }
 
 /* ==========================================================

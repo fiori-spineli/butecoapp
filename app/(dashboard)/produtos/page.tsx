@@ -22,9 +22,7 @@ export default async function ProdutosPage() {
   return (
     <>
       <AtualizacaoAoVivo />
-      <CabecalhoDono
-        ativo="produtos"
-        acoes={
+      <CabecalhoDono ativo="produtos" fotoUrl={bar.foto_url} nomeBar={bar.nome} acoes={
           <Link
             href="/produtos/novo"
             prefetch={true}
