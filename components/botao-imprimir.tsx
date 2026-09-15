@@ -150,7 +150,7 @@ export function BotaoImprimir({
       {modalAberto &&
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="relative flex h-full sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] w-full max-w-3xl flex-col sm:rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
+            <div className="relative flex h-full sm:h-auto max-h-dvh sm:max-h-[92dvh] w-full max-w-3xl flex-col sm:rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
               
               <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
                 <div>

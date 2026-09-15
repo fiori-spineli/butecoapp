@@ -121,21 +121,25 @@ export default async function ComandaPage({
       <AtualizacaoAoVivo />
       <ComprovanteComanda dados={comprovante} />
 
-      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
-          <VoltarPara href="/dashboard" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg md:text-xl font-black text-stone-900 dark:text-stone-100">
+      {/* Cabeçalho Líquido da Comanda */}
+      <header className="flex flex-wrap items-start sm:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-4">
+        
+        <div className="flex items-start sm:items-center gap-3 w-full md:w-auto flex-1">
+          <div className="mt-1 sm:mt-0">
+            <VoltarPara href="/dashboard" />
+          </div>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-[clamp(1.125rem,4vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 text-balance break-words">
                 {comanda.nome}
               </h1>
               {comanda.numero_mesa && (
-                <span className="rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 text-xs font-semibold text-stone-600 dark:text-stone-300">
+                <span className="rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 text-[clamp(0.65rem,2vw,0.75rem)] font-semibold text-stone-600 dark:text-stone-300 whitespace-nowrap">
                   Mesa {comanda.numero_mesa}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500">
+            <p className="text-[clamp(0.65rem,2vw,0.7rem)] text-stone-400 dark:text-stone-500 mt-1">
               Aberta em {formatarDataHora(comanda.created_at)}
               {contaAberta ? (
                 <>
@@ -149,7 +153,8 @@ export default async function ComandaPage({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+        {/* Botões fluidos: Se faltar espaço, eles descem cobrindo 100% da tela */}
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3 w-full md:w-auto justify-end border-t md:border-t-0 border-stone-100 dark:border-stone-800/60 pt-3 md:pt-0">
           <BotaoImprimir apenasIcone rotulo="Imprimir ou salvar PDF da comanda" />
           <BotaoFecharConta
             clienteId={comanda.id}

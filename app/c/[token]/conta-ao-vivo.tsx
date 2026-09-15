@@ -173,25 +173,26 @@ export function ContaAoVivo({
         </div>
       )}
 
-      {/* Topo da Comanda */}
-      <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
+      {/* Topo da Comanda Líquido e Sem Truncar */}
+      <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          
+          <div className="flex-1">
+            <span className="block text-[clamp(0.6rem,2.5vw,0.7rem)] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 mb-1 text-balance wrap-break-word">
               {dados.bar_nome}
             </span>
-            <h2 className="text-xl font-black tracking-tight mt-0.5">
+            <h2 className="text-[clamp(1.25rem,5vw,1.75rem)] font-black tracking-tight leading-tight text-stone-900 dark:text-stone-100 text-balance wrap-break-word">
               {dados.cliente_nome}
             </h2>
             {dados.numero_mesa && (
-              <span className="mt-1.5 inline-block rounded-md bg-stone-200/70 dark:bg-stone-700 px-2.5 py-0.5 text-xs font-bold text-stone-700 dark:text-stone-200">
+              <span className="mt-2 inline-block rounded-md bg-stone-200/70 dark:bg-stone-700 px-2.5 py-1 text-xs font-bold text-stone-700 dark:text-stone-200">
                 Mesa {dados.numero_mesa}
               </span>
             )}
           </div>
 
           <span
-            className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+            className={`self-start sm:self-auto rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wider whitespace-nowrap shadow-sm ${
               contaAberta
                 ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
                 : "bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
