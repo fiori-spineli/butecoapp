@@ -130,7 +130,7 @@ export default async function ComandaPage({
           </div>
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[clamp(1.125rem,4vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 text-balance break-words">
+              <h1 className="text-[clamp(1.125rem,4vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 text-balance wrap-break-word">
                 {comanda.nome}
               </h1>
               {comanda.numero_mesa && (

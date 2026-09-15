@@ -66,6 +66,8 @@ export type Produto = {
   nome: string;
   preco_centavos: number;
   imagem_url: string | null;
+  categoria: 'comida' | 'bebida' | 'entretenimento' | 'servico' | 'outros';
+  estoque_atual: number;
   created_at: string;
 };
 
