@@ -1,6 +1,6 @@
 import Link from "next/link";
-import Image from "next/image";
 import { LogoButeco } from "@/components/logo-buteco";
+import { AvatarBar } from "@/components/avatar-bar";
 import { BotaoSair } from "@/components/botao-sair";
 import { NavPrincipal, type AbaAtiva } from "@/components/tab-bar";
 
@@ -20,15 +20,10 @@ export function CabecalhoDono({
   return (
     <header className="flex flex-wrap items-center justify-between gap-y-3 gap-x-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-3.5 md:grid md:grid-cols-[auto_1fr_auto]">
       
-      {/* Lado Esquerdo: Logo do Buteco + Foto e Nome do Bar */}
+      {/* Lado Esquerdo: Logo do Buteco + Avatar do Bar */}
       <div className="flex items-center gap-3 sm:gap-4">
         <LogoButeco className="w-28 sm:w-36 h-9 sm:h-11 shrink-0" priority />
-
-        {fotoUrl && (
-          <div className="relative size-9 sm:size-10 rounded-full border border-amber-600/40 overflow-hidden shrink-0 shadow-xs">
-            <Image src={fotoUrl} alt="Logo do Bar" fill className="object-cover" />
-          </div>
-        )}
+        <AvatarBar url={fotoUrl} nome={titulo} tamanho={38} />
 
         {titulo && (
           <div className="hidden min-w-0 border-l border-stone-200 dark:border-stone-800 pl-3.5 lg:block">

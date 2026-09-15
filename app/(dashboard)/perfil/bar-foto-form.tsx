@@ -33,22 +33,32 @@ export function BarFotoForm({ fotoAtual }: { fotoAtual?: string | null }) {
 
   return (
     <div className="flex items-center gap-5">
-      <div className="relative size-20 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 overflow-hidden flex items-center justify-center shrink-0">
+      {/* Box de Prévia: Mostra a foto ou a caneca dourada padrão */}
+      <div className="relative size-20 rounded-2xl border border-amber-600/40 overflow-hidden flex items-center justify-center shrink-0 shadow-xs bg-linear-to-br from-amber-600 to-amber-800">
         {previa ? (
           <Image src={previa} alt="Foto do Bar" fill className="object-cover" />
         ) : (
-          <span className="text-xs text-stone-400 font-bold">Sem foto</span>
+          <svg
+            width="36"
+            height="36"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-white/90"
+            aria-hidden
+          >
+            <path d="M17 11h1a3 3 0 0 1 0 6h-1" />
+            <path d="M9 2v3M13 2v3" />
+            <path d="M5 5h12v12a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4Z" />
+          </svg>
         )}
       </div>
 
       <div className="flex-1">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          onChange={aoSelecionar}
-          className="hidden"
-        />
+        <input ref={inputRef} type="file" accept="image/*" onChange={aoSelecionar} className="hidden" />
         <button
           type="button"
           disabled={subindo}
