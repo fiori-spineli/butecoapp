@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { exigirBar } from "@/lib/bar";
 import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 
+type RetornoRpc = {
+  ok: boolean;
+  mensagem?: string;
+  pedidos?: number;
+};
+
 export async function enviarPedidoCliente(
   token: string,
   itens: { produto_id: string; quantidade: number }[]
@@ -18,12 +24,14 @@ export async function enviarPedidoCliente(
     p_itens: itens,
   });
 
-  if (error || !data?.ok) {
-    return { ok: false, mensagem: data?.mensagem || "Não foi possível enviar o pedido." };
+  const res = data as RetornoRpc | null;
+
+  if (error || !res?.ok) {
+    return { ok: false, mensagem: res?.mensagem || "Não foi possível enviar o pedido." };
   }
 
   revalidatePath(`/c/${token}`);
-  return { ok: true, pedidos: data.pedidos };
+  return { ok: true, pedidos: res.pedidos };
 }
 
 export async function confirmarEntrega(pedidoId: string, clienteId: string) {
@@ -33,8 +41,10 @@ export async function confirmarEntrega(pedidoId: string, clienteId: string) {
     p_pedido_id: pedidoId,
   });
 
-  if (error || !data?.ok) {
-    return { ok: false, mensagem: data?.mensagem || "Falha ao confirmar entrega." };
+  const res = data as RetornoRpc | null;
+
+  if (error || !res?.ok) {
+    return { ok: false, mensagem: res?.mensagem || "Falha ao confirmar entrega." };
   }
 
   revalidatePath(`/comanda/${clienteId}`);
@@ -49,8 +59,10 @@ export async function recusarPedido(pedidoId: string, clienteId: string) {
     p_pedido_id: pedidoId,
   });
 
-  if (error || !data?.ok) {
-    return { ok: false, mensagem: data?.mensagem || "Falha ao recusar pedido." };
+  const res = data as RetornoRpc | null;
+
+  if (error || !res?.ok) {
+    return { ok: false, mensagem: res?.mensagem || "Falha ao recusar pedido." };
   }
 
   revalidatePath(`/comanda/${clienteId}`);

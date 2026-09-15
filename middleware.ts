@@ -1,11 +1,13 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Rotas estáticas, ícones e assets nunca são bloqueados
+  // 1. Arquivos estáticos e recursos não passam por validação
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/comanda") ||
@@ -19,7 +21,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Rotas PÚBLICAS: A comanda do cliente (/c/...), contato, vitrine e auth nunca pedem login
+  // 2. Rotas PÚBLICAS liberadas para clientes e visitantes
   if (
     pathname.startsWith("/c/") ||
     pathname === "/" ||
@@ -31,7 +33,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 3. Rotas privadas (Dashboard, Admin, Comanda do Dono, Produtos, Relatórios)
+  // 3. Rotas privadas (requerem login do dono/admin)
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -46,7 +48,7 @@ export async function middleware(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value, options }) => {
           request.cookies.set(name, value);
-          response.cookies.set(name, value, options);
+          response.cookies.set(name, value, options as CookieOptions);
         });
       },
     },
@@ -56,7 +58,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Se não estiver autenticado e tentar acessar o painel privado, redireciona para o login
   if (!user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
