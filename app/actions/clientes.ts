@@ -315,3 +315,75 @@ export async function criarClienteDoPedido(
       : `Bar "${nomeDoBar}" criado, mas não consegui gerar o link. Use "Gerar link de acesso" na lista de clientes.`,
   };
 }
+
+/** Cadastro manual completo feito pela página /admin/novo-bar */
+export async function criarClienteManual(
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  if (!(await exigirAdminVerificado())) return NEGADO;
+  if (!serviceRoleConfigurado()) return SEM_CHAVE;
+
+  const nomeDoBar = String(formData.get("bar_nome") ?? "").trim();
+  const nomeDono = String(formData.get("nome_dono") ?? "").trim();
+  const telefone = String(formData.get("telefone") ?? "").trim();
+  const senhaInformada = String(formData.get("senha") ?? "").trim();
+  const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
+
+  if (nomeDoBar.length < 2) return { ok: false, mensagem: "Informe o nome do bar." };
+  if (problema === "formato") return { ok: false, mensagem: "Digite um e-mail válido." };
+  if (problema === "descartavel") return { ok: false, mensagem: MENSAGEM_DESCARTAVEL };
+
+  const senhaFinal = senhaInformada || randomBytes(16).toString("base64url");
+  const admin = createSupabaseAdminClient();
+
+  const { data: criado, error: erroUsuario } = await admin.auth.admin.createUser({
+    email,
+    password: senhaFinal,
+    email_confirm: true,
+    user_metadata: {
+      nome: nomeDono || nomeDoBar,
+      bar_nome: nomeDoBar,
+      telefone,
+      criado_por: "backoffice_manual",
+    },
+  });
+
+  if (erroUsuario || !criado?.user) {
+    const jaExiste =
+      erroUsuario?.code === "email_exists" ||
+      /already (been )?registered|already exists/i.test(erroUsuario?.message ?? "");
+
+    return {
+      ok: false,
+      mensagem: jaExiste
+        ? "Já existe uma conta com esse e-mail."
+        : "Não foi possível criar o usuário. Verifique os dados.",
+    };
+  }
+
+  const { data: barCriado, error: erroBar } = await admin
+    .from("bars")
+    .insert({
+      owner_id: criado.user.id,
+      nome: nomeDoBar,
+      slug: gerarSlug(nomeDoBar),
+    })
+    .select("id")
+    .single();
+
+  if (erroBar || !barCriado) {
+    await admin.auth.admin.deleteUser(criado.user.id);
+    return { ok: false, mensagem: "Criei o usuário mas falhou ao criar o bar. Nada foi salvo." };
+  }
+
+  const link = senhaInformada ? null : await gerarLinkDeSenha(email);
+
+  revalidatePath("/admin");
+  return {
+    ok: true,
+    mensagem: senhaInformada
+      ? `SUCESSO_SENHA|${nomeDoBar}|${email}|${senhaFinal}`
+      : `SUCESSO_LINK|${nomeDoBar}|${email}|${link ?? ""}`,
+  };
+}

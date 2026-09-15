@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
 import Image from "next/image";
 import { formatarMomento, formatarReais } from "@/lib/format";
 import { enviarPedidoCliente } from "@/app/actions/pedidos";
-import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 import { LoadingButeco } from "@/components/loading-buteco";
 import type { ComandaPublica } from "@/lib/types";
 
@@ -27,20 +26,48 @@ export function ContaAoVivo({
   const cardapio = dados.cardapio ?? [];
   const pedidosPendentes = dados.pedidos_pendentes ?? [];
 
+  // Função que busca a versão mais recente da conta via rota interna (compatível com a CSP)
+  const sincronizarConta = useCallback(async () => {
+    try {
+      const resposta = await fetch(`/api/comanda/${token}`, {
+        cache: "no-store",
+      });
+      if (resposta.ok) {
+        const atualizado = await resposta.json();
+        if (atualizado) {
+          setDados(atualizado as ComandaPublica);
+        }
+      }
+    } catch {
+      // Falha temporária de conexão é ignorada
+    }
+  }, [token]);
+
+  // Atualização em tempo real rápida (a cada 2,5 segundos) + ao voltar para a aba
   useEffect(() => {
     if (!contaAberta) return;
 
-    const supabase = createSupabaseAnonClient();
-    const intervalo = setInterval(async () => {
-      if (document.hidden) return;
-      const { data } = await supabase.rpc("comanda_publica", { p_token: token });
-      if (data) {
-        setDados(data as ComandaPublica);
+    const intervalo = setInterval(() => {
+      if (!document.hidden) {
+        sincronizarConta();
       }
-    }, 4000);
+    }, 2500);
 
-    return () => clearInterval(intervalo);
-  }, [token, contaAberta]);
+    const aoVoltarPraAba = () => {
+      if (!document.hidden) {
+        sincronizarConta();
+      }
+    };
+
+    document.addEventListener("visibilitychange", aoVoltarPraAba);
+    window.addEventListener("focus", aoVoltarPraAba);
+
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener("visibilitychange", aoVoltarPraAba);
+      window.removeEventListener("focus", aoVoltarPraAba);
+    };
+  }, [contaAberta, sincronizarConta]);
 
   const produtosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -84,9 +111,8 @@ export function ContaAoVivo({
         setAba("conta");
         setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
 
-        const supabase = createSupabaseAnonClient();
-        const { data } = await supabase.rpc("comanda_publica", { p_token: token });
-        if (data) setDados(data as ComandaPublica);
+        // Atualiza imediatamente a conta para exibir o pedido pendente
+        await sincronizarConta();
       } else {
         setErro(res.mensagem || "Não foi possível enviar o pedido.");
       }
@@ -95,6 +121,7 @@ export function ContaAoVivo({
 
   return (
     <div className="flex flex-col text-stone-900 dark:text-stone-100">
+      {/* Topo da Comanda */}
       <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -122,6 +149,7 @@ export function ContaAoVivo({
           </span>
         </div>
 
+        {/* Abas Alternadoras: Minha Conta x Fazer Pedido */}
         {contaAberta && (
           <div className="mt-5 grid grid-cols-2 rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold">
             <button
@@ -168,8 +196,10 @@ export function ContaAoVivo({
           </div>
         )}
 
+        {/* 1. ABA: MINHA CONTA */}
         {aba === "conta" && (
           <div className="space-y-5">
+            {/* Alerta Amarelo de Pedidos Aguardando Confirmação do Garçom */}
             {pedidosPendentes.length > 0 && (
               <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -191,6 +221,7 @@ export function ContaAoVivo({
               </div>
             )}
 
+            {/* Resumo Financeiro */}
             <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50 p-4 grid grid-cols-2 gap-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
@@ -218,6 +249,7 @@ export function ContaAoVivo({
               </div>
             </div>
 
+            {/* Extrato de Itens Consumidos */}
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 mb-3">
                 Itens Consumidos ({dados.itens?.length ?? 0})
@@ -247,6 +279,7 @@ export function ContaAoVivo({
           </div>
         )}
 
+        {/* 2. ABA: CARDÁPIO (FAZER PEDIDO) */}
         {aba === "cardapio" && (
           <div>
             <div className="mb-4">
@@ -325,6 +358,7 @@ export function ContaAoVivo({
               </ul>
             )}
 
+            {/* Barra Fixa de Subtotal e Envio */}
             {qtdTotalCarrinho > 0 && (
               <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
                 <div>
