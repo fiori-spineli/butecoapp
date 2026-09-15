@@ -18,18 +18,19 @@ export function CabecalhoDono({
   return (
     <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4 sm:grid sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
       
-      {/* Esquerda: Logo e Título */}
-      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
+      {/* Esquerda: Logo e Título visíveis em todas as telas */}
+      <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <LogoButeco
-          className="w-24 sm:w-32 md:w-44 lg:w-48 h-8 sm:h-10 md:h-14 lg:h-16 shrink-0"
+          className="w-28 sm:w-32 md:w-44 lg:w-48 h-10 sm:h-10 md:h-14 lg:h-16 shrink-0"
           priority
         />
-        <div className="hidden min-w-0 border-l border-stone-200 dark:border-stone-800 pl-4 lg:block">
-          <h1 className="text-[clamp(1.125rem,2vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 wrap-break-word">
+        <div className="min-w-0 border-l border-stone-200 dark:border-stone-800 pl-3">
+          <h1 className="text-sm sm:text-[clamp(1.125rem,2vw,1.5rem)] font-black leading-tight text-stone-900 dark:text-stone-100 wrap-break-word line-clamp-2 sm:line-clamp-none">
             {titulo}
           </h1>
+          {/* Subtítulo só aparece a partir de tablet para não espremer o celular */}
           {subtitulo && (
-            <p className="text-[clamp(0.7rem,1vw,0.75rem)] text-stone-500 dark:text-stone-400 mt-0.5 text-balance wrap-break-word">
+            <p className="hidden sm:block text-[clamp(0.7rem,1vw,0.75rem)] text-stone-500 dark:text-stone-400 mt-0.5 text-balance wrap-break-word">
               {subtitulo}
             </p>
           )}

@@ -10,7 +10,6 @@ interface BeforeInstallPromptEvent extends Event {
 export function BannerPwa() {
   const [eventoPrompt, setEventoPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visivel, setVisivel] = useState(false);
-  const [manual, setManual] = useState(false);
 
   useEffect(() => {
     function capturarPrompt(e: Event) {
@@ -24,11 +23,14 @@ export function BannerPwa() {
     window.addEventListener("beforeinstallprompt", capturarPrompt);
 
     // Fallback: se em 2 segundos o navegador não disparar o prompt automático, 
-    // exibe o banner educativo ensinando a instalar pelo menu do 3 pontinhos do Chrome/Samsung.
+    // exibe o banner oferecendo o botão Instalar (que acionará as instruções manuais).
     const timer = setTimeout(() => {
-      if (!window.matchMedia("(display-mode: standalone)").matches && !sessionStorage.getItem("buteco_pwa_dispensado")) {
+      if (
+        typeof window !== "undefined" && 
+        !window.matchMedia("(display-mode: standalone)").matches && 
+        !sessionStorage.getItem("buteco_pwa_dispensado")
+      ) {
         setVisivel(true);
-        setManual(true);
       }
     }, 2000);
 
@@ -38,6 +40,10 @@ export function BannerPwa() {
     };
   }, []);
 
+  function mostrarAjuda() {
+    alert("Para instalar:\n\nNo Android (Chrome): Toque nos 3 pontos no canto da tela e escolha 'Adicionar à tela inicial' ou 'Instalar aplicativo'.\n\nNo iPhone (Safari): Toque no ícone de Compartilhar e escolha 'Adicionar à Tela de Início'.");
+  }
+
   async function instalar() {
     if (eventoPrompt) {
       await eventoPrompt.prompt();
@@ -46,7 +52,8 @@ export function BannerPwa() {
         setVisivel(false);
       }
     } else {
-      alert("Para instalar: toque no menu de 3 pontos do seu navegador e escolha 'Adicionar à tela inicial' ou 'Instalar aplicativo'.");
+      // Se não há evento nativo pronto (ex: iPhone Safari), o botão Instalar exibe as instruções.
+      mostrarAjuda();
     }
   }
 
@@ -55,38 +62,52 @@ export function BannerPwa() {
     setVisivel(false);
   }
 
-  if (!visivel || window.matchMedia("(display-mode: standalone)").matches) return null;
+  if (!visivel || (typeof window !== "undefined" && window.matchMedia("(display-mode: standalone)").matches)) {
+    return null;
+  }
 
   return (
     <aside
       aria-label="Instalação do aplicativo"
-      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 animate-in slide-in-from-top-2"
+      className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-3 sm:px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 animate-in slide-in-from-top-2"
     >
       <div className="flex items-center gap-2 min-w-0">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-amber-700 dark:text-amber-400" aria-hidden>
           <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
           <line x1="12" y1="18" x2="12.01" y2="18" />
         </svg>
-        <span className="truncate font-semibold">
-          {manual ? "Instalar ButecoApp no celular" : "Instalar ButecoApp na tela inicial"}
+        <span className="truncate font-semibold hidden sm:inline">
+          Instalar ButecoApp no celular
+        </span>
+        <span className="truncate font-semibold sm:hidden">
+          Instalar App
         </span>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <button
           type="button"
           onClick={instalar}
-          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 min-h-11 px-3.5 py-2 font-bold text-white shadow-xs transition-colors"
+          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 min-h-10 sm:min-h-11 px-3 sm:px-4 py-2 font-bold text-white shadow-xs transition-colors"
         >
-          {manual ? "Como instalar?" : "Instalar"}
+          Instalar
+        </button>
+        <button
+          type="button"
+          onClick={mostrarAjuda}
+          aria-label="Ajuda para instalar"
+          className="cursor-pointer flex size-10 sm:size-11 items-center justify-center rounded-lg border border-amber-300/80 dark:border-amber-700/80 text-amber-800 dark:text-amber-400 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition-colors"
+          title="Como instalar?"
+        >
+          <span className="font-black text-sm">?</span>
         </button>
         <button
           type="button"
           onClick={dispensar}
-          aria-label="Dispensar aviso de instalação"
-          className="cursor-pointer flex size-11 items-center justify-center text-stone-400 hover:text-stone-700 dark:hover:text-stone-200"
+          aria-label="Fechar aviso de instalação"
+          className="cursor-pointer flex size-10 sm:size-11 items-center justify-center text-amber-700/70 dark:text-amber-400/70 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
