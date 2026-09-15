@@ -8,6 +8,43 @@ export type Bar = {
   created_at: string;
 };
 
+/** Retorno da função comanda_publica(token) — visão do cliente, sem login. */
+export type ComandaPublica = {
+  bar_nome: string;
+  cliente_nome: string;
+  numero_mesa: string | null;
+  status: "aberta" | "fechada";
+  aberta_em: string;
+  fechada_em: string | null;
+  total_centavos: number;
+  pago_centavos: number;
+  restante_centavos: number;
+  itens: {
+    id: string;
+    nome: string;
+    descricao_livre: boolean;
+    imagem_url: string | null;
+    quantidade: number;
+    valor_unitario_centavos: number;
+    total_centavos: number;
+    criado_em: string;
+  }[];
+  cardapio?: {
+    id: string;
+    nome: string;
+    preco_centavos: number;
+    imagem_url: string | null;
+  }[];
+  pedidos_pendentes?: {
+    id: string;
+    nome: string;
+    quantidade: number;
+    valor_unitario_centavos: number;
+    status: string;
+    created_at: string;
+  }[];
+};
+
 export type Cliente = {
   id: string;
   bar_id: string;
@@ -55,31 +92,6 @@ export type ComandaResumo = Cliente & {
   pago_centavos: number;
   restante_centavos: number;
   itens: number;
-};
-
-/** Retorno da função comanda_publica(token) — visão do cliente, sem login. */
-export type ComandaPublica = {
-  bar_nome: string;
-  cliente_nome: string;
-  numero_mesa: string | null;
-  status: "aberta" | "fechada";
-  /** Quando a mesa foi aberta. Adicionado na migration 0010. */
-  aberta_em: string;
-  fechada_em: string | null;
-  total_centavos: number;
-  pago_centavos: number;
-  restante_centavos: number;
-  itens: {
-    id: string;
-    nome: string;
-    descricao_livre: boolean;
-    imagem_url: string | null;
-    quantidade: number;
-    valor_unitario_centavos: number;
-    total_centavos: number;
-    /** Data e hora em que o item entrou na comanda. Migration 0010. */
-    criado_em: string;
-  }[];
 };
 
 /** Uma linha da fila de interessados — a porta de entrada de bar novo. */

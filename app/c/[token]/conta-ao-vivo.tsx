@@ -1,29 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Miniatura } from "@/components/miniatura";
-import {
-  formatarDataHora,
-  formatarMomento,
-  formatarReais,
-  tempoRestanteComprovante,
-} from "@/lib/format";
-import { TempoAberto } from "@/components/tempo-aberto";
-import { BotaoImprimir } from "@/components/botao-imprimir";
-import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Image from "next/image";
+import { formatarMomento, formatarReais } from "@/lib/format";
+import { enviarPedidoCliente } from "@/app/actions/pedidos";
+import { createSupabaseAnonClient } from "@/lib/supabase/publico";
+import { LoadingButeco } from "@/components/loading-buteco";
 import type { ComandaPublica } from "@/lib/types";
-
-/**
- * Cadência da atualização ao vivo.
- *
- * Com a aba na frente, busca a cada 5 s — perto do "tempo real" que o cliente
- * espera quando olha a tela logo depois de pedir, e barato: uma consulta por
- * chave. Com a aba escondida (outro app, outra aba, tela apagada) não busca
- * nada; ao voltar, busca na hora. Se a rede falhar, o intervalo dobra a cada
- * erro até 1 min e a tela avisa — atualizar a página continua sendo a saída.
- */
-const INTERVALO_MS = 5000;
-const INTERVALO_MAXIMO_MS = 60000;
 
 export function ContaAoVivo({
   token,
@@ -32,233 +15,347 @@ export function ContaAoVivo({
   token: string;
   inicial: ComandaPublica;
 }) {
-  const [comanda, setComanda] = useState(inicial);
-  const [expirou, setExpirou] = useState(false);
-  const [semConexao, setSemConexao] = useState(false);
-  const falhas = useRef(0);
+  const [dados, setDados] = useState<ComandaPublica>(inicial);
+  const [aba, setAba] = useState<"conta" | "cardapio">("conta");
+  const [carrinho, setCarrinho] = useState<Record<string, number>>({});
+  const [busca, setBusca] = useState("");
+  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, iniciarEnvio] = useTransition();
 
-  const buscar = useCallback(async () => {
-    try {
-      const resposta = await fetch(`/api/comanda/${token}`, { cache: "no-store" });
-      if (!resposta.ok) throw new Error(String(resposta.status));
-      const dados = (await resposta.json()) as ComandaPublica | null;
-      falhas.current = 0;
-      setSemConexao(false);
-      if (!dados) {
-        setExpirou(true);
-        return;
-      }
-      setComanda(dados);
-    } catch {
-      falhas.current += 1;
-      // Uma falha isolada é normal em rede de bar; duas seguidas é aviso.
-      if (falhas.current >= 2) setSemConexao(true);
-    }
-  }, [token]);
+  const contaAberta = dados.status === "aberta";
+  const cardapio = dados.cardapio ?? [];
+  const pedidosPendentes = dados.pedidos_pendentes ?? [];
 
+  // Atualização em tempo real (polling leve) para refletir quando o garçom confirmar a entrega
   useEffect(() => {
-    if (expirou) return;
+    if (!contaAberta) return;
 
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let ativo = true;
-
-    function agendar() {
-      if (!ativo) return;
-      const espera = Math.min(INTERVALO_MS * 2 ** falhas.current, INTERVALO_MAXIMO_MS);
-      timer = setTimeout(async () => {
-        if (!document.hidden) await buscar();
-        agendar();
-      }, espera);
-    }
-
-    // Voltou para a aba (ou o iOS restaurou a página do histórico): busca já,
-    // sem esperar o próximo tique, e recomeça a contagem do zero.
-    function aoVoltar() {
+    const supabase = createSupabaseAnonClient();
+    const intervalo = setInterval(async () => {
       if (document.hidden) return;
-      clearTimeout(timer);
-      falhas.current = 0;
-      void buscar().then(agendar);
-    }
+      const { data } = await supabase.rpc("comanda_publica", { p_token: token });
+      if (data) {
+        setDados(data as ComandaPublica);
+      }
+    }, 4000);
 
-    agendar();
-    document.addEventListener("visibilitychange", aoVoltar);
-    window.addEventListener("focus", aoVoltar);
-    window.addEventListener("pageshow", aoVoltar);
-    window.addEventListener("online", aoVoltar);
+    return () => clearInterval(intervalo);
+  }, [token, contaAberta]);
 
-    return () => {
-      ativo = false;
-      clearTimeout(timer);
-      document.removeEventListener("visibilitychange", aoVoltar);
-      window.removeEventListener("focus", aoVoltar);
-      window.removeEventListener("pageshow", aoVoltar);
-      window.removeEventListener("online", aoVoltar);
-    };
-  }, [buscar, expirou]);
+  const produtosFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return cardapio;
+    return cardapio.filter((p) => p.nome.toLowerCase().includes(termo));
+  }, [cardapio, busca]);
 
-  const fechada = comanda.status === "fechada";
-  const comprovanteAte = tempoRestanteComprovante(comanda.fechada_em);
-  const titulo = comanda.numero_mesa ? `Mesa ${comanda.numero_mesa}` : comanda.cliente_nome;
-  const subtitulo = comanda.numero_mesa ? comanda.cliente_nome : null;
+  function alterarQtd(id: string, delta: number) {
+    setCarrinho((prev) => {
+      const atual = prev[id] ?? 0;
+      const nova = Math.max(0, atual + delta);
+      if (nova === 0) {
+        const { [id]: _, ...resto } = prev;
+        return resto;
+      }
+      return { ...prev, [id]: nova };
+    });
+  }
+
+  const totalCarrinhoCentavos = Object.entries(carrinho).reduce((acc, [id, qtd]) => {
+    const prod = cardapio.find((p) => p.id === id);
+    return acc + (prod ? prod.preco_centavos * qtd : 0);
+  }, 0);
+
+  const qtdTotalCarrinho = Object.values(carrinho).reduce((acc, q) => acc + q, 0);
+
+  function submeterPedido() {
+    if (qtdTotalCarrinho === 0) return;
+    setErro(null);
+    setMensagemSucesso(null);
+
+    const itens = Object.entries(carrinho).map(([produto_id, quantidade]) => ({
+      produto_id,
+      quantidade,
+    }));
+
+    iniciarEnvio(async () => {
+      const res = await enviarPedidoCliente(token, itens);
+      if (res.ok) {
+        setCarrinho({});
+        setAba("conta");
+        setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
+
+        // Atualiza a visualização com o pedido pendente
+        const supabase = createSupabaseAnonClient();
+        const { data } = await supabase.rpc("comanda_publica", { p_token: token });
+        if (data) setDados(data as ComandaPublica);
+      } else {
+        setErro(res.mensagem || "Não foi possível enviar o pedido.");
+      }
+    });
+  }
 
   return (
     <div className="flex flex-col text-stone-900 dark:text-stone-100">
-      <ComprovanteComanda
-        dados={{
-          barNome: comanda.bar_nome,
-          clienteNome: comanda.cliente_nome,
-          numeroMesa: comanda.numero_mesa,
-          status: comanda.status,
-          abertaEm: comanda.aberta_em,
-          fechadaEm: comanda.fechada_em,
-          itens: comanda.itens.map((item) => ({
-            id: item.id,
-            nome: item.nome,
-            quantidade: item.quantidade,
-            valorUnitarioCentavos: item.valor_unitario_centavos,
-            criadoEm: item.criado_em,
-          })),
-          // A visão pública não detalha pagamentos, só o quanto já foi pago.
-          pagamentos: [],
-          totalCentavos: comanda.total_centavos,
-          pagoCentavos: comanda.pago_centavos,
-          restanteCentavos: comanda.restante_centavos,
-        }}
-      />
+      {/* Cabeçalho do Cartão */}
+      <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
+              {dados.bar_nome}
+            </span>
+            <h2 className="text-xl font-black tracking-tight mt-0.5">
+              {dados.cliente_nome}
+            </h2>
+            {dados.numero_mesa && (
+              <span className="mt-1.5 inline-block rounded-md bg-stone-200/70 dark:bg-stone-700 px-2.5 py-0.5 text-xs font-bold text-stone-700 dark:text-stone-200">
+                Mesa {dados.numero_mesa}
+              </span>
+            )}
+          </div>
 
-      {/* Cabeçalho do Cartão com Status */}
-      <header className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/50 p-6 text-center">
-        <span className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-700 dark:text-amber-500">
-          {comanda.bar_nome}
-        </span>
-        <h1 className="mt-1 text-2xl font-black tracking-tight">{titulo}</h1>
-        {subtitulo && (
-          <p className="mt-0.5 text-xs font-semibold text-stone-500 dark:text-stone-400">
-            {subtitulo}
-          </p>
-        )}
-
-        <div className="mt-3 flex justify-center">
-          {fechada ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-stone-900 dark:bg-stone-100 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white dark:text-stone-900">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Conta Paga
-            </span>
-          ) : semConexao ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-100 dark:bg-rose-950/80 border border-rose-300/60 dark:border-rose-800 px-3 py-1 text-[11px] font-bold text-rose-800 dark:text-rose-300">
-              <span className="size-2 rounded-full bg-rose-600 dark:bg-rose-400" aria-hidden />
-              Sem conexão — atualize a página
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-100 dark:bg-emerald-950/80 border border-emerald-300/60 dark:border-emerald-800 px-3 py-1 text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
-              <span className="size-2 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse" aria-hidden />
-              Atualizando ao vivo
-            </span>
-          )}
+          <span
+            className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+              contaAberta
+                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                : "bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
+            }`}
+          >
+            {contaAberta ? "Aberta" : "Encerrada"}
+          </span>
         </div>
 
-        {/* Desde quando esta mesa está aberta. O cliente também tem direito a
-            essa conta: é ela que explica por que a comanda tem tanto item. */}
-        <p className="mt-3 text-[11px] text-stone-500 dark:text-stone-400">
-          Aberta em {formatarDataHora(comanda.aberta_em)}
-          {!fechada && (
-            <>
-              {" · há "}
-              <TempoAberto desde={comanda.aberta_em} className="font-semibold" />
-            </>
-          )}
-        </p>
-      </header>
-
-      {/* Seção de Destaque do Saldo */}
-      <section className="p-6 text-center border-b border-stone-200 dark:border-stone-800 bg-amber-50/40 dark:bg-amber-950/20">
-        <span className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-          {fechada ? "Total pago" : "Saldo restante a pagar"}
-        </span>
-        <p className="mt-1 text-4xl md:text-5xl font-black tabular-nums text-amber-800 dark:text-amber-400 tracking-tight">
-          {formatarReais(fechada ? comanda.total_centavos : comanda.restante_centavos)}
-        </p>
-
-        {!fechada && comanda.pago_centavos > 0 && (
-          <div className="mt-3 flex justify-center gap-6 text-xs text-stone-600 dark:text-stone-400 border-t border-amber-200/50 dark:border-amber-900/30 pt-3 max-w-xs mx-auto">
-            <span>
-              Total: <strong className="tabular-nums text-stone-900 dark:text-stone-100">{formatarReais(comanda.total_centavos)}</strong>
-            </span>
-            <span>
-              Já pago: <strong className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatarReais(comanda.pago_centavos)}</strong>
-            </span>
-          </div>
-        )}
-      </section>
-
-      {/* Lista de Itens Consumidos */}
-      <section className="p-6">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-4">
-          Itens pedidos ({comanda.itens.length})
-        </h2>
-
-        {comanda.itens.length === 0 ? (
-          <p className="my-6 text-center text-xs text-stone-400 dark:text-stone-500">
-            Nenhum item lançado nessa mesa até o momento.
-          </p>
-        ) : (
-          <ul className="divide-y divide-stone-100 dark:divide-stone-800/80">
-            {comanda.itens.map((item) => (
-              <li key={item.id} className="py-3.5 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <Miniatura url={item.imagem_url} alt={item.nome} tamanho={38} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-stone-900 dark:text-stone-100">
-                      {item.nome}
-                    </p>
-                    <p className="text-xs text-stone-500 dark:text-stone-400">
-                      {item.quantidade}x {formatarReais(item.valor_unitario_centavos)}
-                      {item.criado_em && (
-                        <>
-                          <span className="mx-1.5 text-stone-300 dark:text-stone-600" aria-hidden>
-                            ·
-                          </span>
-                          {formatarMomento(item.criado_em)}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <span className="shrink-0 text-sm font-black tabular-nums text-stone-900 dark:text-stone-100">
-                  {formatarReais(item.total_centavos)}
+        {/* Abas Alternadoras: Comanda x Cardápio */}
+        {contaAberta && (
+          <div className="mt-5 grid grid-cols-2 rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setAba("conta")}
+              className={`cursor-pointer min-h-10 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 ${
+                aba === "conta"
+                  ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+              }`}
+            >
+              Minha Conta
+            </button>
+            <button
+              type="button"
+              onClick={() => setAba("cardapio")}
+              className={`cursor-pointer min-h-10 rounded-lg transition-all text-center relative flex items-center justify-center gap-1.5 ${
+                aba === "cardapio"
+                  ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+              }`}
+            >
+              Fazer Pedido
+              {qtdTotalCarrinho > 0 && (
+                <span className="size-5 rounded-full bg-amber-700 text-white text-[10px] font-black flex items-center justify-center">
+                  {qtdTotalCarrinho}
                 </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {/* Rodapé Informativo */}
-      <footer className="p-6 pt-2 pb-6 text-center border-t border-stone-100 dark:border-stone-800/60">
-        {!expirou && (
-          <div className="mb-4 flex justify-center">
-            <BotaoImprimir rotulo={fechada ? "Salvar comprovante (PDF)" : "Salvar extrato (PDF)"} />
+              )}
+            </button>
           </div>
         )}
-        {expirou ? (
-          <p className="text-xs leading-relaxed text-stone-500">
-            Esta conta foi encerrada e o comprovante não está mais disponível.
-          </p>
-        ) : fechada ? (
-          <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-            {comprovanteAte
-              ? `Comprovante disponível por mais ${comprovanteAte}.`
-              : "Comprovante expirado."}
-          </p>
-        ) : (
-          <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-400">
-            Conta aberta. Chame o garçom para dividir ou fechar a conta. Esta tela atualiza automaticamente a cada novo pedido.
-          </p>
+      </div>
+
+      <div className="p-5">
+        {mensagemSucesso && (
+          <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-3.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+            {mensagemSucesso}
+          </div>
         )}
-      </footer>
+
+        {erro && (
+          <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 dark:bg-rose-950/40 p-3.5 text-xs font-bold text-rose-900 dark:text-rose-300">
+            {erro}
+          </div>
+        )}
+
+        {/* 1. ABA: MINHA CONTA */}
+        {aba === "conta" && (
+          <div className="space-y-5">
+            {/* Alerta Amarelo de Pedidos Aguardando Confirmação */}
+            {pedidosPendentes.length > 0 && (
+              <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="size-2.5 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                    Aguardando entrega do garçom ({pedidosPendentes.length})
+                  </span>
+                </div>
+                <ul className="divide-y divide-amber-200 dark:divide-amber-900/60 text-xs">
+                  {pedidosPendentes.map((p) => (
+                    <li key={p.id} className="py-2 flex justify-between items-center">
+                      <span className="font-semibold">{p.quantidade}x {p.nome}</span>
+                      <span className="font-black tabular-nums text-amber-800 dark:text-amber-300">
+                        {formatarReais(p.quantidade * p.valor_unitario_centavos)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Quadro de Valores */}
+            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50 p-4 grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Consumo Total
+                </span>
+                <p className="text-base font-black tabular-nums mt-0.5">
+                  {formatarReais(dados.total_centavos)}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Total Pago
+                </span>
+                <p className="text-base font-black tabular-nums text-emerald-600 mt-0.5">
+                  {formatarReais(dados.pago_centavos)}
+                </p>
+              </div>
+              <div className="col-span-2 pt-2 border-t border-stone-200 dark:border-stone-700 flex justify-between items-baseline">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400">
+                  Restante a Pagar
+                </span>
+                <p className="text-2xl font-black tabular-nums text-amber-800 dark:text-amber-400">
+                  {formatarReais(dados.restante_centavos)}
+                </p>
+              </div>
+            </div>
+
+            {/* Extrato de Itens Confirmados */}
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 mb-3">
+                Itens Consumidos ({dados.itens?.length ?? 0})
+              </h3>
+              {dados.itens?.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-800 p-8 text-center text-xs text-stone-400">
+                  Nenhum item consumido ainda.
+                </div>
+              ) : (
+                <ul className="divide-y divide-stone-100 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
+                  {dados.itens.map((i) => (
+                    <li key={i.id} className="flex justify-between items-center p-3.5 text-xs">
+                      <div>
+                        <p className="font-bold text-sm text-stone-900 dark:text-stone-100">{i.nome}</p>
+                        <p className="text-stone-400 mt-0.5">
+                          {i.quantidade}x {formatarReais(i.valor_unitario_centavos)} &bull; {formatarMomento(i.criado_em)}
+                        </p>
+                      </div>
+                      <span className="font-black tabular-nums text-sm">
+                        {formatarReais(i.total_centavos)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 2. ABA: CARDÁPIO (FAZER PEDIDO) */}
+        {aba === "cardapio" && (
+          <div>
+            <div className="mb-4">
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar no cardápio..."
+                className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-4 py-3 text-sm outline-none focus:border-amber-600 transition-colors"
+              />
+            </div>
+
+            {produtosFiltrados.length === 0 ? (
+              <p className="py-12 text-center text-xs text-stone-400">Nenhum produto disponível.</p>
+            ) : (
+              <ul className="space-y-3">
+                {produtosFiltrados.map((prod) => {
+                  const qtd = carrinho[prod.id] ?? 0;
+                  return (
+                    <li
+                      key={prod.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative size-12 rounded-xl bg-stone-200 dark:bg-stone-800 overflow-hidden shrink-0">
+                          {prod.imagem_url ? (
+                            <Image
+                              src={prod.imagem_url}
+                              alt={prod.nome}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="size-full flex items-center justify-center text-lg">🍺</div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm truncate">{prod.nome}</h4>
+                          <p className="text-xs font-black text-amber-700 dark:text-amber-400 tabular-nums">
+                            {formatarReais(prod.preco_centavos)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {qtd > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => alterarQtd(prod.id, -1)}
+                              className="cursor-pointer size-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 font-black text-sm flex items-center justify-center"
+                            >
+                              -
+                            </button>
+                            <span className="min-w-5 text-center font-black text-sm">{qtd}</span>
+                            <button
+                              type="button"
+                              onClick={() => alterarQtd(prod.id, 1)}
+                              className="cursor-pointer size-8 rounded-lg bg-amber-700 text-white font-black text-sm flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => alterarQtd(prod.id, 1)}
+                            className="cursor-pointer px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold transition-colors"
+                          >
+                            Pedir
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {/* Barra de Finalização do Carrinho */}
+            {qtdTotalCarrinho > 0 && (
+              <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase">Subtotal</span>
+                  <p className="text-base font-black tabular-nums">
+                    {qtdTotalCarrinho} item{qtdTotalCarrinho > 1 ? "s" : ""} • {formatarReais(totalCarrinhoCentavos)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={submeterPedido}
+                  className="cursor-pointer min-h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-transform active:scale-95 disabled:opacity-50"
+                >
+                  {enviando ? <LoadingButeco fraseFixa="Enviando..." /> : "Enviar Pedido"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

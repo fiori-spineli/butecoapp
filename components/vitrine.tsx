@@ -2,19 +2,6 @@ import Link from "next/link";
 import { LogoButeco } from "@/components/logo-buteco";
 import { TemaToggle } from "@/components/tema-toggle";
 import { FundoChopp } from "@/components/fundo-chopp";
-import { CtaDoTopo, ID_CTA_PRINCIPAL } from "@/components/cta-do-topo";
-
-/**
- * A porta da rua do ButecoApp.
- *
- * Antes, quem chegasse em butecoapp.vercel.app caía direto no formulário de
- * login — o que só faz sentido para quem já é cliente. Quem ouviu falar do
- * sistema e foi olhar não tinha uma linha explicando o que era.
- *
- * Aqui a ordem se inverte: primeiro o que o sistema faz, depois como pedir. E
- * daqui não se chega ao login direto pelo fluxo principal, mas agora há o botão
- * de Entrar no topo para clientes existentes.
- */
 
 const RECURSOS = [
   {
@@ -125,15 +112,22 @@ export function Vitrine() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
 
-          <div className="flex items-center gap-1.5 sm:gap-3">
-            {/* Botão de Entrar adicionado no topo */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/login"
               className="cursor-pointer inline-flex min-h-11 items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
             >
               Entrar
             </Link>
-            <CtaDoTopo alvo={ID_CTA_PRINCIPAL} />
+
+            {/* Quero no meu bar posicionado diretamente à direita do Entrar logo no começo */}
+            <Link
+              href="/contato"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-800 px-4 text-xs font-bold text-white shadow-xs transition-colors"
+            >
+              Quero no meu bar
+            </Link>
+
             <TemaToggle />
           </div>
         </div>
@@ -163,7 +157,6 @@ export function Vitrine() {
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link
-                id={ID_CTA_PRINCIPAL}
                 href="/contato"
                 className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl bg-amber-700 hover:bg-amber-800 px-7 text-sm font-bold text-white shadow-lg shadow-amber-950/40 transition-all active:scale-95"
               >
