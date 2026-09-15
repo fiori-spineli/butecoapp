@@ -24,6 +24,7 @@ export function AdicionarItens({
   const [modoLivre, setModoLivre] = useState(false);
   const [descricaoLivre, setDescricaoLivre] = useState("");
   const [valorLivre, setValorLivre] = useState("");
+  const [qtdLivre, setQtdLivre] = useState(1);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, iniciarEnvio] = useTransition();
 
@@ -37,7 +38,7 @@ export function AdicionarItens({
     (soma, produto) => soma + (quantidades[produto.id] ?? 0) * produto.preco_centavos,
     0,
   );
-  const qtdSelecionada = Object.values(quantidades).reduce((soma, n) => soma + n, 0);
+  const qtdSelecionada = Object.values(quantidades).reduce((soma, n) => soma + n, 0) + (modoLivre ? qtdLivre : 0);
 
   function ajustar(produtoId: string, delta: number) {
     setQuantidades((atual) => {
@@ -52,6 +53,7 @@ export function AdicionarItens({
     setModoLivre(false);
     setDescricaoLivre("");
     setValorLivre("");
+    setQtdLivre(1);
     setErro(null);
     aoFechar();
   }
@@ -81,7 +83,7 @@ export function AdicionarItens({
         tipo: "livre",
         descricao: descricaoLivre,
         valor_centavos: centavos,
-        quantidade: 1,
+        quantidade: Math.max(1, qtdLivre),
       });
     }
 
@@ -115,10 +117,10 @@ export function AdicionarItens({
       </label>
 
       {/* Lista de Produtos do Catálogo */}
-      <div className="flex flex-col gap-2.5 max-h-[42vh] overflow-y-auto pr-1">
+      <div className="flex flex-col gap-2.5 max-h-[40vh] overflow-y-auto pr-1">
         {produtos.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-700 p-6 text-center text-xs text-stone-500 dark:text-stone-400">
-            Nenhum produto cadastrado. Você pode lançar itens com descrição livre abaixo.
+            Nenhum produto cadastrado. Lance itens avulsos com descrição livre abaixo.
           </p>
         ) : filtrados.length === 0 ? (
           <p className="py-6 text-center text-xs text-stone-500 dark:text-stone-400">
@@ -152,7 +154,7 @@ export function AdicionarItens({
                     onClick={() => ajustar(produto.id, -1)}
                     disabled={quantidade === 0}
                     aria-label={`Remover um ${produto.nome}`}
-                    className="cursor-pointer size-9 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                    className="cursor-pointer size-9 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-30 flex items-center justify-center transition-colors"
                   >
                     -
                   </button>
@@ -174,28 +176,71 @@ export function AdicionarItens({
         )}
       </div>
 
-      {/* Opção de Item Avulso com Descrição Livre */}
+      {/* Item Avulso com Descrição Livre E Quantidade */}
       <div className="mt-4 border-t border-stone-200 dark:border-stone-800 pt-4">
         {modoLivre ? (
-          <div className="flex flex-col gap-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-800/40 p-3.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Item Avulso (Fora do catálogo)
-            </span>
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-300 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-900 dark:text-amber-400">
+                Item Avulso (Fora do catálogo)
+              </span>
+              <button
+                type="button"
+                onClick={() => setModoLivre(false)}
+                className="text-xs text-stone-500 hover:text-stone-700 dark:hover:text-stone-300"
+              >
+                Cancelar avulso
+              </button>
+            </div>
+
             <input
               value={descricaoLivre}
               onChange={(e) => setDescricaoLivre(e.target.value)}
-              placeholder="O que foi? (ex: Porção especial, Shot)"
-              aria-label="Descrição do item avulso"
+              placeholder="Descrição do item (ex: Dose especial, Porção personalizada)"
               className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600"
             />
-            <input
-              value={valorLivre}
-              onChange={(e) => setValorLivre(e.target.value)}
-              inputMode="decimal"
-              placeholder="Valor em R$ (ex: 15,00)"
-              aria-label="Valor do item avulso"
-              className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-bold"
-            />
+
+            <div className="grid grid-cols-2 gap-3 items-center">
+              {/* Preço Unitário */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
+                  Valor Unitário (R$)
+                </label>
+                <input
+                  value={valorLivre}
+                  onChange={(e) => setValorLivre(e.target.value)}
+                  inputMode="decimal"
+                  placeholder="Ex: 15,00"
+                  className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-bold"
+                />
+              </div>
+
+              {/* Seletor de Quantidade do Item Livre */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
+                  Quantidade
+                </label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setQtdLivre((q) => Math.max(1, q - 1))}
+                    className="size-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm font-black flex items-center justify-center"
+                  >
+                    -
+                  </button>
+                  <span className="flex-1 text-center font-black text-sm">
+                    {qtdLivre}x
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQtdLivre((q) => q + 1)}
+                    className="size-10 rounded-lg border border-amber-600 bg-amber-700 text-white text-sm font-black flex items-center justify-center"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <button
@@ -203,7 +248,7 @@ export function AdicionarItens({
             onClick={() => setModoLivre(true)}
             className="cursor-pointer w-full text-center text-xs font-semibold text-amber-800 dark:text-amber-400 hover:underline"
           >
-            + Lançar item com descrição livre e valor avulso
+            + Lançar item com descrição livre, valor avulso e quantidade
           </button>
         )}
       </div>
@@ -224,7 +269,7 @@ export function AdicionarItens({
         {enviando ? (
           <LoadingButeco />
         ) : qtdSelecionada > 0 ? (
-          `Lançar ${qtdSelecionada} item${qtdSelecionada === 1 ? "" : "s"} (${formatarReais(totalSelecionado)})`
+          `Lançar na comanda (${qtdSelecionada} item${qtdSelecionada === 1 ? "" : "s"})`
         ) : (
           "Lançar na comanda"
         )}

@@ -7,11 +7,13 @@ import { parseReaisParaCentavos } from "@/lib/format";
 import { SUPABASE_URL } from "@/lib/supabase/server";
 import type { EstadoForm } from "@/app/actions/auth";
 
-const PREFIXO_DA_FOTO = `${SUPABASE_URL}/storage/v1/object/public/produtos-imagens/`;
+const MARCADOR_BUCKET = "/storage/v1/object/public/produtos-imagens/";
 
 function caminhoNoStorage(url: string | null | undefined): string | null {
-  if (!url || !url.startsWith(PREFIXO_DA_FOTO)) return null;
-  const caminho = url.slice(PREFIXO_DA_FOTO.length).split("?")[0];
+  if (!url) return null;
+  const pos = url.indexOf(MARCADOR_BUCKET);
+  if (pos === -1) return null;
+  const caminho = url.slice(pos + MARCADOR_BUCKET.length).split("?")[0];
   return caminho || null;
 }
 
@@ -38,7 +40,8 @@ function validarProduto(formData: FormData):
   if (!nome) return { ok: false, mensagem: "O nome do produto é obrigatório." };
   if (nome.length < 2) return { ok: false, mensagem: "Digite o nome do produto." };
   
-  if (imagemUrl && !imagemUrl.startsWith(PREFIXO_DA_FOTO)) {
+  // Validação flexível e segura: aceita qualquer URL legítima do bucket produtos-imagens
+  if (imagemUrl && !caminhoNoStorage(imagemUrl)) {
     return { ok: false, mensagem: "Essa foto não veio do upload do ButecoApp." };
   }
 

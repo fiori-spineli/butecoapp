@@ -293,6 +293,28 @@ export async function registrarPagamentoDeItem(
   return { ok: true };
 }
 
+/** Lança +1 unidade de um item já existente na comanda (seja catálogo ou avulso livre) */
+export async function repetirItem(
+  clienteId: string,
+  item: { produto_id?: string | null; descricao?: string | null; valor_unitario_centavos: number }
+): Promise<Resultado> {
+  const { supabase } = await exigirBar();
+
+  const { error } = await supabase.from("lancamentos").insert({
+    cliente_id: clienteId,
+    produto_id: item.produto_id || null,
+    descricao: item.descricao || null,
+    quantidade: 1,
+    valor_unitario_centavos: item.valor_unitario_centavos,
+  });
+
+  if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui adicionar mais uma unidade.") };
+
+  revalidatePath(`/comanda/${clienteId}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 export async function removerPagamento(
   clienteId: string,
   pagamentoId: string,
