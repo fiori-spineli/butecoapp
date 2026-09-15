@@ -20,13 +20,19 @@ export function ContaAoVivo({
   const [busca, setBusca] = useState("");
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [dispensados, setDispensados] = useState<Set<string>>(() => new Set());
   const [enviando, iniciarEnvio] = useTransition();
 
   const contaAberta = dados.status === "aberta";
   const cardapio = dados.cardapio ?? [];
-  const pedidosPendentes = dados.pedidos_pendentes ?? [];
+  const todosPedidos = dados.pedidos_pendentes ?? [];
 
-  // Função que busca a versão mais recente da conta via rota interna (compatível com a CSP)
+  // Separa os que estão aguardando entrega dos que foram recusados pelo garçom
+  const pedidosPendentes = todosPedidos.filter((p) => p.status === "pendente");
+  const pedidosRecusados = todosPedidos.filter(
+    (p) => p.status === "cancelado" && !dispensados.has(p.id)
+  );
+
   const sincronizarConta = useCallback(async () => {
     try {
       const resposta = await fetch(`/api/comanda/${token}`, {
@@ -39,11 +45,11 @@ export function ContaAoVivo({
         }
       }
     } catch {
-      // Falha temporária de conexão é ignorada
+      // Ignora erro passageiro de rede
     }
   }, [token]);
 
-  // Atualização em tempo real rápida (a cada 2,5 segundos) + ao voltar para a aba
+  // Atualização em tempo real a cada 2,5 segundos
   useEffect(() => {
     if (!contaAberta) return;
 
@@ -53,21 +59,30 @@ export function ContaAoVivo({
       }
     }, 2500);
 
-    const aoVoltarPraAba = () => {
+    const aoVoltar = () => {
       if (!document.hidden) {
         sincronizarConta();
       }
     };
 
-    document.addEventListener("visibilitychange", aoVoltarPraAba);
-    window.addEventListener("focus", aoVoltarPraAba);
+    document.addEventListener("visibilitychange", aoVoltar);
+    window.addEventListener("focus", aoVoltar);
 
     return () => {
       clearInterval(intervalo);
-      document.removeEventListener("visibilitychange", aoVoltarPraAba);
-      window.removeEventListener("focus", aoVoltarPraAba);
+      document.removeEventListener("visibilitychange", aoVoltar);
+      window.removeEventListener("focus", aoVoltar);
     };
   }, [contaAberta, sincronizarConta]);
+
+  // Ao clicar em OK no aviso de pedido recusado
+  function dispensarPedidosRecusados() {
+    setDispensados((prev) => {
+      const proximo = new Set(prev);
+      pedidosRecusados.forEach((p) => proximo.add(p.id));
+      return proximo;
+    });
+  }
 
   const produtosFiltrados = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -110,8 +125,6 @@ export function ContaAoVivo({
         setCarrinho({});
         setAba("conta");
         setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
-
-        // Atualiza imediatamente a conta para exibir o pedido pendente
         await sincronizarConta();
       } else {
         setErro(res.mensagem || "Não foi possível enviar o pedido.");
@@ -121,6 +134,45 @@ export function ContaAoVivo({
 
   return (
     <div className="flex flex-col text-stone-900 dark:text-stone-100">
+      {/* MODAL DE PEDIDO RECUSADO PELO BAR */}
+      {pedidosRecusados.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-3xl border border-rose-300 dark:border-rose-900 bg-white dark:bg-stone-900 p-6 shadow-2xl text-center">
+            <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
+            </div>
+
+            <h3 className="text-base font-black text-rose-900 dark:text-rose-200">
+              Pedido recusado pelo bar
+            </h3>
+
+            <p className="mt-2 text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+              O seguinte pedido não pôde ser atendido pelo balcão e <strong>não foi cobrado</strong> na sua conta:
+            </p>
+
+            <div className="my-4 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/60 dark:bg-rose-950/30 p-3 text-left">
+              {pedidosRecusados.map((p) => (
+                <div key={p.id} className="text-xs font-bold text-rose-900 dark:text-rose-300 py-0.5">
+                  • {p.quantidade}x {p.nome}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={dispensarPedidosRecusados}
+              className="cursor-pointer w-full min-h-11 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 font-bold text-xs uppercase tracking-wider transition-colors shadow-xs"
+            >
+              OK, Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Topo da Comanda */}
       <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
         <div className="flex items-start justify-between gap-3">
