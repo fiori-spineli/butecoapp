@@ -1,17 +1,5 @@
 import Link from "next/link";
 
-/**
- * Navegação principal do dono — em dois lugares, um para cada mão.
- *
- * No celular ela vive embaixo, no alcance do polegar, que é onde a mão está
- * quando se atende de pé com o aparelho numa mão só. No computador do caixa
- * ela sobe para o cabeçalho: barra colada no rodapé de uma tela de 24" fica
- * longe dos olhos e longe do mouse, e lá embaixo ninguém procura menu.
- *
- * Os rótulos ganharam ícone porque a barra é o mapa do app: o desenho é lido
- * antes da palavra, e no meio do movimento essa fração conta.
- */
-
 export type AbaAtiva = "comandas" | "produtos" | "relatorios";
 
 const abas = [
@@ -70,7 +58,6 @@ function Icone({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Barra inferior. Só no celular — ver o comentário no topo do arquivo. */
 export function TabBar({ ativo }: { ativo: AbaAtiva }) {
   return (
     <nav
@@ -83,7 +70,7 @@ export function TabBar({ ativo }: { ativo: AbaAtiva }) {
           <Link
             key={aba.chave}
             href={aba.href}
-            prefetch={true}
+            prefetch={false}
             aria-current={selecionada ? "page" : undefined}
             className={`cursor-pointer flex flex-1 flex-col items-center gap-1 border-t-2 px-2 pt-2.5 pb-5 text-center text-[11px] font-bold uppercase tracking-wider transition-all duration-150 active:scale-95 ${
               selecionada
@@ -100,12 +87,11 @@ export function TabBar({ ativo }: { ativo: AbaAtiva }) {
   );
 }
 
-/** Mesmo destino, no cabeçalho, a partir do tablet. */
 export function NavPrincipal({ ativo }: { ativo: AbaAtiva }) {
   return (
     <nav
       aria-label="Navegação principal"
-      className="hidden sm:flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100/80 dark:bg-stone-800/60 p-1"
+      className="flex items-center gap-1 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100/80 dark:bg-stone-800/60 p-1"
     >
       {abas.map((aba) => {
         const selecionada = aba.chave === ativo;
@@ -113,16 +99,15 @@ export function NavPrincipal({ ativo }: { ativo: AbaAtiva }) {
           <Link
             key={aba.chave}
             href={aba.href}
-            prefetch={true}
+            prefetch={false}
             aria-current={selecionada ? "page" : undefined}
-            className={`cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs font-bold transition-colors ${
+            className={`cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-lg px-3.5 text-xs font-bold transition-colors ${
               selecionada
                 ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             <Icone>{aba.icone}</Icone>
-            {/* Exibe o rótulo a partir de md (antes era lg), melhorando o layout no desktop/tablet */}
             <span className="hidden md:inline">{aba.rotulo}</span>
           </Link>
         );
