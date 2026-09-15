@@ -1,27 +1,50 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { criarComanda } from "@/app/actions/comandas";
 import type { EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
 
+const LIMITE_NOME = 80;
+const LIMITE_MESA = 20;
+
 export function NovaComandaForm() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarComanda, null);
+  const [nome, setNome] = useState("");
+  const [numeroMesa, setNumeroMesa] = useState("");
+
+  const restantesNome = LIMITE_NOME - nome.length;
+  const restantesMesa = LIMITE_MESA - numeroMesa.length;
 
   return (
     <form action={acao} className="flex flex-1 flex-col gap-6 px-6 py-8 max-w-lg mx-auto w-full">
+      {/* Campo Nome da Comanda */}
       <div>
-        <label
-          htmlFor="nome"
-          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-        >
-          Nome da comanda ou cliente
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label
+            htmlFor="nome"
+            className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
+          >
+            Nome da comanda ou cliente
+          </label>
+          <span
+            className={`text-[11px] tabular-nums font-semibold ${
+              restantesNome <= 15
+                ? "text-amber-700 dark:text-amber-500 font-bold"
+                : "text-stone-400 dark:text-stone-500"
+            }`}
+          >
+            {restantesNome} {restantesNome === 1 ? "restante" : "restantes"}
+          </span>
+        </div>
         <input
           id="nome"
           name="nome"
           required
           autoFocus
+          maxLength={LIMITE_NOME}
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
           placeholder="Ex: Zé, ou Mesa 5"
           className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
         />
@@ -30,21 +53,38 @@ export function NovaComandaForm() {
         </p>
       </div>
 
+      {/* Campo Número da Mesa */}
       <div>
-        <label
-          htmlFor="numero_mesa"
-          className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
-        >
-          Número da mesa <span className="font-normal normal-case text-stone-400">(opcional)</span>
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label
+            htmlFor="numero_mesa"
+            className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300"
+          >
+            Número da mesa <span className="font-normal normal-case text-stone-400">(opcional)</span>
+          </label>
+          <span
+            className={`text-[11px] tabular-nums font-semibold ${
+              restantesMesa <= 5
+                ? "text-amber-700 dark:text-amber-500 font-bold"
+                : "text-stone-400 dark:text-stone-500"
+            }`}
+          >
+            {restantesMesa} {restantesMesa === 1 ? "restante" : "restantes"}
+          </span>
+        </div>
         <input
           id="numero_mesa"
           name="numero_mesa"
           inputMode="numeric"
+          maxLength={LIMITE_MESA}
+          value={numeroMesa}
+          onChange={(e) => setNumeroMesa(e.target.value)}
           placeholder="Ex: 5"
           className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
         />
-        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">Deixe em branco se o cliente estiver consumindo no balcão.</p>
+        <p className="mt-2 text-xs text-stone-500 dark:text-stone-400">
+          Deixe em branco se o cliente estiver consumindo no balcão.
+        </p>
       </div>
 
       {estado && !estado.ok ? (
