@@ -4,6 +4,7 @@ import { formatarReais, formatarDataHora } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
+import { EstatisticasDashboard } from "@/components/estatisticas-dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,6 @@ export default async function RelatoriosPage() {
     const faturamentoTotal = vendas.reduce((soma, v) => soma + v.total_centavos, 0);
     const totalItensVendidos = vendas.reduce((soma, v) => soma + v.quantidade, 0);
 
-    // Agrupa itens mais vendidos para o ranking
     const rankingMap = new Map<string, { quantidade: number; faturamento: number }>();
     for (const v of vendas) {
         const atual = rankingMap.get(v.nome_item) ?? { quantidade: 0, faturamento: 0 };
@@ -30,7 +30,6 @@ export default async function RelatoriosPage() {
 
     return (
         <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-            {/* Cabeçalho */}
             <AtualizacaoAoVivo />
             <CabecalhoDono
                 ativo="relatorios"
@@ -59,7 +58,9 @@ export default async function RelatoriosPage() {
                 </div>
             </section>
 
-            {/* Conteúdo Principal */}
+            {/* Modelos Estatísticos e Gráficos (Curva S, Sazonalidade e Horários de Pico) */}
+            <EstatisticasDashboard vendas={vendas} />
+
             <main className="flex-1 p-6 space-y-8">
                 {/* Ranking de Mais Vendidos */}
                 <section className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-xs">

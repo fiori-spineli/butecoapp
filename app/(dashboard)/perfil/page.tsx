@@ -3,6 +3,7 @@ import { VoltarPara } from "@/components/voltar";
 import { LogoButeco } from "@/components/logo-buteco";
 import { SenhaForm } from "./senha-form";
 import { MensagemQrForm } from "./mensagem-qr-form";
+import { BarConfigForm } from "./bar-config-form";
 import { SeletorDeTema } from "@/components/seletor-de-tema";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,8 @@ export default async function PerfilPage() {
         </div>
       </header>
 
-      <main className="flex-1 p-6 md:p-8 max-w-2xl w-full mx-auto">
-        <div className="mb-6">
+      <main className="flex-1 p-6 md:p-8 max-w-2xl w-full mx-auto space-y-6">
+        <div className="mb-2">
           <h1 className="text-xl md:text-2xl font-black text-stone-900 dark:text-stone-100">
             Ajustes do bar
           </h1>
@@ -32,39 +33,44 @@ export default async function PerfilPage() {
           </p>
         </div>
 
+        {/* Informações e Horários do Bar */}
+        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+          <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
+            Dados e Horário de Funcionamento
+          </h2>
+          <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
+            Altere o nome do estabelecimento e defina o horário padrão de atendimento do seu bar.
+          </p>
+          <BarConfigForm bar={bar as any} />
+        </div>
+
         <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Cadastrar ou alterar senha fixa
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Com uma senha cadastrada você entra tanto pelo link no e-mail quanto digitando e-mail e senha. O cadastro é feito por um link que enviamos para a sua caixa postal.
+            Com uma senha cadastrada você entra tanto pelo link no e-mail quanto digitando e-mail e senha.
           </p>
-
           <SenhaForm />
         </div>
 
-        <div className="mt-6 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Aparência
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Escolha como o app aparece neste aparelho. O salão à noite pede tela escura;
-            o computador do caixa, de dia, costuma pedir clara — por isso a escolha vale
-            por aparelho, e não para a conta inteira.
+            Escolha como o app aparece neste aparelho.
           </p>
-
           <SeletorDeTema />
         </div>
 
-        <div className="mt-6 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
+        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Mensagem enviada com o QR Code
           </h2>
           <p className="text-xs text-stone-500 dark:text-stone-400 mb-6 leading-relaxed">
-            Quando você compartilha a comanda pelo WhatsApp, este texto vai junto com o
-            link. Escreva do jeito que o seu bar fala.
+            Quando você compartilha a comanda pelo WhatsApp, este texto vai junto com o link.
           </p>
-
           <MensagemQrForm mensagemAtual={bar.mensagem_qr} nomeDoBar={bar.nome} />
         </div>
       </main>

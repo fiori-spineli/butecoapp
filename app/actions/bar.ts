@@ -1,20 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { exigirBar } from "@/lib/bar";
+import { exigirBar, gerarSlug } from "@/lib/bar";
 import type { EstadoForm } from "@/app/actions/auth";
 import { LIMITE_DE_CARACTERES } from "@/lib/mensagem-qr";
-
-/*
- * `criarBar` morava aqui e foi removida.
- *
- * Ela era o último caminho de auto-cadastro: quem estivesse logado sem bar
- * digitava um nome e criava um estabelecimento. Com o "Entrar com Google",
- * qualquer conta Google do mundo chegaria nessa porta.
- *
- * Bar agora nasce em app/actions/interessados.ts, no painel de admin, a partir
- * de um pedido de contato — com gente conferindo.
- */
 
 /**
  * Salva a mensagem que acompanha o link da comanda no WhatsApp.
@@ -56,4 +45,46 @@ export async function salvarMensagemQr(
       ? "Mensagem salva. É ela que o cliente vai receber junto com o link."
       : "Voltamos para a mensagem padrão.",
   };
+}
+
+/**
+ * Atualiza as configurações gerais do bar (nome, horários, telefone, cidade).
+ */
+export async function atualizarConfiguracoesBar(
+  _anterior: EstadoForm,
+  formData: FormData,
+): Promise<EstadoForm> {
+  const nome = String(formData.get("nome") ?? "").trim();
+  const horarioAbertura = String(formData.get("horario_abertura") ?? "18:00").trim();
+  const horarioFechamento = String(formData.get("horario_fechamento") ?? "03:00").trim();
+  const telefone = String(formData.get("telefone") ?? "").trim();
+  const cidade = String(formData.get("cidade") ?? "").trim();
+
+  if (nome.length < 2) {
+    return { ok: false, mensagem: "O nome do bar precisa ter ao menos 2 caracteres." };
+  }
+
+  const { supabase, bar } = await exigirBar();
+
+  const { error } = await supabase
+    .from("bars")
+    .update({
+      nome,
+      horario_abertura: horarioAbertura || "18:00:00",
+      horario_fechamento: horarioFechamento || "03:00:00",
+      telefone: telefone || null,
+      cidade: cidade || null,
+      slug: gerarSlug(nome),
+    })
+    .eq("id", bar.id);
+
+  if (error) {
+    return { ok: false, mensagem: "Não foi possível salvar as configurações. Tente de novo." };
+  }
+
+  revalidatePath("/perfil");
+  revalidatePath("/dashboard");
+  revalidatePath("/relatorios");
+
+  return { ok: true, mensagem: "Configurações do bar atualizadas com sucesso!" };
 }
