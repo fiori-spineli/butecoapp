@@ -4,14 +4,6 @@ import { useState, useTransition } from "react";
 import { pedirTrocaDeSenha, type EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
 
-/**
- * Trocar senha não acontece aqui.
- *
- * Antes esta tela gravava a senha nova direto, sem pedir a atual: bastava
- * alguém pegar o celular destravado no balcão para fixar uma senha e ficar
- * com a conta. Agora ela só dispara o link por e-mail — quem troca a senha é
- * quem tem a caixa postal, não quem tem o aparelho na mão.
- */
 export function SenhaForm() {
   const [pendente, iniciar] = useTransition();
   const [estado, setEstado] = useState<EstadoForm>(null);
@@ -24,7 +16,8 @@ export function SenhaForm() {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-md">
+    /* w-full sem max-w-md para preencher toda a extensão do card */
+    <div className="flex flex-col gap-4 w-full">
       <p className="text-xs leading-relaxed text-stone-500 dark:text-stone-400">
         Por segurança, a senha é cadastrada pelo link que enviamos para o e-mail da
         sua conta. Assim ninguém troca a sua senha só por estar com o seu celular
@@ -44,11 +37,12 @@ export function SenhaForm() {
         </p>
       )}
 
+      {/* Botão em largura total com o mesmo padrão e padding de 'Salvar alterações' */}
       <button
         type="button"
         onClick={enviarLink}
         disabled={pendente}
-        className="cursor-pointer w-full min-h-12 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-5 py-3.5 font-bold text-white shadow-xs transition-transform active:scale-95 disabled:opacity-60 text-sm"
+        className="cursor-pointer w-full min-h-11 rounded-xl bg-amber-700 hover:bg-amber-600 px-5 py-3 text-sm font-bold text-white shadow-xs transition-transform active:scale-95 disabled:opacity-60"
       >
         {pendente ? <LoadingButeco /> : "Receber link para cadastrar senha"}
       </button>

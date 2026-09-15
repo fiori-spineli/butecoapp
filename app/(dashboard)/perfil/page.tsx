@@ -19,10 +19,10 @@ export default async function PerfilPage() {
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
       {/* Cabeçalho Unificado e Proporcional */}
-      <header className="flex items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-3.5">
+      <header className="flex items-center justify-between gap-3 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex min-w-0 shrink items-center gap-3 sm:gap-4">
           <VoltarPara href="/dashboard" />
-          <LogoButeco className="w-28 sm:w-36 h-9 sm:h-11 shrink-0" priority />
+          <LogoButeco className="w-36 sm:w-44 md:w-52 h-12 sm:h-14 md:h-16 shrink-0" priority />
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">

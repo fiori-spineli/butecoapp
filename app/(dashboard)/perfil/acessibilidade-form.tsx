@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+type ModoDaltonico = "nenhum" | "deuteranopia" | "protanopia" | "tritanopia" | "monocromatico";
+
 export function AcessibilidadeForm() {
   const [fonte, setFonte] = useState<"padrao" | "medio" | "grande">("padrao");
   const [contraste, setContraste] = useState(false);
-  const [daltonismo, setDaltonismo] = useState<"nenhum" | "protanopia">("nenhum");
+  const [daltonismo, setDaltonismo] = useState<ModoDaltonico>("nenhum");
 
   useEffect(() => {
     const f = (localStorage.getItem("buteco_fonte") as any) || "padrao";
@@ -36,7 +38,7 @@ export function AcessibilidadeForm() {
     aplicar(fonte, novo, daltonismo);
   }
 
-  function mudarDaltonismo(novo: "nenhum" | "protanopia") {
+  function mudarDaltonismo(novo: ModoDaltonico) {
     setDaltonismo(novo);
     localStorage.setItem("buteco_daltonico", novo);
     aplicar(fonte, contraste, novo);
@@ -67,31 +69,48 @@ export function AcessibilidadeForm() {
         </div>
       </div>
 
-      {/* Alto Contraste e Daltonismo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-stone-200 dark:border-stone-800">
+      {/* Alto Contraste */}
+      <div>
         <button
           type="button"
           onClick={alternarContraste}
-          className={`min-h-11 rounded-xl border px-4 text-xs font-bold transition-colors ${
+          className={`w-full min-h-11 rounded-xl border px-4 text-xs font-bold transition-colors ${
             contraste
               ? "border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
               : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300"
           }`}
         >
-          Alto Contraste: {contraste ? "Ativado" : "Desativado"}
+          Modo Alto Contraste: {contraste ? "Ativado" : "Desativado"}
         </button>
+      </div>
 
-        <button
-          type="button"
-          onClick={() => mudarDaltonismo(daltonismo === "nenhum" ? "protanopia" : "nenhum")}
-          className={`min-h-11 rounded-xl border px-4 text-xs font-bold transition-colors ${
-            daltonismo !== "nenhum"
-              ? "border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
-              : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300"
-          }`}
-        >
-          Modo Daltônico: {daltonismo !== "nenhum" ? "Azul / Laranja" : "Desativado"}
-        </button>
+      {/* Opções de Daltonismo */}
+      <div>
+        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+          Adaptação para Daltonismo
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {[
+            { id: "nenhum", rotulo: "Padrão (Desativado)" },
+            { id: "deuteranopia", rotulo: "Deuteranopia (Verde)" },
+            { id: "protanopia", rotulo: "Protanopia (Vermelho)" },
+            { id: "tritanopia", rotulo: "Tritanopia (Azul/Amarelo)" },
+            { id: "monocromatico", rotulo: "Monocromático" },
+          ].map((opcao) => (
+            <button
+              key={opcao.id}
+              type="button"
+              onClick={() => mudarDaltonismo(opcao.id as ModoDaltonico)}
+              className={`min-h-11 rounded-xl border p-2.5 text-xs font-bold transition-colors text-center ${
+                daltonismo === opcao.id
+                  ? "border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
+                  : "border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300"
+              }`}
+            >
+              {opcao.rotulo}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

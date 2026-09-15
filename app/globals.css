@@ -118,25 +118,73 @@ html[data-contraste="alto"] [class*="border-"] {
   border-width: 2px !important;
   border-color: currentColor !important;
 }
+/* ==========================================================
+   MODOS DALTÔNICOS CLÍNICOS E ACESSIBILIDADE VISUAL
+   ========================================================== */
 
-/* 3. Daltonismo: Protanopia / Deuteranopia (Substitui Verde/Vermelho por Azul/Laranja vibrantes) */
+/* 1. Deuteranopia (Dificuldade com verde - 6% dos homens)
+   Substitui Verde/Vermelho por Azul Royal e Laranja Fogo */
+html[data-daltonico="deuteranopia"] .bg-emerald-500,
+html[data-daltonico="deuteranopia"] .bg-emerald-600,
+html[data-daltonico="deuteranopia"] .bg-emerald-700 {
+  background-color: #2563eb !important;
+}
+html[data-daltonico="deuteranopia"] .text-emerald-700,
+html[data-daltonico="deuteranopia"] .text-emerald-400 {
+  color: #3b82f6 !important;
+}
+html[data-daltonico="deuteranopia"] .bg-rose-600,
+html[data-daltonico="deuteranopia"] .bg-rose-700 {
+  background-color: #ea580c !important;
+}
+html[data-daltonico="deuteranopia"] .text-rose-700,
+html[data-daltonico="deuteranopia"] .text-rose-400 {
+  color: #f97316 !important;
+}
+
+/* 2. Protanopia (Dificuldade com vermelho - 2% dos homens)
+   Substitui Verde/Vermelho por Azul Celeste e Amarelo Mostarda */
 html[data-daltonico="protanopia"] .bg-emerald-500,
 html[data-daltonico="protanopia"] .bg-emerald-600,
 html[data-daltonico="protanopia"] .bg-emerald-700 {
-  background-color: #2563eb !important;
+  background-color: #0284c7 !important;
 }
 html[data-daltonico="protanopia"] .text-emerald-700,
-html[data-daltonico="protanopia"] .text-emerald-800 {
-  color: #1d4ed8 !important;
+html[data-daltonico="protanopia"] .text-emerald-400 {
+  color: #38bdf8 !important;
 }
-html[data-daltonico="protanopia"] .bg-rose-500,
 html[data-daltonico="protanopia"] .bg-rose-600,
 html[data-daltonico="protanopia"] .bg-rose-700 {
-  background-color: #ea580c !important;
+  background-color: #eab308 !important;
 }
 html[data-daltonico="protanopia"] .text-rose-700,
-html[data-daltonico="protanopia"] .text-rose-800 {
-  color: #c2410c !important;
+html[data-daltonico="protanopia"] .text-rose-400 {
+  color: #fde047 !important;
+}
+
+/* 3. Tritanopia (Dificuldade com azul/amarelo - Raro)
+   Substitui tons por Turquesa Escuro e Magenta Carmesim */
+html[data-daltonico="tritanopia"] .bg-emerald-500,
+html[data-daltonico="tritanopia"] .bg-emerald-600,
+html[data-daltonico="tritanopia"] .bg-emerald-700 {
+  background-color: #0d9488 !important;
+}
+html[data-daltonico="tritanopia"] .text-emerald-700,
+html[data-daltonico="tritanopia"] .text-emerald-400 {
+  color: #14b8a6 !important;
+}
+html[data-daltonico="tritanopia"] .bg-rose-600,
+html[data-daltonico="tritanopia"] .bg-rose-700 {
+  background-color: #e11d48 !important;
+}
+html[data-daltonico="tritanopia"] .text-rose-700,
+html[data-daltonico="tritanopia"] .text-rose-400 {
+  color: #fb7185 !important;
+}
+
+/* 4. Acromatopsia / Monocromático (Ausência total de percepção de cor) */
+html[data-daltonico="monocromatico"] {
+  filter: grayscale(100%);
 }
 
 /* ==========================================================
