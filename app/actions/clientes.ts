@@ -317,6 +317,7 @@ export async function criarClienteDoPedido(
 }
 
 /** Cadastro manual completo feito pela página /admin/novo-bar */
+/** Cadastro manual completo feito pela página /admin/novo-bar */
 export async function criarClienteManual(
   _anterior: EstadoForm,
   formData: FormData,
@@ -337,6 +338,8 @@ export async function criarClienteManual(
   const senhaFinal = senhaInformada || randomBytes(16).toString("base64url");
   const admin = createSupabaseAdminClient();
 
+  // Tenta criar o usuário
+  let userId: string | null = null;
   const { data: criado, error: erroUsuario } = await admin.auth.admin.createUser({
     email,
     password: senhaFinal,
@@ -349,23 +352,47 @@ export async function criarClienteManual(
     },
   });
 
-  if (erroUsuario || !criado?.user) {
+  if (criado?.user) {
+    userId = criado.user.id;
+  } else {
+    // Se o usuário já existia no Auth (ex: foi importado do banco antigo), reaproveita a conta
     const jaExiste =
       erroUsuario?.code === "email_exists" ||
+      erroUsuario?.code === "user_already_exists" ||
       /already (been )?registered|already exists/i.test(erroUsuario?.message ?? "");
 
-    return {
-      ok: false,
-      mensagem: jaExiste
-        ? "Já existe uma conta com esse e-mail."
-        : "Não foi possível criar o usuário. Verifique os dados.",
-    };
+    if (jaExiste) {
+      const { data: usuarios } = await admin.auth.admin.listUsers();
+      const usuarioExistente = usuarios?.users.find((u) => u.email?.toLowerCase() === email);
+
+      if (usuarioExistente) {
+        userId = usuarioExistente.id;
+        // Atualiza a senha e os metadados do dono
+        await admin.auth.admin.updateUserById(userId, {
+          password: senhaFinal,
+          user_metadata: {
+            nome: nomeDono || nomeDoBar,
+            bar_nome: nomeDoBar,
+            telefone,
+            criado_por: "backoffice_manual",
+          },
+        });
+      }
+    }
+
+    if (!userId) {
+      return {
+        ok: false,
+        mensagem: erroUsuario?.message || "Não foi possível criar o usuário. Verifique os dados.",
+      };
+    }
   }
 
+  // Cria o bar vinculado ao ID do dono
   const { data: barCriado, error: erroBar } = await admin
     .from("bars")
     .insert({
-      owner_id: criado.user.id,
+      owner_id: userId,
       nome: nomeDoBar,
       slug: gerarSlug(nomeDoBar),
     })
@@ -373,8 +400,7 @@ export async function criarClienteManual(
     .single();
 
   if (erroBar || !barCriado) {
-    await admin.auth.admin.deleteUser(criado.user.id);
-    return { ok: false, mensagem: "Criei o usuário mas falhou ao criar o bar. Nada foi salvo." };
+    return { ok: false, mensagem: "Usuário pronto, mas falhou ao criar o bar. Verifique o nome do estabelecimento." };
   }
 
   const link = senhaInformada ? null : await gerarLinkDeSenha(email);
