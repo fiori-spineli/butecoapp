@@ -372,6 +372,7 @@ textarea {
 .animate-espuma {
   animation: espumaPulse 7s ease-in-out infinite;
   transform-origin: top center;
+  will-change: transform, opacity;
 }
 
 
@@ -550,6 +551,7 @@ textarea {
 
 .animate-microbolhas {
   animation: microBolhas 8s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 

@@ -3,19 +3,6 @@
 import { useSyncExternalStore } from "react";
 import { aplicarTema, lerPreferencia, type PreferenciaDeTema } from "@/lib/tema";
 
-/**
- * A escolha de aparência do bar, em Ajustes.
- *
- * Saiu do cabeçalho de cada tela por dois motivos. O primeiro é de uso: é uma
- * decisão que se toma UMA vez — o salão é escuro à noite ou o caixa é claro de
- * dia — e não um botão para ficar ao lado do que se usa o tempo todo. O
- * segundo é de layout: no cabeçalho ele entrava na conta do espaço e ajudava a
- * empurrar a navegação de lugar a cada tela.
- *
- * "Automático" segue o aparelho: o celular que escurece sozinho à noite leva o
- * app junto.
- */
-
 const OPCOES: { valor: PreferenciaDeTema; rotulo: string; descricao: string }[] = [
   { valor: "claro", rotulo: "Claro", descricao: "Fundo branco, sempre." },
   { valor: "escuro", rotulo: "Escuro", descricao: "Fundo escuro, sempre." },
@@ -23,15 +10,17 @@ const OPCOES: { valor: PreferenciaDeTema; rotulo: string; descricao: string }[] 
 ];
 
 function assinar(aoMudar: () => void) {
+  window.addEventListener("buteco-tema-mudou", aoMudar);
+  window.addEventListener("storage", aoMudar);
   const observador = new MutationObserver(aoMudar);
   observador.observe(document.documentElement, {
     attributes: true,
     attributeFilter: ["class"],
   });
-  window.addEventListener("storage", aoMudar);
   return () => {
-    observador.disconnect();
+    window.removeEventListener("buteco-tema-mudou", aoMudar);
     window.removeEventListener("storage", aoMudar);
+    observador.disconnect();
   };
 }
 

@@ -115,19 +115,15 @@ export function NavPrincipal({ ativo }: { ativo: AbaAtiva }) {
             href={aba.href}
             prefetch={true}
             aria-current={selecionada ? "page" : undefined}
-            className={`cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-lg px-3 lg:px-4 text-xs font-bold transition-colors ${
+            className={`cursor-pointer inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-xs font-bold transition-colors ${
               selecionada
                 ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
                 : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100"
             }`}
           >
             <Icone>{aba.icone}</Icone>
-            {/* Rótulo só a partir de lg. Entre 768 e 1023 o cabeçalho ainda
-                carrega logo, navegação, a ação da página, Perfil e Sair: com
-                as três palavras escritas o conjunto não cabia e o botão da
-                página passava POR CIMA de "Relatórios". Ícone sozinho resolve
-                sem tirar nada da tela — e o alvo de toque continua o mesmo. */}
-            <span className="hidden lg:inline">{aba.rotulo}</span>
+            {/* Exibe o rótulo a partir de md (antes era lg), melhorando o layout no desktop/tablet */}
+            <span className="hidden md:inline">{aba.rotulo}</span>
           </Link>
         );
       })}

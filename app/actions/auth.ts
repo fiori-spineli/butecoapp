@@ -164,11 +164,10 @@ export async function redefinirSenha(
   });
 
   if (error) {
-    return { ok: false, mensagem: "Não foi possível enviar o e-mail de redefinição." };
+    // Exibe o erro real para facilitar o diagnóstico (ex: falha no provedor de e-mail)
+    return { ok: false, mensagem: error.message || "Não foi possível enviar o e-mail de redefinição." };
   }
 
-  // Resposta igual existindo a conta ou não: dizer "esse e-mail não existe"
-  // entrega para qualquer um a lista de quem tem cadastro.
   return {
     ok: true,
     mensagem: `Se existe uma conta com ${email}, o link de redefinição já está a caminho. Confira também o Spam.`,
