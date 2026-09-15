@@ -97,7 +97,7 @@ export function MensagemQrForm({
           O cliente vai receber assim
           {usandoPadrao ? " (padrão)" : ""}
         </p>
-        <p className="text-xs leading-relaxed text-emerald-950 dark:text-emerald-100 whitespace-pre-wrap break-words">
+        <p className="text-xs leading-relaxed text-emerald-950 dark:text-emerald-100 whitespace-pre-wrap wrap-break-words">
           {previa}
         </p>
         <p className="mt-1.5 text-[11px] text-emerald-700/80 dark:text-emerald-500/80">
