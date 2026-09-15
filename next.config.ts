@@ -2,19 +2,16 @@ import type { NextConfig } from "next";
 
 /**
  * Cabeçalhos fixos de segurança, iguais em toda resposta.
- * A Content-Security-Policy não está aqui porque ela carrega um nonce por
- * requisição — ver proxy.ts e lib/csp.ts.
+ * A Content-Security-Policy é montada dinamicamente com nonce no proxy.ts / lib/csp.ts.
  */
 const cabecalhosDeSeguranca = [
-  // O navegador não "adivinha" tipo de arquivo: um upload servido como
-  // texto nunca vira script.
+  // Impede o navegador de adivinhar o MIME-type (evita execução de scripts disfarçados)
   { key: "X-Content-Type-Options", value: "nosniff" },
-  // Link externo aberto a partir da comanda do cliente (/c/<token>) leva só a
-  // origem no Referer, nunca o caminho com o token.
+  // Protege a URL com o token da comanda do cliente ao clicar em links externos
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  // Reforço da frame-ancestors da CSP para navegador antigo.
+  // Proteção contra Clickjacking em navegadores antigos
   { key: "X-Frame-Options", value: "DENY" },
-  // O app não usa nada disto; negar fecha a porta para script de terceiro.
+  // Restringe APIs de hardware desnecessárias para scripts de terceiros
   {
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()",
@@ -22,9 +19,28 @@ const cabecalhosDeSeguranca = [
 ];
 
 const nextConfig: NextConfig = {
-  // Não anunciar o framework no cabeçalho de toda resposta.
+  // 1. Oculta o cabeçalho X-Powered-By: Next.js (segurança e economia de bytes)
   poweredByHeader: false,
+
+  // 2. Garante compressão Gzip e Brotli ativa em todas as respostas
+  compress: true,
+
+  // 3. Otimizações de Compilação em Produção
+  compiler: {
+    // Remove console.log e console.info em produção para deixar o bundle JS mais leve
+    // Preserva console.error e console.warn para monitoramento de falhas reais
+    removeConsole:
+      process.env.NODE_ENV === "production"
+        ? { exclude: ["error", "warn"] }
+        : false,
+  },
+
+  // 4. Otimizações de Carregamento de Imagens
   images: {
+    // Negocia AVIF primeiro (mais leve e rápido que WebP), com fallback para WebP
+    formats: ["image/avif", "image/webp"],
+    // Mantém imagens otimizadas do Supabase em cache na CDN por até 24 horas
+    minimumCacheTTL: 86400,
     remotePatterns: [
       {
         protocol: "https",
@@ -33,8 +49,39 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
+  // 5. Trata o 'sharp' como pacote externo de servidor (essencial para processar fotos no Node.js da Vercel)
+  serverExternalPackages: ["sharp"],
+
+  // 6. Tree-shaking cirúrgico de pacotes pesados no frontend
+  experimental: {
+    optimizePackageImports: ["browser-image-compression", "qrcode.react"],
+  },
+
+  // 7. Cabeçalhos HTTP customizados
   async headers() {
-    return [{ source: "/(.*)", headers: cabecalhosDeSeguranca }];
+    return [
+      {
+        // Aplica cabeçalhos de segurança em todas as páginas e rotas
+        source: "/(.*)",
+        headers: cabecalhosDeSeguranca,
+      },
+      {
+        // Garante que o Service Worker da PWA nunca fique preso no cache do navegador
+        // Quando você subir uma versão nova, os celulares dos bares atualizam na hora
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+          {
+            key: "Content-Type",
+            value: "application/javascript; charset=utf-8",
+          },
+        ],
+      },
+    ];
   },
 };
 
