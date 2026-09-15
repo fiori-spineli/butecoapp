@@ -8,12 +8,10 @@ type VendaMesItem = {
 };
 
 export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
-  // 1. Processamento estatístico dos dados do mês
   const hoje = new Date();
   const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   const diaAtual = hoje.getDate();
 
-  // Acumulado por dia do mês para a Curva S
   const acumuladoPorDia: number[] = Array(diasNoMes).fill(0);
   let totalMes = 0;
 
@@ -25,11 +23,7 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
     }
   });
 
-  // Transforma em Curva S (Soma acumulativa dia após dia)
-  let somaTemporaria = 0;
-  const curvaS = acumuladoPorDinheiro(acumuladoPorDia);
-
-  function acumuladoPorDinheiro(arr: number[]) {
+  function calcularCurvaS(arr: number[]): number[] {
     let acc = 0;
     return arr.map((val) => {
       acc += val;
@@ -37,11 +31,11 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
     });
   }
 
-  const maxCurva = Math.max(...curvaS, 100); // Evita divisão por zero
+  const curvaS = calcularCurvaS(acumuladoPorDia);
+  const maxCurva = Math.max(...curvaS, 100);
 
-  // 2. Estatística por Dia da Semana (0 = Domingo, 6 = Sábado)
   const diasSemanaNomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-  constvendasPorDiaSemana: number[] = Array(7).fill(0);
+  const vendasPorDiaSemana: number[] = Array(7).fill(0);
 
   vendas.forEach((v) => {
     const d = new Date(v.created_at).getDay();
@@ -49,14 +43,11 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
   });
 
   const maxDiaSemana = Math.max(...vendasPorDiaSemana, 100);
-
-  // Média diária estatística baseada nos dias decorridos do mês
   const mediaDiaria = diaAtual > 0 ? totalMes / diaAtual : 0;
 
-  // Pontos para desenhar a Curva S no SVG
   const pontosSvg = curvaS
     .slice(0, Math.min(diaAtual, diasNoMes))
-    .map((val, idx, arr) => {
+    .map((val, idx) => {
       const x = (idx / (diasNoMes - 1 || 1)) * 360;
       const y = 120 - (val / maxCurva) * 100;
       return `${x},${y}`;
@@ -96,12 +87,10 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
                 </linearGradient>
               </defs>
 
-              {/* Linhas de grade de fundo */}
               <line x1="0" y1="20" x2="360" y2="20" stroke="currentColor" className="text-stone-200 dark:text-stone-800" strokeDasharray="4" />
               <line x1="0" y1="70" x2="360" y2="70" stroke="currentColor" className="text-stone-200 dark:text-stone-800" strokeDasharray="4" />
               <line x1="0" y1="120" x2="360" y2="120" stroke="currentColor" className="text-stone-200 dark:text-stone-800" />
 
-              {/* Preenchimento inferior da Curva */}
               {pontosSvg && (
                 <polygon
                   points={`0,120 ${pontosSvg} 360,120`}
@@ -109,7 +98,6 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
                 />
               )}
 
-              {/* Linha Principal da Curva S */}
               {pontosSvg && (
                 <polyline
                   fill="none"
@@ -152,7 +140,6 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
 
             return (
               <div key={dia} className="flex-1 flex flex-col items-center h-full justify-end group relative">
-                {/* Tooltip ao passar o mouse */}
                 <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-stone-900 text-white text-[10px] font-bold py-1 px-2 rounded-md pointer-events-none whitespace-nowrap z-10 shadow-md">
                   {formatarReais(valorDia)}
                 </div>
