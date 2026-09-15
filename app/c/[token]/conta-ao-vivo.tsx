@@ -27,7 +27,6 @@ export function ContaAoVivo({
   const cardapio = dados.cardapio ?? [];
   const pedidosPendentes = dados.pedidos_pendentes ?? [];
 
-  // Atualização em tempo real (polling leve) para refletir quando o garçom confirmar a entrega
   useEffect(() => {
     if (!contaAberta) return;
 
@@ -85,7 +84,6 @@ export function ContaAoVivo({
         setAba("conta");
         setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
 
-        // Atualiza a visualização com o pedido pendente
         const supabase = createSupabaseAnonClient();
         const { data } = await supabase.rpc("comanda_publica", { p_token: token });
         if (data) setDados(data as ComandaPublica);
@@ -97,7 +95,6 @@ export function ContaAoVivo({
 
   return (
     <div className="flex flex-col text-stone-900 dark:text-stone-100">
-      {/* Cabeçalho do Cartão */}
       <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -125,7 +122,6 @@ export function ContaAoVivo({
           </span>
         </div>
 
-        {/* Abas Alternadoras: Comanda x Cardápio */}
         {contaAberta && (
           <div className="mt-5 grid grid-cols-2 rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold">
             <button
@@ -172,10 +168,8 @@ export function ContaAoVivo({
           </div>
         )}
 
-        {/* 1. ABA: MINHA CONTA */}
         {aba === "conta" && (
           <div className="space-y-5">
-            {/* Alerta Amarelo de Pedidos Aguardando Confirmação */}
             {pedidosPendentes.length > 0 && (
               <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -197,7 +191,6 @@ export function ContaAoVivo({
               </div>
             )}
 
-            {/* Quadro de Valores */}
             <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50 p-4 grid grid-cols-2 gap-3">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
@@ -225,7 +218,6 @@ export function ContaAoVivo({
               </div>
             </div>
 
-            {/* Extrato de Itens Confirmados */}
             <div>
               <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 mb-3">
                 Itens Consumidos ({dados.itens?.length ?? 0})
@@ -255,7 +247,6 @@ export function ContaAoVivo({
           </div>
         )}
 
-        {/* 2. ABA: CARDÁPIO (FAZER PEDIDO) */}
         {aba === "cardapio" && (
           <div>
             <div className="mb-4">
@@ -334,7 +325,6 @@ export function ContaAoVivo({
               </ul>
             )}
 
-            {/* Barra de Finalização do Carrinho */}
             {qtdTotalCarrinho > 0 && (
               <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
                 <div>

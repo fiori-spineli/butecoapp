@@ -1,310 +1,351 @@
-import { notFound } from "next/navigation";
-import { exigirBar } from "@/lib/bar";
-import { montarMensagem } from "@/lib/mensagem-qr";
-import { formatarDataHora, formatarMomento, formatarReais } from "@/lib/format";
-import { TempoAberto } from "@/components/tempo-aberto";
-import { origemDoApp } from "@/lib/url";
-import { VoltarPara } from "@/components/voltar";
-import { Miniatura } from "@/components/miniatura";
-import {
-  BotaoDesfazerPagamento,
-  BotaoFecharConta,
-  BotaoRemoverItem,
-} from "@/components/comanda/botoes-comanda";
-import { AcoesComanda } from "@/components/comanda/acoes-comanda";
-import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
-import { BotaoImprimir } from "@/components/botao-imprimir";
-import { PedidosPendentesAlerta, type PedidoPendenteDono } from "@/components/comanda/pedidos-pendentes-alerta";
-import type { ComandaResumo, Produto } from "@/lib/types";
-import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
+"use client";
 
-export const dynamic = "force-dynamic";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import Image from "next/image";
+import { formatarMomento, formatarReais } from "@/lib/format";
+import { enviarPedidoCliente } from "@/app/actions/pedidos";
+import { createSupabaseAnonClient } from "@/lib/supabase/publico";
+import { LoadingButeco } from "@/components/loading-buteco";
+import type { ComandaPublica } from "@/lib/types";
 
-export default async function ComandaPage({
-  params,
-  searchParams,
+export function ContaAoVivo({
+  token,
+  inicial,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ nova?: string }>;
+  token: string;
+  inicial: ComandaPublica;
 }) {
-  const { id } = await params;
-  const { nova } = await searchParams;
-  const { supabase, bar } = await exigirBar();
+  const [dados, setDados] = useState<ComandaPublica>(inicial);
+  const [aba, setAba] = useState<"conta" | "cardapio">("conta");
+  const [carrinho, setCarrinho] = useState<Record<string, number>>({});
+  const [busca, setBusca] = useState("");
+  const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, iniciarEnvio] = useTransition();
 
-  const [comandaResposta, lancamentosResposta, pagamentosResposta, produtosResposta, pendentesResposta] =
-    await Promise.all([
-      supabase
-        .from("comandas_resumo")
-        .select("*")
-        .eq("id", id)
-        .eq("bar_id", bar.id)
-        .maybeSingle(),
-      supabase
-        .from("lancamentos")
-        .select("id, produto_id, descricao, quantidade, valor_unitario_centavos, created_at, produtos(nome, imagem_url)")
-        .eq("cliente_id", id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("pagamentos")
-        .select("id, lancamento_id, quantidade_paga, valor_centavos, descricao, created_at")
-        .eq("cliente_id", id)
-        .order("created_at", { ascending: true }),
-      supabase.from("produtos").select("*").eq("bar_id", bar.id).order("nome"),
-      supabase
-        .from("pedidos_pendentes")
-        .select("id, cliente_id, quantidade, valor_unitario_centavos, created_at, produtos(nome)")
-        .eq("cliente_id", id)
-        .eq("status", "pendente")
-        .order("created_at", { ascending: true }),
-    ]);
+  const contaAberta = dados.status === "aberta";
+  const cardapio = dados.cardapio ?? [];
+  const pedidosPendentes = dados.pedidos_pendentes ?? [];
 
-  const comanda = comandaResposta.data as ComandaResumo | null;
-  if (!comanda) notFound();
+  useEffect(() => {
+    if (!contaAberta) return;
 
-  const contaAberta = comanda.status === "aberta";
-  const lancamentos = lancamentosResposta.data ?? [];
-  const pagamentos = pagamentosResposta.data ?? [];
-  const produtos = (produtosResposta.data ?? []) as Produto[];
-  const pedidosPendentes = (pendentesResposta.data ?? []) as unknown as PedidoPendenteDono[];
+    const supabase = createSupabaseAnonClient();
+    const intervalo = setInterval(async () => {
+      if (document.hidden) return;
+      const { data } = await supabase.rpc("comanda_publica", { p_token: token });
+      if (data) {
+        setDados(data as ComandaPublica);
+      }
+    }, 4000);
 
-  const pagasPorItem = pagamentos.reduce<Record<string, number>>((acc, p) => {
-    if (p.lancamento_id && p.quantidade_paga) {
-      acc[p.lancamento_id] = (acc[p.lancamento_id] ?? 0) + p.quantidade_paga;
-    }
-    return acc;
-  }, {});
+    return () => clearInterval(intervalo);
+  }, [token, contaAberta]);
 
-  const itensDivisiveis = lancamentos.map((l) => ({
-    id: l.id as string,
-    nome:
-      ((l as { produtos?: { nome?: string } | null }).produtos?.nome ??
-        (l.descricao as string | null)) ||
-      "Item",
-    quantidade: l.quantidade as number,
-    pagas: pagasPorItem[l.id as string] ?? 0,
-    valor_unitario_centavos: l.valor_unitario_centavos as number,
-  }));
+  const produtosFiltrados = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+    if (!termo) return cardapio;
+    return cardapio.filter((p) => p.nome.toLowerCase().includes(termo));
+  }, [cardapio, busca]);
 
-  const linkPublico = `${await origemDoApp()}/c/${comanda.token}`;
+  function alterarQtd(id: string, delta: number) {
+    setCarrinho((prev) => {
+      const atual = prev[id] ?? 0;
+      const nova = Math.max(0, atual + delta);
+      if (nova === 0) {
+        const { [id]: _, ...resto } = prev;
+        return resto;
+      }
+      return { ...prev, [id]: nova };
+    });
+  }
 
-  const comprovante = {
-    barNome: bar.nome,
-    clienteNome: comanda.nome,
-    numeroMesa: comanda.numero_mesa,
-    status: comanda.status,
-    abertaEm: comanda.created_at,
-    fechadaEm: comanda.fechada_em,
-    itens: lancamentos.map((l) => ({
-      id: l.id as string,
-      nome:
-        ((l as { produtos?: { nome?: string } | null }).produtos?.nome ??
-          (l.descricao as string | null)) ||
-        "Item",
-      quantidade: l.quantidade as number,
-      valorUnitarioCentavos: l.valor_unitario_centavos as number,
-      criadoEm: l.created_at as string,
-    })),
-    pagamentos: pagamentos.map((p) => ({
-      id: p.id as string,
-      descricao: p.descricao as string | null,
-      valorCentavos: p.valor_centavos as number,
-      criadoEm: p.created_at as string,
-    })),
-    totalCentavos: comanda.total_centavos,
-    pagoCentavos: comanda.pago_centavos,
-    restanteCentavos: comanda.restante_centavos,
-    emitidoEm: new Date().toISOString(),
-  };
+  const totalCarrinhoCentavos = Object.entries(carrinho).reduce((acc, [id, qtd]) => {
+    const prod = cardapio.find((p) => p.id === id);
+    return acc + (prod ? prod.preco_centavos * qtd : 0);
+  }, 0);
+
+  const qtdTotalCarrinho = Object.values(carrinho).reduce((acc, q) => acc + q, 0);
+
+  function submeterPedido() {
+    if (qtdTotalCarrinho === 0) return;
+    setErro(null);
+    setMensagemSucesso(null);
+
+    const itens = Object.entries(carrinho).map(([produto_id, quantidade]) => ({
+      produto_id,
+      quantidade,
+    }));
+
+    iniciarEnvio(async () => {
+      const res = await enviarPedidoCliente(token, itens);
+      if (res.ok) {
+        setCarrinho({});
+        setAba("conta");
+        setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
+
+        const supabase = createSupabaseAnonClient();
+        const { data } = await supabase.rpc("comanda_publica", { p_token: token });
+        if (data) setDados(data as ComandaPublica);
+      } else {
+        setErro(res.mensagem || "Não foi possível enviar o pedido.");
+      }
+    });
+  }
 
   return (
-    <>
-      <AtualizacaoAoVivo />
-      <ComprovanteComanda dados={comprovante} />
-
-      {/* Cabeçalho */}
-      <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
-          <VoltarPara href="/dashboard" />
+    <div className="flex flex-col text-stone-900 dark:text-stone-100">
+      <div className="border-b border-stone-200 dark:border-stone-800 bg-stone-50/70 dark:bg-stone-800/40 p-5">
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg md:text-xl font-black text-stone-900 dark:text-stone-100">
-                {comanda.nome}
-              </h1>
-              {comanda.numero_mesa && (
-                <span className="rounded-md bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 px-2 py-0.5 text-xs font-semibold text-stone-600 dark:text-stone-300">
-                  Mesa {comanda.numero_mesa}
-                </span>
-              )}
-            </div>
-            <p className="text-[11px] text-stone-400 dark:text-stone-500">
-              Aberta em {formatarDataHora(comanda.created_at)}
-              {contaAberta ? (
-                <>
-                  {" · há "}
-                  <TempoAberto desde={comanda.created_at} className="font-semibold" />
-                </>
-              ) : (
-                comanda.fechada_em && ` · fechada em ${formatarDataHora(comanda.fechada_em)}`
-              )}
-            </p>
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400">
+              {dados.bar_nome}
+            </span>
+            <h2 className="text-xl font-black tracking-tight mt-0.5">
+              {dados.cliente_nome}
+            </h2>
+            {dados.numero_mesa && (
+              <span className="mt-1.5 inline-block rounded-md bg-stone-200/70 dark:bg-stone-700 px-2.5 py-0.5 text-xs font-bold text-stone-700 dark:text-stone-200">
+                Mesa {dados.numero_mesa}
+              </span>
+            )}
           </div>
-        </div>
 
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <BotaoImprimir apenasIcone rotulo="Imprimir ou salvar PDF da comanda" />
-          <BotaoFecharConta
-            clienteId={comanda.id}
-            contaAberta={contaAberta}
-            restanteCentavos={comanda.restante_centavos}
-          />
-        </div>
-      </header>
-
-      {/* Resumo de Totais */}
-      <section className="grid grid-cols-2 divide-x divide-stone-200 dark:divide-stone-800 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/60">
-        <div className="p-4 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-            Total consumido
-          </span>
-          <p className="mt-1 text-2xl font-black tabular-nums text-stone-900 dark:text-stone-100">
-            {formatarReais(comanda.total_centavos)}
-          </p>
-        </div>
-        <div className="p-4 text-center">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-            Restante a pagar
-          </span>
-          <p
-            className={`mt-1 text-2xl font-black tabular-nums ${
-              comanda.restante_centavos > 0
-                ? "text-amber-700 dark:text-amber-400"
-                : "text-emerald-700 dark:text-emerald-400"
+          <span
+            className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+              contaAberta
+                ? "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800"
+                : "bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400"
             }`}
           >
-            {formatarReais(comanda.restante_centavos)}
-          </p>
-        </div>
-      </section>
-
-      {/* Conteúdo: Alerta Amarelo + Itens Lançados e Pagamentos Registrados */}
-      <main className="flex-1 p-6 space-y-6">
-        {/* Alerta Amarelo de Pedidos Pendentes enviados pelo cliente via QR Code */}
-        <PedidosPendentesAlerta pedidos={pedidosPendentes} clienteId={comanda.id} />
-
-        {/* Itens */}
-        <div>
-          <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">
-            Itens consumidos ({lancamentos.length})
-          </h2>
-
-          {lancamentos.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-800 p-8 text-center bg-white dark:bg-stone-900/40">
-              <p className="text-sm font-semibold text-stone-600 dark:text-stone-300">
-                Nenhum item lançado ainda
-              </p>
-              <p className="text-xs text-stone-400 mt-1">
-                Toque em <strong>Adicionar item</strong> para anotar o primeiro pedido.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y divide-stone-200 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 overflow-hidden shadow-xs">
-              {lancamentos.map((item) => {
-                const nomeItem =
-                  (item as { produtos?: { nome?: string; imagem_url?: string | null } | null })
-                    .produtos?.nome ??
-                  (item.descricao as string | null) ??
-                  "Item";
-                const foto = (item as { produtos?: { imagem_url?: string | null } | null }).produtos?.imagem_url ?? null;
-                const totalItem = (item.quantidade as number) * (item.valor_unitario_centavos as number);
-
-                return (
-                  <li key={item.id as string} className="flex items-center justify-between gap-3 p-4">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <Miniatura url={foto} alt={nomeItem} tamanho={42} />
-                      <div className="min-w-0">
-                        <p className="truncate font-bold text-sm text-stone-900 dark:text-stone-100">
-                          {nomeItem}
-                        </p>
-                        <p className="text-xs text-stone-500 dark:text-stone-400">
-                          {item.quantidade}x {formatarReais(item.valor_unitario_centavos as number)}
-                          <span className="mx-1.5 text-stone-300 dark:text-stone-600" aria-hidden>
-                            ·
-                          </span>
-                          {formatarMomento(item.created_at as string)}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-bold tabular-nums text-sm text-stone-900 dark:text-stone-100">
-                        {formatarReais(totalItem)}
-                      </span>
-                      {contaAberta && (
-                        <BotaoRemoverItem
-                          clienteId={comanda.id}
-                          lancamentoId={item.id as string}
-                          nome={nomeItem}
-                        />
-                      )}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+            {contaAberta ? "Aberta" : "Encerrada"}
+          </span>
         </div>
 
-        {/* Pagamentos Registrados */}
-        {pagamentos.length > 0 && (
-          <div>
-            <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">
-              Pagamentos já acertados ({pagamentos.length})
-            </h2>
-            <ul className="divide-y divide-stone-200 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 overflow-hidden shadow-xs">
-              {pagamentos.map((p) => (
-                <li key={p.id as string} className="flex items-center justify-between p-4 text-xs">
-                  <div>
-                    <p className="font-bold text-stone-900 dark:text-stone-100">
-                      {p.descricao || "Pagamento registrado"}
-                    </p>
-                    <p className="text-stone-400">
-                      {formatarDataHora(p.created_at as string)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-black text-emerald-700 dark:text-emerald-400 tabular-nums">
-                      - {formatarReais(p.valor_centavos as number)}
-                    </span>
-                    {contaAberta && (
-                      <BotaoDesfazerPagamento
-                        clienteId={comanda.id}
-                        pagamentoId={p.id as string}
-                      />
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+        {contaAberta && (
+          <div className="mt-5 grid grid-cols-2 rounded-xl bg-stone-200/70 dark:bg-stone-800 p-1 border border-stone-300 dark:border-stone-700 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setAba("conta")}
+              className={`cursor-pointer min-h-10 rounded-lg transition-all text-center flex items-center justify-center gap-1.5 ${
+                aba === "conta"
+                  ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+              }`}
+            >
+              Minha Conta
+            </button>
+            <button
+              type="button"
+              onClick={() => setAba("cardapio")}
+              className={`cursor-pointer min-h-10 rounded-lg transition-all text-center relative flex items-center justify-center gap-1.5 ${
+                aba === "cardapio"
+                  ? "bg-white dark:bg-stone-900 text-amber-800 dark:text-amber-400 shadow-xs"
+                  : "text-stone-500 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200"
+              }`}
+            >
+              Fazer Pedido
+              {qtdTotalCarrinho > 0 && (
+                <span className="size-5 rounded-full bg-amber-700 text-white text-[10px] font-black flex items-center justify-center">
+                  {qtdTotalCarrinho}
+                </span>
+              )}
+            </button>
           </div>
         )}
-      </main>
+      </div>
 
-      {/* Ações inferiores */}
-      <AcoesComanda
-        clienteId={comanda.id}
-        nomeComanda={comanda.nome}
-        link={linkPublico}
-        mensagemQr={montarMensagem(bar.mensagem_qr, {
-          bar: bar.nome,
-          comanda: comanda.numero_mesa ? `Mesa ${comanda.numero_mesa}` : comanda.nome,
-        })}
-        produtos={produtos}
-        itens={itensDivisiveis}
-        totalCentavos={comanda.total_centavos}
-        restanteCentavos={comanda.restante_centavos}
-        contaAberta={contaAberta}
-        abrirQrDeCara={Boolean(nova)}
-      />
-    </>
+      <div className="p-5">
+        {mensagemSucesso && (
+          <div className="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 p-3.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+            {mensagemSucesso}
+          </div>
+        )}
+
+        {erro && (
+          <div className="mb-4 rounded-xl border border-rose-300 bg-rose-50 dark:bg-rose-950/40 p-3.5 text-xs font-bold text-rose-900 dark:text-rose-300">
+            {erro}
+          </div>
+        )}
+
+        {aba === "conta" && (
+          <div className="space-y-5">
+            {pedidosPendentes.length > 0 && (
+              <div className="rounded-2xl border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/40 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="size-2.5 rounded-full bg-amber-500 animate-ping" />
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-900 dark:text-amber-300">
+                    Aguardando entrega do garçom ({pedidosPendentes.length})
+                  </span>
+                </div>
+                <ul className="divide-y divide-amber-200 dark:divide-amber-900/60 text-xs">
+                  {pedidosPendentes.map((p) => (
+                    <li key={p.id} className="py-2 flex justify-between items-center">
+                      <span className="font-semibold">{p.quantidade}x {p.nome}</span>
+                      <span className="font-black tabular-nums text-amber-800 dark:text-amber-300">
+                        {formatarReais(p.quantidade * p.valor_unitario_centavos)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50 p-4 grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Consumo Total
+                </span>
+                <p className="text-base font-black tabular-nums mt-0.5">
+                  {formatarReais(dados.total_centavos)}
+                </p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                  Total Pago
+                </span>
+                <p className="text-base font-black tabular-nums text-emerald-600 mt-0.5">
+                  {formatarReais(dados.pago_centavos)}
+                </p>
+              </div>
+              <div className="col-span-2 pt-2 border-t border-stone-200 dark:border-stone-700 flex justify-between items-baseline">
+                <span className="text-xs font-black uppercase tracking-wider text-amber-800 dark:text-amber-400">
+                  Restante a Pagar
+                </span>
+                <p className="text-2xl font-black tabular-nums text-amber-800 dark:text-amber-400">
+                  {formatarReais(dados.restante_centavos)}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-stone-500 mb-3">
+                Itens Consumidos ({dados.itens?.length ?? 0})
+              </h3>
+              {dados.itens?.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-stone-300 dark:border-stone-800 p-8 text-center text-xs text-stone-400">
+                  Nenhum item consumido ainda.
+                </div>
+              ) : (
+                <ul className="divide-y divide-stone-100 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 overflow-hidden">
+                  {dados.itens.map((i) => (
+                    <li key={i.id} className="flex justify-between items-center p-3.5 text-xs">
+                      <div>
+                        <p className="font-bold text-sm text-stone-900 dark:text-stone-100">{i.nome}</p>
+                        <p className="text-stone-400 mt-0.5">
+                          {i.quantidade}x {formatarReais(i.valor_unitario_centavos)} &bull; {formatarMomento(i.criado_em)}
+                        </p>
+                      </div>
+                      <span className="font-black tabular-nums text-sm">
+                        {formatarReais(i.total_centavos)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        )}
+
+        {aba === "cardapio" && (
+          <div>
+            <div className="mb-4">
+              <input
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                placeholder="Buscar no cardápio..."
+                className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-4 py-3 text-sm outline-none focus:border-amber-600 transition-colors"
+              />
+            </div>
+
+            {produtosFiltrados.length === 0 ? (
+              <p className="py-12 text-center text-xs text-stone-400">Nenhum produto disponível.</p>
+            ) : (
+              <ul className="space-y-3">
+                {produtosFiltrados.map((prod) => {
+                  const qtd = carrinho[prod.id] ?? 0;
+                  return (
+                    <li
+                      key={prod.id}
+                      className="flex items-center justify-between gap-3 p-3 rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/30"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="relative size-12 rounded-xl bg-stone-200 dark:bg-stone-800 overflow-hidden shrink-0">
+                          {prod.imagem_url ? (
+                            <Image
+                              src={prod.imagem_url}
+                              alt={prod.nome}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="size-full flex items-center justify-center text-lg">🍺</div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm truncate">{prod.nome}</h4>
+                          <p className="text-xs font-black text-amber-700 dark:text-amber-400 tabular-nums">
+                            {formatarReais(prod.preco_centavos)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {qtd > 0 ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => alterarQtd(prod.id, -1)}
+                              className="cursor-pointer size-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 font-black text-sm flex items-center justify-center"
+                            >
+                              -
+                            </button>
+                            <span className="min-w-5 text-center font-black text-sm">{qtd}</span>
+                            <button
+                              type="button"
+                              onClick={() => alterarQtd(prod.id, 1)}
+                              className="cursor-pointer size-8 rounded-lg bg-amber-700 text-white font-black text-sm flex items-center justify-center"
+                            >
+                              +
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => alterarQtd(prod.id, 1)}
+                            className="cursor-pointer px-4 py-2 rounded-xl bg-amber-700 hover:bg-amber-600 text-white text-xs font-bold transition-colors"
+                          >
+                            Pedir
+                          </button>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {qtdTotalCarrinho > 0 && (
+              <div className="mt-6 pt-4 border-t border-stone-200 dark:border-stone-800 flex items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase">Subtotal</span>
+                  <p className="text-base font-black tabular-nums">
+                    {qtdTotalCarrinho} item{qtdTotalCarrinho > 1 ? "s" : ""} • {formatarReais(totalCarrinhoCentavos)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={enviando}
+                  onClick={submeterPedido}
+                  className="cursor-pointer min-h-11 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-sm transition-transform active:scale-95 disabled:opacity-50"
+                >
+                  {enviando ? <LoadingButeco fraseFixa="Enviando..." /> : "Enviar Pedido"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -14,6 +14,7 @@ import {
 import { AcoesComanda } from "@/components/comanda/acoes-comanda";
 import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
 import { BotaoImprimir } from "@/components/botao-imprimir";
+import { PedidosPendentesAlerta, type PedidoPendenteDono } from "@/components/comanda/pedidos-pendentes-alerta";
 import type { ComandaResumo, Produto } from "@/lib/types";
 import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
@@ -30,7 +31,7 @@ export default async function ComandaPage({
   const { nova } = await searchParams;
   const { supabase, bar } = await exigirBar();
 
-  const [comandaResposta, lancamentosResposta, pagamentosResposta, produtosResposta] =
+  const [comandaResposta, lancamentosResposta, pagamentosResposta, produtosResposta, pendentesResposta] =
     await Promise.all([
       supabase
         .from("comandas_resumo")
@@ -49,6 +50,12 @@ export default async function ComandaPage({
         .eq("cliente_id", id)
         .order("created_at", { ascending: true }),
       supabase.from("produtos").select("*").eq("bar_id", bar.id).order("nome"),
+      supabase
+        .from("pedidos_pendentes")
+        .select("id, cliente_id, quantidade, valor_unitario_centavos, created_at, produtos(nome)")
+        .eq("cliente_id", id)
+        .eq("status", "pendente")
+        .order("created_at", { ascending: true }),
     ]);
 
   const comanda = comandaResposta.data as ComandaResumo | null;
@@ -58,6 +65,7 @@ export default async function ComandaPage({
   const lancamentos = lancamentosResposta.data ?? [];
   const pagamentos = pagamentosResposta.data ?? [];
   const produtos = (produtosResposta.data ?? []) as Produto[];
+  const pedidosPendentes = (pendentesResposta.data ?? []) as unknown as PedidoPendenteDono[];
 
   const pagasPorItem = pagamentos.reduce<Record<string, number>>((acc, p) => {
     if (p.lancamento_id && p.quantidade_paga) {
@@ -79,8 +87,6 @@ export default async function ComandaPage({
 
   const linkPublico = `${await origemDoApp()}/c/${comanda.token}`;
 
-  // A mesma folha que o cliente imprime pelo QR, com a hora da emissão — é o
-  // que o dono manda pelo WhatsApp quando alguém pede "me passa a conta".
   const comprovante = {
     barNome: bar.nome,
     clienteNome: comanda.nome,
@@ -115,7 +121,6 @@ export default async function ComandaPage({
       <AtualizacaoAoVivo />
       <ComprovanteComanda dados={comprovante} />
 
-      {/* Cabeçalho */}
       <header className="flex items-center justify-between gap-2 border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 sm:py-4">
         <div className="flex min-w-0 shrink items-center gap-2 sm:gap-3">
           <VoltarPara href="/dashboard" />
@@ -154,7 +159,6 @@ export default async function ComandaPage({
         </div>
       </header>
 
-      {/* Resumo de Totais */}
       <section className="grid grid-cols-2 divide-x divide-stone-200 dark:divide-stone-800 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-900/60">
         <div className="p-4 text-center">
           <span className="text-[11px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
@@ -180,9 +184,9 @@ export default async function ComandaPage({
         </div>
       </section>
 
-      {/* Conteúdo: Itens Lançados e Pagamentos Registrados */}
       <main className="flex-1 p-6 space-y-6">
-        {/* Itens */}
+        <PedidosPendentesAlerta pedidos={pedidosPendentes} clienteId={comanda.id} />
+
         <div>
           <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">
             Itens consumidos ({lancamentos.length})
@@ -216,9 +220,6 @@ export default async function ComandaPage({
                         <p className="truncate font-bold text-sm text-stone-900 dark:text-stone-100">
                           {nomeItem}
                         </p>
-                        {/* A hora do lançamento fica ao lado do preço: é o que
-                            responde "isso aí entrou quando?" sem precisar
-                            abrir relatório nenhum. */}
                         <p className="text-xs text-stone-500 dark:text-stone-400">
                           {item.quantidade}x {formatarReais(item.valor_unitario_centavos as number)}
                           <span className="mx-1.5 text-stone-300 dark:text-stone-600" aria-hidden>
@@ -248,7 +249,6 @@ export default async function ComandaPage({
           )}
         </div>
 
-        {/* Pagamentos Registrados */}
         {pagamentos.length > 0 && (
           <div>
             <h2 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400 mb-3">
@@ -283,7 +283,6 @@ export default async function ComandaPage({
         )}
       </main>
 
-      {/* Ações inferiores */}
       <AcoesComanda
         clienteId={comanda.id}
         nomeComanda={comanda.nome}

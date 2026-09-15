@@ -3,6 +3,8 @@ import { createSupabaseAnonClient } from "@/lib/supabase/publico";
 
 const TOKEN_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+const SEM_CACHE = { "Cache-Control": "private, no-store" } as const;
+
 /**
  * A comanda do cliente, para a atualização ao vivo de /c/[token].
  *
@@ -16,18 +18,30 @@ const TOKEN_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  * acesso do anônimo, e só àquela comanda. Token que não é UUID nem chega ao
  * banco.
  */
-export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ token: string }> }
+) {
   const { token } = await params;
+
   if (!TOKEN_UUID.test(token)) {
-    return NextResponse.json(null, { status: 404, headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json(null, {
+      status: 404,
+      headers: SEM_CACHE,
+    });
   }
 
-  const { data, error } = await createSupabaseAnonClient().rpc("comanda_publica", { p_token: token });
+  const { data, error } = await createSupabaseAnonClient().rpc("comanda_publica", {
+    p_token: token,
+  });
 
   if (error) {
-    return NextResponse.json({ erro: "indisponível" }, { status: 503, headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json(
+      { erro: "indisponível" },
+      { status: 503, headers: SEM_CACHE }
+    );
   }
 
-  // `null` = token que não existe mais (comprovante expirou). É resposta, não erro.
-  return NextResponse.json(data ?? null, { headers: { "Cache-Control": "private, no-store" } });
+  // `null` = token que não existe mais (comprovante expirou). É resposta válida, não erro.
+  return NextResponse.json(data ?? null, { headers: SEM_CACHE });
 }
