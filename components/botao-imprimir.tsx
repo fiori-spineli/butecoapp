@@ -84,7 +84,7 @@ export function BotaoImprimir({
   }
 
   const iconeImprimir = (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
       <path d="M6 9V2h12v7" />
       <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
       <rect x="6" y="14" width="12" height="8" rx="1" />
@@ -92,7 +92,7 @@ export function BotaoImprimir({
   );
 
   const iconePdf = (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
@@ -101,13 +101,14 @@ export function BotaoImprimir({
   );
 
   const iconeDocx = (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <path d="M10 12l2 2 4-4" />
     </svg>
   );
 
+  // Se não houver conteúdo para a prévia, imprime direto
   if (apenasIcone && !conteudoParaImprimir) {
     return (
       <button
@@ -138,22 +139,23 @@ export function BotaoImprimir({
         <button
           type="button"
           onClick={() => setModalAberto(true)}
-          className="cursor-pointer inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 sm:px-5 py-2.5 text-xs md:text-sm font-bold text-white shadow-xs transition-transform active:scale-95"
+          className="cursor-pointer inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-3 sm:px-5 py-2.5 text-xs md:text-sm font-bold text-white shadow-xs transition-transform active:scale-95"
         >
           {iconeImprimir}
-          {rotulo}
+          {/* No celular, o texto se esconde para não engolir o cabeçalho */}
+          <span className="hidden sm:inline">{rotulo}</span>
         </button>
       )}
 
       {modalAberto &&
         createPortal(
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="relative flex max-h-[92dvh] w-full max-w-3xl flex-col rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="relative flex h-full sm:h-auto max-h-[100dvh] sm:max-h-[92dvh] w-full max-w-3xl flex-col sm:rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xl overflow-hidden text-stone-900 dark:text-stone-100">
               
-              <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
                 <div>
-                  <h3 className="text-base font-black">Visualização e Exportação</h3>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">
+                  <h3 className="text-sm sm:text-base font-black">Visualização e Exportação</h3>
+                  <p className="text-[11px] sm:text-xs text-stone-500 dark:text-stone-400">
                     Escolha se deseja exportar em PDF, Word ou imprimir diretamente.
                   </p>
                 </div>
@@ -169,36 +171,38 @@ export function BotaoImprimir({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 text-xs sm:text-sm bg-stone-50/50 dark:bg-stone-950/40">
-                <div id="conteudo-relatorio-modal" className="bg-white dark:bg-stone-900 p-6 rounded-2xl border border-stone-200 dark:border-stone-800">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 text-xs sm:text-sm bg-stone-50/50 dark:bg-stone-950/40">
+                <div id="conteudo-relatorio-modal" className="bg-white dark:bg-stone-900 p-4 sm:p-6 rounded-2xl border border-stone-200 dark:border-stone-800">
                   {conteudoParaImprimir}
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
+              {/* Botões Responsivos: Empilhados no celular, Lado a Lado no Desktop */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/50">
                 <button
                   type="button"
                   onClick={() => setModalAberto(false)}
-                  className="cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 px-5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
+                  className="order-last sm:order-first w-full sm:w-auto cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 px-5 text-xs sm:text-sm font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors"
                 >
-                  Fechar
+                  Voltar
                 </button>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={baixarDocx}
-                    className="cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 text-xs font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors flex items-center gap-2"
+                    className="w-full sm:w-auto cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition-colors flex items-center justify-center gap-2"
                   >
                     {iconeDocx}
-                    Salvar em Word (.doc)
+                    <span className="sm:hidden">Baixar em Word</span>
+                    <span className="hidden sm:inline">Salvar em Word (.doc)</span>
                   </button>
 
                   <button
                     type="button"
                     disabled={gerandoPdf}
                     onClick={baixarPdf}
-                    className="cursor-pointer min-h-11 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 px-4 text-xs font-bold transition-colors flex items-center gap-2 disabled:opacity-50"
+                    className="w-full sm:w-auto cursor-pointer min-h-11 rounded-xl bg-stone-900 hover:bg-stone-800 dark:bg-stone-100 dark:hover:bg-white text-white dark:text-stone-900 px-4 text-xs sm:text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {iconePdf}
                     {gerandoPdf ? "Gerando PDF..." : "Salvar em PDF"}
@@ -210,7 +214,7 @@ export function BotaoImprimir({
                       setModalAberto(false);
                       dispararImpressao();
                     }}
-                    className="cursor-pointer min-h-11 rounded-xl bg-amber-700 hover:bg-amber-600 px-5 text-xs font-bold text-white shadow-xs transition-transform active:scale-95 flex items-center gap-2"
+                    className="w-full sm:w-auto cursor-pointer min-h-11 rounded-xl bg-amber-700 hover:bg-amber-600 px-5 text-xs sm:text-sm font-bold text-white shadow-xs transition-transform active:scale-95 flex items-center justify-center gap-2"
                   >
                     {iconeImprimir}
                     Imprimir
