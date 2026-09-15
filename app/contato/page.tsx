@@ -10,37 +10,43 @@ export const metadata: Metadata = {
     "Conte pra gente sobre o seu bar. A conta é criada por nós, à mão — não existe cadastro automático.",
 };
 
-/**
- * A única porta de entrada de bar novo.
- *
- * Repare no que NÃO tem aqui: nenhum link para criar conta, nenhuma senha,
- * nenhum caminho que leve a um cadastro automático. Quem chega nesta página só
- * consegue deixar um recado — e é isso que garante que um robô, mesmo passando
- * por tudo, não consiga criar um único bar no banco.
- */
 export default function ContatoPage() {
   return (
     <main className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
-      <header className="border-b border-stone-200 dark:border-stone-800 bg-white/70 dark:bg-stone-900/60 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+      {/* Cabeçalho com o mesmo layout e Entrar no final */}
+      <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100/90 dark:bg-stone-950/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <Link href="/" className="cursor-pointer">
             <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
           </Link>
-          <div className="flex items-center gap-2">
-            <TemaToggle />
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* 1. Voltar */}
             <Link
               href="/"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg px-3 text-xs font-semibold text-stone-500 dark:text-stone-400 underline-offset-4 transition-colors hover:text-stone-900 dark:hover:text-stone-100 hover:underline"
+              className="cursor-pointer inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-3.5 sm:px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
             >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
               Voltar
+            </Link>
+
+            {/* 2. Alternador de Tema */}
+            <TemaToggle />
+
+            {/* 3. Último botão: Entrar */}
+            <Link
+              href="/login"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-3.5 sm:px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
+            >
+              Entrar
             </Link>
           </div>
         </div>
       </header>
 
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
-        {/* text-balance: no celular o título quebra em duas linhas de qualquer
-            jeito; sem isso a segunda ficava só com "ar", que parece erro. */}
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-balance">
           Vamos colocar o seu bar no ar
         </h1>
@@ -74,8 +80,6 @@ export default function ContatoPage() {
           <ContatoForm />
         </div>
 
-        {/* Sem link para o login aqui também: esta tela é da pessoa que ainda
-            não é cliente. Quem já é entra pelo endereço que recebeu. */}
         <p className="mt-6 text-center text-xs text-stone-500 dark:text-stone-400">
           Suas informações ficam só com a gente.
         </p>

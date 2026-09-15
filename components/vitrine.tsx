@@ -108,31 +108,35 @@ export function Vitrine() {
   return (
     <main className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
       {/* ---------- Topo ---------- */}
-      <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100 dark:bg-stone-950 sm:bg-stone-100/85 sm:dark:bg-stone-950/85 sm:backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100/90 dark:bg-stone-950/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
-          <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
+          <Link href="/" className="cursor-pointer">
+            <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
+          </Link>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link
-              href="/login"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
-            >
-              Entrar
-            </Link>
-
-            {/* Quero no meu bar posicionado diretamente à direita do Entrar logo no começo */}
+            {/* 1. Ação Principal */}
             <Link
               href="/contato"
-              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-800 px-4 text-xs font-bold text-white shadow-xs transition-colors"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg bg-amber-700 hover:bg-amber-800 px-3.5 sm:px-4 text-xs font-bold text-white shadow-xs transition-colors"
             >
               Quero no meu bar
             </Link>
 
+            {/* 2. Alternador de Tema */}
             <TemaToggle />
+
+            {/* 3. Último botão: Entrar */}
+            <Link
+              href="/login"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-3.5 sm:px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
+            >
+              Entrar
+            </Link>
           </div>
         </div>
       </header>
-
+      
       {/* ---------- Chamada ---------- */}
       <section className="relative overflow-hidden border-b border-stone-200 dark:border-stone-800 bg-linear-to-br from-stone-950 via-amber-950/85 to-stone-950 text-stone-100">
         <FundoChopp />
