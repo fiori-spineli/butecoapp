@@ -12,9 +12,8 @@ import { CtaDoTopo, ID_CTA_PRINCIPAL } from "@/components/cta-do-topo";
  * sistema e foi olhar não tinha uma linha explicando o que era.
  *
  * Aqui a ordem se inverte: primeiro o que o sistema faz, depois como pedir. E
- * daqui não se chega ao login: a vitrine é um corpo à parte do app, com uma
- * saída só, que é falar com a gente. Quem já é cliente recebeu de nós o
- * endereço do /login.
+ * daqui não se chega ao login direto pelo fluxo principal, mas agora há o botão
+ * de Entrar no topo para clientes existentes.
  */
 
 const RECURSOS = [
@@ -120,28 +119,20 @@ const PASSOS = [
 
 export function Vitrine() {
   return (
-    // <main> e nao <div>: o Lighthouse acusou "Document does not have a main
-    // landmark". Leitor de tela usa esse marco para pular direto ao conteudo
-    // em vez de percorrer o cabecalho a cada pagina.
     <main className="min-h-dvh bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors">
       {/* ---------- Topo ---------- */}
       <header className="sticky top-0 z-30 border-b border-stone-200/80 dark:border-stone-800/80 bg-stone-100 dark:bg-stone-950 sm:bg-stone-100/85 sm:dark:bg-stone-950/85 sm:backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
           <LogoButeco className="w-32 sm:w-40 h-11 sm:h-14" priority />
 
-          {/*
-            Ordem proposital: o CTA cresce para a ESQUERDA do botão de tema.
-            O CTA aparece e some conforme a rolagem (ver cta-do-topo.tsx); se o
-            tema viesse depois dele, mudaria de lugar toda vez. Ancorado na
-            ponta, o tema fica parado e nunca aparece sozinho e solto no canto.
-
-            Não existe link para o login aqui, e isso é decisão de projeto.
-            Esta página é a vitrine: ela apresenta o sistema e oferece UM
-            caminho, que é falar com a gente. Quem já tem conta recebeu de nós
-            o endereço do /login e vai direto; quem está só olhando não é
-            empurrado para uma porta que ainda não é dele.
-          */}
           <div className="flex items-center gap-1.5 sm:gap-3">
+            {/* Botão de Entrar adicionado no topo */}
+            <Link
+              href="/login"
+              className="cursor-pointer inline-flex min-h-11 items-center rounded-lg border border-stone-300 dark:border-stone-700 bg-white/80 dark:bg-stone-800/80 px-4 text-xs font-semibold text-stone-700 dark:text-stone-300 backdrop-blur-md shadow-xs transition-colors hover:border-amber-600 dark:hover:border-amber-500"
+            >
+              Entrar
+            </Link>
             <CtaDoTopo alvo={ID_CTA_PRINCIPAL} />
             <TemaToggle />
           </div>
@@ -178,12 +169,6 @@ export function Vitrine() {
               >
                 Quero no meu bar
               </Link>
-              {/*
-                <a> comum, não <Link>: é rolagem dentro da própria página. O
-                Link do Next transformava o toque numa navegação suave que
-                refazia a página antes de rolar — no iPhone parecia que o
-                botão não fazia nada. A âncora nativa rola na hora.
-              */}
               <a
                 href="#como-funciona"
                 className="cursor-pointer inline-flex min-h-12 items-center justify-center rounded-xl border border-stone-600 bg-stone-900/40 px-7 text-sm font-bold text-stone-100 backdrop-blur-xs transition-colors hover:border-amber-500 hover:text-amber-300"
