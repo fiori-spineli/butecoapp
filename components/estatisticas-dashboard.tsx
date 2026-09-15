@@ -7,12 +7,22 @@ type VendaMesItem = {
   created_at: string;
 };
 
-export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
+type EstatisticasProps = {
+  vendas: VendaMesItem[];
+  horarioAbertura?: string;
+  horarioFechamento?: string;
+};
+
+export function EstatisticasDashboard({
+  vendas,
+  horarioAbertura = "18:00",
+  horarioFechamento = "03:00",
+}: EstatisticasProps) {
   const hoje = new Date();
   const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
   const diaAtual = hoje.getDate();
 
-  // Curva S
+  // 1. Processamento da Curva S (Faturamento Acumulado no Mês)
   const acumuladoPorDia: number[] = Array(diasNoMes).fill(0);
   let totalMes = 0;
 
@@ -35,7 +45,7 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
   const curvaS = calcularCurvaS(acumuladoPorDia);
   const maxCurva = Math.max(...curvaS, 100);
 
-  // Sazonalidade por Dia da Semana
+  // 2. Processamento por Dia da Semana (0 = Domingo, 6 = Sábado)
   const diasSemanaNomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const vendasPorDiaSemana: number[] = Array(7).fill(0);
 
@@ -47,23 +57,49 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
   const maxDiaSemana = Math.max(...vendasPorDiaSemana, 100);
   const mediaDiaria = diaAtual > 0 ? totalMes / diaAtual : 0;
 
-  // Horários de Pico de 30 em 30 minutos cobrindo as 24 horas (48 slots)
+  // 3. Processamento de Horários de Pico (De 30 em 30 min conforme Horário de Funcionamento)
+  const [aH, aM] = (horarioAbertura || "18:00").slice(0, 5).split(":").map(Number);
+  const [fH, fM] = (horarioFechamento || "03:00").slice(0, 5).split(":").map(Number);
+  
+  const aberturaMins = aH * 60 + aM;
+  let fechamentoMins = fH * 60 + fM;
+  if (fechamentoMins <= aberturaMins) {
+    fechamentoMins += 24 * 60; // Trata fechamento após a meia-noite (ex: 03:00 do dia seguinte)
+  }
+
   const slotsPicoKeys: string[] = [];
   const picosMap: Record<string, number> = {};
 
-  for (let h = 0; h < 24; h++) {
-    const hStr = String(h).padStart(2, "0");
-    slotsPicoKeys.push(`${hStr}:00`);
-    slotsPicoKeys.push(`${hStr}:30`);
+  let atualMins = aberturaMins;
+  while (atualMins <= fechamentoMins) {
+    const norm = atualMins % (24 * 60);
+    const h = Math.floor(norm / 60);
+    const m = norm % 60;
+    const chave = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+    slotsPicoKeys.push(chave);
+    picosMap[chave] = 0;
+    atualMins += 30;
   }
 
   vendas.forEach((v) => {
     const d = new Date(v.created_at);
-    const h = d.getHours();
-    const m = d.getMinutes();
-    const mRounded = m < 30 ? "00" : "30";
-    const chave = `${String(h).padStart(2, "0")}:${mRounded}`;
-    picosMap[chave] = (picosMap[chave] || 0) + v.total_centavos;
+    let vMins = d.getHours() * 60 + d.getMinutes();
+    if (aberturaMins > (fH * 60 + fM) && vMins <= (fH * 60 + fM)) {
+      vMins += 24 * 60;
+    }
+
+    let slotEncontrado = slotsPicoKeys[0];
+    for (let i = 0; i < slotsPicoKeys.length; i++) {
+      const slotStart = aberturaMins + i * 30;
+      const slotEnd = slotStart + 30;
+      if (vMins >= slotStart && vMins < slotEnd) {
+        slotEncontrado = slotsPicoKeys[i];
+        break;
+      }
+    }
+    if (picosMap[slotEncontrado] !== undefined) {
+      picosMap[slotEncontrado] += v.total_centavos;
+    }
   });
 
   const maxPico = Math.max(...Object.values(picosMap), 100);
@@ -182,12 +218,12 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
         </div>
       </div>
 
-      {/* CARD 3: HORÁRIOS DE PICO (24h de 30 em 30 min com scroll mobile) */}
+      {/* CARD 3: HORÁRIOS DE PICO (Baseado no Horário de Funcionamento) */}
       <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/40 p-5 flex flex-col justify-between lg:col-span-1 md:col-span-2">
         <div>
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Horários de Pico • De 30 em 30 Minutos (24h)
+              Horários de Pico • De 30 em 30 Minutos
             </h3>
             {maiorValorPico > 0 && (
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full">
@@ -196,18 +232,18 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
             )}
           </div>
           <p className="text-[11px] text-stone-400 mt-1">
-            Distribuição detalhada ao longo das 24 horas do dia.
+            Intervalos baseados no horário de funcionamento configurado ({horarioAbertura.slice(0, 5)} até {horarioFechamento.slice(0, 5)}).
           </p>
         </div>
 
-        <div className="my-4 h-36 w-full overflow-x-auto flex items-end gap-1.5 pb-2 scrollbar-thin">
+        <div className="my-4 h-36 w-full overflow-x-auto flex items-end gap-1 pb-2 scrollbar-none">
           {slotsPicoKeys.map((slot) => {
             const valorSlot = picosMap[slot] || 0;
             const alturaPct = maxPico > 0 ? Math.max(6, (valorSlot / maxPico) * 100) : 6;
             const temMovimento = valorSlot > 0;
 
             return (
-              <div key={slot} className="min-w-5.5 flex-1 flex flex-col items-center h-full justify-end group relative">
+              <div key={slot} className="min-w-6.5 flex-1 flex flex-col items-center h-full justify-end group relative">
                 {temMovimento && (
                   <div className="absolute -top-8 opacity-0 group-hover:opacity-100 transition-opacity bg-stone-900 text-white text-[10px] font-bold py-1 px-2 rounded-md pointer-events-none whitespace-nowrap z-10 shadow-md">
                     {slot} - {formatarReais(valorSlot)}
@@ -222,7 +258,7 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
                   }`}
                 />
                 <span className="mt-2 text-[8px] font-mono text-stone-400 whitespace-nowrap">
-                  {slot.endsWith(":00") && Number(slot.slice(0, 2)) % 3 === 0 ? slot : ""}
+                  {slot.endsWith(":00") ? slot : ""}
                 </span>
               </div>
             );
@@ -230,9 +266,9 @@ export function EstatisticasDashboard({ vendas }: { vendas: VendaMesItem[] }) {
         </div>
 
         <div className="flex items-center justify-between text-[11px] text-stone-500 pt-2 border-t border-stone-200 dark:border-stone-800">
-          <span>Escala de 00h às 23:59h</span>
+          <span>Funcionamento: {horarioAbertura.slice(0, 5)} às {horarioFechamento.slice(0, 5)}</span>
           <span className="font-semibold text-stone-700 dark:text-stone-300">
-            {maiorValorPico > 0 ? `Maior pico às ${horarioMaisForte}` : "Sem dados de horário"}
+            {maiorValorPico > 0 ? `Maior pico às ${horarioMaisForte}` : "Sem dados no horário"}
           </span>
         </div>
       </div>

@@ -4,7 +4,6 @@ import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
-import { EstatisticasDashboard } from "@/components/estatisticas-dashboard";
 import type { ComandaResumo } from "@/lib/types";
 import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
@@ -12,12 +11,7 @@ export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  // Início do mês atual para calcular a Curva S estatística
-  const inicioDoMes = new Date();
-  inicioDoMes.setDate(1);
-  inicioDoMes.setHours(0, 0, 0, 0);
-
-  const [comandasResposta, consumoResposta, recebidoResposta, vendasMesResposta] = await Promise.all([
+  const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
     supabase
       .from("comandas_resumo")
       .select(
@@ -36,16 +30,10 @@ export default async function DashboardPage() {
       .select("valor_centavos, clientes!inner(bar_id)")
       .eq("clientes.bar_id", bar.id)
       .gte("created_at", inicioDoDia),
-    supabase
-      .from("relatorio_vendas_detalhado")
-      .select("total_centavos, created_at")
-      .eq("bar_id", bar.id)
-      .gte("created_at", inicioDoMes.toISOString()),
   ]);
 
   const comandas = (comandasResposta.data ?? []) as ComandaResumo[];
   const abertas = comandas.filter((c) => c.status === "aberta");
-  const vendasMes = vendasMesResposta.data ?? [];
 
   const consumoHoje = (consumoResposta.data ?? []).reduce(
     (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
@@ -94,9 +82,6 @@ export default async function DashboardPage() {
             </p>
           </div>
         </section>
-
-        {/* Estatísticas e Curva S de Faturamento */}
-        <EstatisticasDashboard vendas={vendasMes} />
 
         {/* Painel Principal com Comandas */}
         <section className="flex-1 flex flex-col p-6">

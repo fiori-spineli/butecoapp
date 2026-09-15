@@ -5,6 +5,10 @@ export type Bar = {
   slug: string;
   /** Texto enviado junto ao link da comanda. Nulo = usar o padrão do app. */
   mensagem_qr: string | null;
+  horario_abertura?: string;
+  horario_fechamento?: string;
+  telefone?: string | null;
+  cidade?: string | null;
   created_at: string;
 };
 
