@@ -34,10 +34,10 @@ export function DividirConta({
   const [aba, setAba] = useState<AbaDivisao>("exata");
   const [pessoas, setPessoas] = useState(2);
   const [valorEspecifico, setValorEspecifico] = useState("");
+  const [nomePagador, setNomePagador] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [processando, iniciar] = useTransition();
 
-  // Cálculo da divisão exata por pessoas
   const porPessoa = pessoas > 0 ? Math.floor(restanteCentavos / pessoas) : 0;
   const sobraCentavos = restanteCentavos - porPessoa * pessoas;
 
@@ -45,16 +45,28 @@ export function DividirConta({
     setErro(null);
     iniciar(async () => {
       const resultado = await acao();
-      if (!resultado.ok) setErro(resultado.mensagem ?? "Não consegui registrar o acerto.");
-      else {
+      if (!resultado.ok) {
+        setErro(resultado.mensagem ?? "Não consegui registrar o acerto.");
+      } else {
         setValorEspecifico("");
+        // Se não estiver abatendo por item, limpa o nome do pagador para a próxima pessoa
+        if (aba !== "item") {
+          setNomePagador("");
+        }
       }
     });
   }
 
+  function limparEFechar() {
+    setNomePagador("");
+    setValorEspecifico("");
+    setErro(null);
+    aoFechar();
+  }
+
   return (
-    <Modal titulo="Acertar ou Dividir Conta" aberto={aberto} aoFechar={aoFechar}>
-      {/* Resumo do Saldo no Topo do Modal */}
+    <Modal titulo="Acertar ou Dividir Conta" aberto={aberto} aoFechar={limparEFechar}>
+      {/* Resumo do Saldo */}
       <div className="mb-4 flex items-center justify-between rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-100/60 dark:bg-stone-800/50 px-4 py-3">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
@@ -72,6 +84,23 @@ export function DividirConta({
             {formatarReais(restanteCentavos)}
           </p>
         </div>
+      </div>
+
+      {/* Campo Opcional: Nome de Quem Pagou */}
+      <div className="mb-4">
+        <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+          Quem está pagando? <span className="font-normal normal-case text-stone-400">(opcional)</span>
+        </label>
+        <input
+          value={nomePagador}
+          onChange={(e) => setNomePagador(e.target.value)}
+          maxLength={35}
+          placeholder="Ex: João, Lucas, Aniversariante..."
+          className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-3.5 py-2.5 text-xs md:text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 transition-colors"
+        />
+        <p className="mt-1 text-[11px] text-stone-400">
+          Esse nome ficará gravado no extrato ao lado do valor pago.
+        </p>
       </div>
 
       {/* Abas com as 3 Formas de Pagamento */}
@@ -158,12 +187,23 @@ export function DividirConta({
             disabled={processando || porPessoa <= 0}
             onClick={() =>
               executar(() =>
-                registrarPagamento(clienteId, porPessoa, `Parte paga (1 de ${pessoas} pessoas)`),
+                registrarPagamento(
+                  clienteId,
+                  porPessoa,
+                  `Parte paga (1 de ${pessoas} pessoas)`,
+                  nomePagador
+                )
               )
             }
             className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
           >
-            {processando ? <LoadingButeco /> : `Registrar 1 parte de ${formatarReais(porPessoa)}`}
+            {processando ? (
+              <LoadingButeco />
+            ) : nomePagador.trim() ? (
+              `Registrar parte de ${formatarReais(porPessoa)} para ${nomePagador.trim()}`
+            ) : (
+              `Registrar 1 parte de ${formatarReais(porPessoa)}`
+            )}
           </button>
         </div>
       )}
@@ -202,18 +242,29 @@ export function DividirConta({
               }
               if (centavos > restanteCentavos) {
                 setErro(
-                  `Falta só ${formatarReais(restanteCentavos)} nesta conta — o abatimento não pode passar disso.`,
+                  `Falta só ${formatarReais(restanteCentavos)} nesta conta — o abatimento não pode passar disso.`
                 );
                 return;
               }
               executar(async () => {
-                const res = await registrarPagamento(clienteId, centavos, "Abatimento avulso");
+                const res = await registrarPagamento(
+                  clienteId,
+                  centavos,
+                  "Abatimento avulso",
+                  nomePagador
+                );
                 return res;
               });
             }}
             className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 p-4 font-bold text-white shadow-xs transition-colors disabled:opacity-50"
           >
-            {processando ? <LoadingButeco /> : "Registrar abatimento de valor"}
+            {processando ? (
+              <LoadingButeco />
+            ) : nomePagador.trim() ? (
+              `Registrar abatimento de ${nomePagador.trim()}`
+            ) : (
+              "Registrar abatimento de valor"
+            )}
           </button>
         </div>
       )}
@@ -233,13 +284,6 @@ export function DividirConta({
             <ul className="divide-y divide-stone-200 dark:divide-stone-800 rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800/50 max-h-[38vh] overflow-y-auto">
               {itens.map((item) => {
                 const restantes = item.quantidade - item.pagas;
-
-                // Duas contagens diferentes precisam bater. Um pagamento de
-                // valor livre abate o total sem marcar unidade nenhuma, então
-                // um item pode ter unidade "em aberto" e mesmo assim não caber
-                // no que falta da conta. Deixar clicar aqui levaria a conta
-                // para saldo negativo — o servidor recusa, mas o botão não
-                // deve nem oferecer.
                 const cabeNoSaldo = item.valor_unitario_centavos <= restanteCentavos;
                 const bloqueado = processando || restantes <= 0 || !cabeNoSaldo;
 
@@ -264,7 +308,14 @@ export function DividirConta({
                       type="button"
                       disabled={bloqueado}
                       onClick={() =>
-                        executar(() => registrarPagamentoDeItem(clienteId, item.id, 1))
+                        executar(() =>
+                          registrarPagamentoDeItem(
+                            clienteId,
+                            item.id,
+                            1,
+                            nomePagador
+                          )
+                        )
                       }
                       className="cursor-pointer shrink-0 rounded-xl border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >

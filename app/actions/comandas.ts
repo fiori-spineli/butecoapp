@@ -22,12 +22,6 @@ const LIMITES = {
   descricaoPagamento: 120,
 } as const;
 
-/**
- * As regras da comanda vivem no banco (triggers da migration 0013) e ele fala
- * português nas exceções. Quando a recusa vem de lá, a mensagem dele é a certa
- * para mostrar — é a regra explicada, não um "não consegui". Qualquer outro
- * erro cai no texto genérico da action.
- */
 function mensagemDoBanco(error: { code?: string; message?: string } | null, generica: string) {
   if (error?.code === "23514" && error.message && !/violates|constraint/i.test(error.message)) {
     return error.message;
@@ -69,10 +63,7 @@ export async function criarComanda(
   redirect(`/comanda/${data.id}?nova=1`);
 }
 
-/**
- * Lança itens na comanda. Os preços vêm SEMPRE do catálogo no banco —
- * nunca do que o navegador mandou.
- */
+/** Lança itens na comanda. */
 export async function lancarItens(
   clienteId: string,
   itens: ItemParaLancar[],
@@ -108,9 +99,6 @@ export async function lancarItens(
 
     if (item.tipo === "produto") {
       const preco = precos.get(item.produto_id);
-      // Produto que o catálogo deste bar não devolveu: apagado, de outro bar
-      // ou id inventado. Antes entrava com preço zero — item de graça na conta
-      // por um id errado. Agora é recusa.
       if (preco === undefined) {
         return { ok: false, mensagem: "Um dos produtos não existe mais no catálogo. Atualize a tela." };
       }
@@ -160,11 +148,12 @@ export async function removerLancamento(
   return { ok: true };
 }
 
-/** Pagamento avulso — o caso da divisão igualitária (não amarra a item nenhum). */
+/** Pagamento avulso ou divisão igual (com identificador de quem pagou opcional) */
 export async function registrarPagamento(
   clienteId: string,
   valorCentavos: number,
   descricao: string,
+  nomePagador?: string,
 ): Promise<Resultado> {
   const valor = Math.trunc(valorCentavos);
   if (!Number.isFinite(valor) || valor <= 0) {
@@ -173,11 +162,6 @@ export async function registrarPagamento(
 
   const { supabase } = await exigirBar();
 
-  // Uma conta não pode ser paga além do que deve. Sem esta checagem, um "500"
-  // digitado no lugar de "50" entra como pagamento e o saldo vira negativo —
-  // inclusive na página que o cliente abre pelo QR, onde "-R$ 467,33" não
-  // significa nada. O pagamento por item já tinha essa trava; o de valor livre
-  // (usado pela divisão igualitária) não tinha.
   const { data: resumo } = await supabase
     .from("comandas_resumo")
     .select("restante_centavos")
@@ -196,12 +180,18 @@ export async function registrarPagamento(
     };
   }
 
+  const pagador = nomePagador?.trim();
+  const descBase = descricao.trim();
+  const descFinal = pagador
+    ? `${pagador} · ${descBase}`.slice(0, LIMITES.descricaoPagamento)
+    : descBase.slice(0, LIMITES.descricaoPagamento) || null;
+
   const { error } = await supabase.from("pagamentos").insert({
     cliente_id: clienteId,
     lancamento_id: null,
     quantidade_paga: null,
     valor_centavos: valor,
-    descricao: descricao.trim().slice(0, LIMITES.descricaoPagamento) || null,
+    descricao: descFinal,
   });
 
   if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui registrar o pagamento.") };
@@ -211,11 +201,12 @@ export async function registrarPagamento(
   return { ok: true };
 }
 
-/** Pagamento parcial por item: marca N unidades de um lançamento como pagas. */
+/** Pagamento parcial por item (com identificador de quem pagou opcional) */
 export async function registrarPagamentoDeItem(
   clienteId: string,
   lancamentoId: string,
   quantidade: number,
+  nomePagador?: string,
 ): Promise<Resultado> {
   const qtd = Math.trunc(quantidade);
   if (!Number.isFinite(qtd) || qtd <= 0) {
@@ -252,13 +243,6 @@ export async function registrarPagamentoDeItem(
     };
   }
 
-  // Além de checar as unidades DESTE item, é preciso checar o saldo da conta
-  // inteira. As duas contagens são independentes: um pagamento de valor livre
-  // (a divisão igualitária, por exemplo) abate o total sem marcar unidade
-  // nenhuma como paga. Sem esta trava, numa conta de R$ 100 alguém pagava
-  // R$ 90 no avulso, outro pagava um item de R$ 50 — que continuava "em
-  // aberto" pela contagem por unidade — e o saldo virava −R$ 40, inclusive na
-  // tela que o cliente abre pelo QR.
   const valorDoPagamento = qtd * (lancamento.valor_unitario_centavos as number);
 
   const { data: resumo } = await supabase
@@ -288,12 +272,18 @@ export async function registrarPagamentoDeItem(
       (lancamento.descricao as string | null)) ||
     "item";
 
+  const pagador = nomePagador?.trim();
+  const descBase = `${qtd}x ${nomeDoItem}`;
+  const descFinal = pagador
+    ? `${pagador} · ${descBase}`.slice(0, LIMITES.descricaoPagamento)
+    : descBase.slice(0, LIMITES.descricaoPagamento);
+
   const { error } = await supabase.from("pagamentos").insert({
     cliente_id: clienteId,
     lancamento_id: lancamentoId,
     quantidade_paga: qtd,
     valor_centavos: valorDoPagamento,
-    descricao: `${qtd}x ${nomeDoItem}`.slice(0, LIMITES.descricaoPagamento),
+    descricao: descFinal,
   });
 
   if (error) return { ok: false, mensagem: mensagemDoBanco(error, "Não consegui registrar o pagamento.") };
@@ -320,15 +310,6 @@ export async function removerPagamento(
 export async function fecharConta(clienteId: string): Promise<Resultado> {
   const { supabase } = await exigirBar();
 
-  // Fechar uma comanda já afirma que o cliente pagou: a página dele passa a
-  // estampar PAGO, mostrar "Total pago" e valer como comprovante por 24h. O que
-  // faltava era registrar o acerto. Sem isso, uma conta fechada com saldo em
-  // aberto gerava duas verdades incompatíveis sobre a mesma mesa — o cliente
-  // saía com comprovante de R$ 49,00 e o "Recebido hoje" do dono contava só os
-  // R$ 16,33 lançados na divisão.
-  //
-  // O acerto entra ANTES do fechamento de propósito: se o update falhar, um
-  // retry recalcula o restante como zero e não duplica o pagamento.
   const { data: resumo } = await supabase
     .from("comandas_resumo")
     .select("restante_centavos, status")
@@ -336,10 +317,6 @@ export async function fecharConta(clienteId: string): Promise<Resultado> {
     .maybeSingle();
 
   if (!resumo) return { ok: false, mensagem: "Comanda não encontrada." };
-
-  // Dois toques no "Fechar" (ou duas abas) chegam aqui em sequência. O segundo
-  // não tem o que fazer — e sem esta saída ele tentaria um acerto de novo, que
-  // o trigger do banco recusaria com uma mensagem assustadora.
   if (resumo.status === "fechada") return { ok: true };
 
   const restante = (resumo.restante_centavos as number | undefined) ?? 0;
