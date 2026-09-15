@@ -45,6 +45,17 @@ export async function verificarStatusMFA(): Promise<StatusMFA> {
 /** Inicia o cadastro de um novo aplicativo autenticador e gera o QR Code */
 export async function iniciarCadastroTOTP() {
   const supabase = await createSupabaseServerClient();
+
+  // Limpa qualquer fator que não tenha sido verificado (ex: se recarregou a tela)
+  const { data: fatores } = await supabase.auth.mfa.listFactors();
+  if (fatores?.all) {
+    for (const f of fatores.all) {
+      if ((f.status as string) !== "verified") {
+        await supabase.auth.mfa.unenroll({ factorId: f.id });
+      }
+    }
+  }
+
   const { data, error } = await supabase.auth.mfa.enroll({
     factorType: "totp",
     issuer: "ButecoApp Admin",
