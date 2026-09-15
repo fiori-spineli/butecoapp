@@ -4,6 +4,7 @@ import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
+import { EstatisticasDashboard } from "@/components/estatisticas-dashboard";
 import type { ComandaResumo } from "@/lib/types";
 import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
@@ -11,11 +12,14 @@ export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
+  // Início do mês atual para calcular a Curva S estatística
+  const inicioDoMes = new Date();
+  inicioDoMes.setDate(1);
+  inicioDoMes.setHours(0, 0, 0, 0);
+
+  const [comandasResposta, consumoResposta, recebidoResposta, vendasMesResposta] = await Promise.all([
     supabase
       .from("comandas_resumo")
-      // created_at e fechada_em entram para a lista poder contar há quanto
-      // tempo cada mesa está aberta — ver components/tempo-aberto.tsx.
       .select(
         "id, nome, numero_mesa, status, created_at, fechada_em, total_centavos, pago_centavos, restante_centavos, itens",
       )
@@ -32,10 +36,16 @@ export default async function DashboardPage() {
       .select("valor_centavos, clientes!inner(bar_id)")
       .eq("clientes.bar_id", bar.id)
       .gte("created_at", inicioDoDia),
+    supabase
+      .from("relatorio_vendas_detalhado")
+      .select("total_centavos, created_at")
+      .eq("bar_id", bar.id)
+      .gte("created_at", inicioDoMes.toISOString()),
   ]);
 
   const comandas = (comandasResposta.data ?? []) as ComandaResumo[];
   const abertas = comandas.filter((c) => c.status === "aberta");
+  const vendasMes = vendasMesResposta.data ?? [];
 
   const consumoHoje = (consumoResposta.data ?? []).reduce(
     (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
@@ -48,14 +58,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-      {/* Topo */}
       <AtualizacaoAoVivo />
       <CabecalhoDono ativo="comandas" titulo={bar.nome} />
-      {/* Métricas */}
-      {/* <main>: o Lighthouse acusou "Document does not have a main
-          landmark" nesta tela. Sem o marco, quem usa leitor de tela
-          percorre o cabeçalho inteiro antes de chegar ao conteúdo. */}
+
       <main className="flex flex-1 flex-col">
+        {/* Métricas de Hoje */}
         <section
           aria-label="Métricas de hoje"
           className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 border-b border-stone-200 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/40"
@@ -88,7 +95,10 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {/* Painel Principal com Busca em Tempo Real */}
+        {/* Estatísticas e Curva S de Faturamento */}
+        <EstatisticasDashboard vendas={vendasMes} />
+
+        {/* Painel Principal com Comandas */}
         <section className="flex-1 flex flex-col p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -101,8 +111,6 @@ export default async function DashboardPage() {
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
-              {/* Resumo do dia para conferir e imprimir — o backup em papel de
-                  quem fecha o caixa à noite. */}
               <Link
                 href="/fechamento"
                 prefetch={true}
@@ -131,7 +139,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Componente Interativo com Filtro */}
           <ListaComandas comandas={comandas} />
         </section>
       </main>
