@@ -1,121 +1,105 @@
 import type { CSSProperties } from "react";
 
-type BubbleStyle = CSSProperties & {
-  "--bubble-left": string;
-  "--bubble-size": string;
-  "--bubble-opacity": string;
-  "--bubble-duration": string;
-  "--bubble-delay": string;
-  "--bubble-drift-1": string;
-  "--bubble-drift-2": string;
-  "--bubble-drift-3": string;
-  "--bubble-drift-4": string;
-  "--bubble-drift-5": string;
-  "--bubble-drift-6": string;
-  "--bubble-scale": string;
-};
-
-function seededRandom(seed: number) {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
+interface BolhaConfig {
+  left: string;
+  size: string;
+  duration: string;
+  delay: string;
+  drift: string;
+  opacity: number;
 }
 
-/**
- * Cria bolhas otimizadas para alta performance em qualquer dispositivo,
- * mantendo o efeito visual fluido e imersivo.
- */
-function createBubbles(count: number): BubbleStyle[] {
-  return Array.from({ length: count }, (_, index) => {
-    const r1 = seededRandom(index * 17 + 1);
-    const r2 = seededRandom(index * 31 + 7);
-    const r3 = seededRandom(index * 43 + 13);
-    const r4 = seededRandom(index * 59 + 19);
-    const r5 = seededRandom(index * 71 + 29);
-    const r6 = seededRandom(index * 83 + 37);
-    const r7 = seededRandom(index * 97 + 47);
-    const r8 = seededRandom(index * 113 + 61);
-
-    const left = 4 + r1 * 92;
-    
-    // Tamanhos balanceados para leveza e estética
-    const size = r2 < 0.6 ? 2 + r3 * 3 : 5 + r3 * 4;
-    const opacity = 0.15 + r4 * 0.65;
-    const duration = 6 + r5 * 7; // Entre 6s e 13s para suavidade
-    const delay = -(r6 * duration);
-
-    const driftIntensity = 4 + r7 * 16;
-    const direction = r8 > 0.5 ? 1 : -1;
-
-    const drift1 = direction * (2 + r1 * driftIntensity);
-    const drift2 = -direction * (2 + r2 * driftIntensity);
-    const drift3 = direction * (3 + r3 * driftIntensity);
-    const drift4 = -direction * (2 + r4 * driftIntensity);
-    const drift5 = direction * (2 + r5 * driftIntensity);
-    const drift6 = -direction * (1 + r6 * driftIntensity);
-
-    return {
-      "--bubble-left": `${left.toFixed(2)}%`,
-      "--bubble-size": `${size.toFixed(2)}px`,
-      "--bubble-opacity": opacity.toFixed(2),
-      "--bubble-duration": `${duration.toFixed(2)}s`,
-      "--bubble-delay": `${delay.toFixed(2)}s`,
-      "--bubble-drift-1": `${drift1.toFixed(1)}px`,
-      "--bubble-drift-2": `${drift2.toFixed(1)}px`,
-      "--bubble-drift-3": `${drift3.toFixed(1)}px`,
-      "--bubble-drift-4": `${drift4.toFixed(1)}px`,
-      "--bubble-drift-5": `${drift5.toFixed(1)}px`,
-      "--bubble-drift-6": `${drift6.toFixed(1)}px`,
-      "--bubble-scale": (0.7 + r7 * 0.5).toFixed(2),
-
-      left: "var(--bubble-left)",
-      bottom: "-10px",
-      width: "var(--bubble-size)",
-      height: "var(--bubble-size)",
-      opacity: "var(--bubble-opacity)",
-      animationDuration: "var(--bubble-duration)",
-      animationDelay: "var(--bubble-delay)",
-    };
-  });
-}
-
-// Reduzido para 22 bolhas altamente otimizadas (zero lag em celulares antigos e desktop)
-const bubbles = createBubbles(22);
+// 26 bolhas com posições e tempos pré-calculados (sem mismatch de hidratação no Next.js)
+const BOLHAS: BolhaConfig[] = [
+  { left: "8%", size: "4px", duration: "6.2s", delay: "-1.5s", drift: "12px", opacity: 0.65 },
+  { left: "15%", size: "7px", duration: "7.8s", delay: "-4.2s", drift: "-16px", opacity: 0.8 },
+  { left: "22%", size: "3px", duration: "5.5s", delay: "-0.8s", drift: "8px", opacity: 0.5 },
+  { left: "29%", size: "6px", duration: "6.9s", delay: "-3.1s", drift: "-10px", opacity: 0.75 },
+  { left: "34%", size: "8px", duration: "8.4s", delay: "-5.6s", drift: "18px", opacity: 0.85 },
+  { left: "41%", size: "4px", duration: "5.8s", delay: "-2.3s", drift: "-8px", opacity: 0.6 },
+  { left: "48%", size: "5px", duration: "7.1s", delay: "-6.0s", drift: "14px", opacity: 0.7 },
+  { left: "53%", size: "9px", duration: "8.9s", delay: "-3.7s", drift: "-20px", opacity: 0.9 },
+  { left: "59%", size: "3px", duration: "5.2s", delay: "-1.1s", drift: "10px", opacity: 0.55 },
+  { left: "66%", size: "6px", duration: "6.7s", delay: "-4.8s", drift: "-14px", opacity: 0.75 },
+  { left: "72%", size: "4px", duration: "6.0s", delay: "-2.9s", drift: "12px", opacity: 0.65 },
+  { left: "78%", size: "8px", duration: "8.1s", delay: "-5.1s", drift: "-18px", opacity: 0.85 },
+  { left: "85%", size: "5px", duration: "7.4s", delay: "-0.4s", drift: "15px", opacity: 0.7 },
+  { left: "92%", size: "7px", duration: "7.6s", delay: "-3.9s", drift: "-12px", opacity: 0.8 },
+  { left: "12%", size: "5px", duration: "6.5s", delay: "-5.8s", drift: "10px", opacity: 0.7 },
+  { left: "26%", size: "8px", duration: "8.6s", delay: "-2.0s", drift: "-15px", opacity: 0.85 },
+  { left: "38%", size: "3px", duration: "5.4s", delay: "-4.5s", drift: "6px", opacity: 0.5 },
+  { left: "62%", size: "7px", duration: "7.9s", delay: "-1.8s", drift: "-16px", opacity: 0.8 },
+  { left: "81%", size: "4px", duration: "6.3s", delay: "-6.3s", drift: "11px", opacity: 0.65 },
+  { left: "95%", size: "6px", duration: "7.0s", delay: "-2.7s", drift: "-9px", opacity: 0.75 },
+];
 
 export function FundoChopp() {
   return (
     <div
-      className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-linear-to-b from-amber-700 via-amber-950 to-stone-950"
+      className="absolute inset-0 z-0 overflow-hidden pointer-events-none select-none bg-stone-950"
       aria-hidden="true"
     >
-      {/* Vinheta */}
-      <div className="absolute inset-0 z-10 shadow-[inset_0_0_90px_rgba(0,0,0,0.65)]" />
+      {/* 1. Gradiente Base do Líquido: do dourado/âmbar central até as bordas escuras */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 90% 75% at 50% 35%, #78350f 0%, #451a03 55%, #0c0a09 100%)",
+        }}
+      />
 
-      {/* Espuma Superior */}
-      <div className="absolute inset-x-0 top-0 z-0 h-32 bg-linear-to-b from-amber-100/40 via-amber-200/15 to-transparent blur-lg animate-espuma" />
+      {/* 2. Feixe de Luz Quente da Cerveja (luz dourada atravessando o copo) */}
+      <div
+        className="absolute inset-0 opacity-45"
+        style={{
+          background:
+            "radial-gradient(circle at 35% 25%, #d97706 0%, rgba(217, 119, 6, 0.2) 40%, transparent 75%)",
+        }}
+      />
 
-      {/* Brilho da Espuma */}
-      <div className="absolute top-6 left-1/2 z-0 h-3 w-[60%] -translate-x-1/2 rounded-full bg-white/10 blur-md animate-brilho-espuma" />
+      {/* 3. Espuma cremosa no topo com transição suave */}
+      <div
+        className="absolute inset-x-0 top-0 h-24 opacity-35"
+        style={{
+          background:
+            "linear-gradient(to bottom, rgba(254, 243, 199, 0.75) 0%, rgba(253, 230, 138, 0.25) 45%, transparent 100%)",
+        }}
+      />
 
-      {/* Luz Interna do Chopp */}
-      <div className="absolute top-[25%] left-[20%] size-96 rounded-full bg-amber-400/20 blur-[80px] mix-blend-screen animate-luz-chopp" />
+      {/* 4. Reflexo sutil do vidro na lateral */}
+      <div
+        className="absolute top-0 left-1/4 w-32 h-full -skew-x-12 opacity-10"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)",
+        }}
+      />
 
-      {/* Reflexos do Copo */}
-      <div className="absolute top-0 left-1/4 z-1 h-full w-32 skew-x-12 bg-linear-to-r from-transparent via-white/6 to-transparent blur-md animate-reflexo" />
-      <div className="absolute top-0 right-1/3 z-1 h-full w-24 -skew-x-12 bg-linear-to-r from-transparent via-amber-200/10 to-transparent blur-lg animate-reflexo-2" />
+      {/* 5. Bolhas de Carbonatação Suaves e Eficientes (Zero Lag) */}
+      <div className="absolute inset-0">
+        {BOLHAS.map((bolha, index) => {
+          const style: CSSProperties = {
+            left: bolha.left,
+            width: bolha.size,
+            height: bolha.size,
+            animationDuration: bolha.duration,
+            animationDelay: bolha.delay,
+            ["--drift" as string]: bolha.drift,
+            ["--max-opacity" as string]: bolha.opacity,
+          };
 
-      {/* Bolhas Otimizadas */}
-      <div className="absolute inset-0 z-2">
-        {bubbles.map((style, index) => (
-          <span
-            key={index}
-            className="bolha-randomica absolute rounded-full bg-amber-50"
-            style={style}
-          />
-        ))}
+          return <span key={index} className="bolha-chopp" style={style} />;
+        })}
       </div>
 
-      {/* Vinheta Final */}
-      <div className="absolute inset-0 z-20 bg-linear-to-t from-black/20 via-transparent to-white/5" />
+      {/* 6. Vinheta escura inferior para dar contraste perfeito aos textos e botões */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(to top, rgba(12, 10, 9, 0.85) 0%, rgba(12, 10, 9, 0.2) 40%, transparent 100%)",
+        }}
+      />
     </div>
   );
 }

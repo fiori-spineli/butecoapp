@@ -132,460 +132,49 @@ textarea {
 }
 
 /* ==========================================================
-   BOLHAS RANDOMIZADAS
-   MOVIMENTO NATURAL COM VARIAÇÃO DE VELOCIDADE
+   BOLHAS DE CHOPP ULTRA-OTIMIZADAS (GPU COMPOSITION 60/120 FPS)
    ========================================================== */
 
-/*
- * A velocidade vertical NÃO é constante.
- *
- * Os intervalos possuem distâncias diferentes:
- *
- * 0%   → 10vh
- * 10%  → 22vh
- * 22%  → 36vh
- * 36%  → 51vh
- * 51%  → 64vh
- * 64%  → 80vh
- * 80%  → 94vh
- * 94%  → 120vh
- *
- * Como todos os intervalos ocupam tempos diferentes,
- * a velocidade aparente muda durante a subida.
- *
- * Importante:
- * usamos linear para não criar uma parada artificial
- * nos keyframes.
- */
-
-@keyframes bolhaRandomica {
+@keyframes subirBolha {
   0% {
-    transform:
-      translate3d(0, 20px, 0)
-      scale(0.45);
-
+    transform: translate3d(0, 105vh, 0) scale(0.55);
     opacity: 0;
   }
-
-  /*
-   * Começa lentamente saindo do líquido.
-   */
-  7% {
-    transform:
-      translate3d(
-        calc(var(--bubble-drift-1) * 0.18),
-        -7vh,
-        0
-      )
-      scale(0.58);
-
-    opacity: var(--bubble-opacity);
+  12% {
+    opacity: var(--max-opacity, 0.75);
   }
-
-  /*
-   * Primeira aceleração.
-   */
-  17% {
-    transform:
-      translate3d(
-        calc(var(--bubble-drift-1) * 0.65),
-        -18vh,
-        0
-      )
-      scale(0.68);
-
-    opacity: var(--bubble-opacity);
+  50% {
+    transform: translate3d(var(--drift, 12px), 50vh, 0) scale(0.9);
   }
-
-  /*
-   * Continua subindo, mas começa a desacelerar.
-   */
-  28% {
-    transform:
-      translate3d(
-        var(--bubble-drift-1),
-        -31vh,
-        0
-      )
-      scale(0.78);
-
-    opacity: var(--bubble-opacity);
+  85% {
+    opacity: var(--max-opacity, 0.75);
   }
-
-  /*
-   * Mudança de direção horizontal.
-   *
-   * A bolha não para.
-   * Apenas começa a virar para o outro lado.
-   */
-  40% {
-    transform:
-      translate3d(
-        var(--bubble-drift-2),
-        -45vh,
-        0
-      )
-      scale(0.88);
-
-    opacity: var(--bubble-opacity);
-  }
-
-  /*
-   * Pequena desaceleração natural.
-   */
-  51% {
-    transform:
-      translate3d(
-        var(--bubble-drift-2),
-        -56vh,
-        0
-      )
-      scale(0.95);
-
-    opacity: var(--bubble-opacity);
-  }
-
-  /*
-   * Nova aceleração.
-   */
-  62% {
-    transform:
-      translate3d(
-        var(--bubble-drift-3),
-        -71vh,
-        0
-      )
-      scale(1);
-
-    opacity: calc(var(--bubble-opacity) * 0.96);
-  }
-
-  /*
-   * Movimento mais suave próximo do topo.
-   */
-  74% {
-    transform:
-      translate3d(
-        var(--bubble-drift-4),
-        -84vh,
-        0
-      )
-      scale(1.06);
-
-    opacity: calc(var(--bubble-opacity) * 0.9);
-  }
-
-  /*
-   * Pequena aceleração final.
-   */
-  86% {
-    transform:
-      translate3d(
-        var(--bubble-drift-5),
-        -99vh,
-        0
-      )
-      scale(1.13);
-
-    opacity: calc(var(--bubble-opacity) * 0.75);
-  }
-
-  /*
-   * A bolha começa a desaparecer.
-   */
-  94% {
-    transform:
-      translate3d(
-        var(--bubble-drift-6),
-        -110vh,
-        0
-      )
-      scale(1.18);
-
-    opacity: calc(var(--bubble-opacity) * 0.5);
-  }
-
   100% {
-    transform:
-      translate3d(
-        calc(var(--bubble-drift-6) * -0.5),
-        -120vh,
-        0
-      )
-      scale(var(--bubble-scale));
-
+    transform: translate3d(calc(var(--drift, 12px) * -0.5), -12px, 0) scale(1.05);
     opacity: 0;
   }
 }
 
-.bolha-randomica {
-  /*
-   * Linear é proposital.
-   *
-   * A variação de velocidade já está embutida
-   * na distância percorrida entre cada keyframe.
-   *
-   * Assim a bolha nunca "freia até parar"
-   * em uma mudança de direção.
-   */
-  animation-name: bolhaRandomica;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-
-  /*
-   * Somente transform e opacity são animados.
-   * Isso favorece a composição pela GPU.
-   */
+.bolha-chopp {
+  position: absolute;
+  bottom: 0;
+  border-radius: 50%;
+  pointer-events: none;
   will-change: transform, opacity;
+  animation: subirBolha linear infinite;
 
-  aspect-ratio: 1;
-
-  /*
-   * Glow individual.
-   *
-   * Bolhas pequenas possuem 0px e praticamente
-   * não geram custo extra de sombra.
-   */
-  box-shadow:
-    0 0 var(--bubble-glow)
-    rgba(254, 243, 199, 0.55);
+  /* Efeito realista de bolha de gás de cerveja com reflexo esférico (sem box-shadow pesado) */
+  background: radial-gradient(
+    circle at 35% 35%,
+    rgba(255, 255, 255, 0.95),
+    rgba(253, 230, 138, 0.6) 38%,
+    rgba(217, 119, 6, 0.2) 80%
+  );
+  border: 1px solid rgba(254, 243, 199, 0.35);
 }
-
 
 /* ==========================================================
-   ESPUMA
-   ========================================================== */
-
-@keyframes espumaPulse {
-  0%,
-  100% {
-    opacity: 0.78;
-    transform: scaleY(1);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scaleY(1.04);
-  }
-}
-
-.animate-espuma {
-  animation: espumaPulse 7s ease-in-out infinite;
-  transform-origin: top center;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   BRILHO DA ESPUMA
-   ========================================================== */
-
-@keyframes brilhoEspuma {
-  0%,
-  100% {
-    transform:
-      translate3d(-50%, 0, 0)
-      scaleX(0.75);
-
-    opacity: 0.25;
-  }
-
-  50% {
-    transform:
-      translate3d(-50%, 0, 0)
-      scaleX(1);
-
-    opacity: 0.55;
-  }
-}
-
-.animate-brilho-espuma {
-  animation: brilhoEspuma 5s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   LUZ INTERNA
-   ========================================================== */
-
-@keyframes luzChopp {
-  0%,
-  100% {
-    transform:
-      translate3d(0, 0, 0)
-      scale(0.95);
-
-    opacity: 0.7;
-  }
-
-  50% {
-    transform:
-      translate3d(35px, -20px, 0)
-      scale(1.05);
-
-    opacity: 1;
-  }
-}
-
-.animate-luz-chopp {
-  animation: luzChopp 12s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-@keyframes luzChoppReverse {
-  0%,
-  100% {
-    transform:
-      translate3d(0, 0, 0)
-      scale(1);
-
-    opacity: 0.6;
-  }
-
-  50% {
-    transform:
-      translate3d(-30px, 20px, 0)
-      scale(1.08);
-
-    opacity: 0.9;
-  }
-}
-
-.animate-luz-chopp-reverse {
-  animation: luzChoppReverse 15s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   REFLEXOS DO VIDRO
-   ========================================================== */
-
-@keyframes reflexoMovimento {
-  0%,
-  100% {
-    transform:
-      translate3d(-20px, 0, 0)
-      skewX(12deg);
-
-    opacity: 0.45;
-  }
-
-  50% {
-    transform:
-      translate3d(30px, 0, 0)
-      skewX(12deg);
-
-    opacity: 0.8;
-  }
-}
-
-.animate-reflexo {
-  animation: reflexoMovimento 11s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-@keyframes reflexoMovimento2 {
-  0%,
-  100% {
-    transform:
-      translate3d(15px, 0, 0)
-      skewX(-12deg);
-
-    opacity: 0.35;
-  }
-
-  50% {
-    transform:
-      translate3d(-25px, 0, 0)
-      skewX(-12deg);
-
-    opacity: 0.65;
-  }
-}
-
-.animate-reflexo-2 {
-  animation: reflexoMovimento2 14s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-@keyframes reflexoSuave {
-  0%,
-  100% {
-    transform: translate3d(-8px, 0, 0);
-    opacity: 0.25;
-  }
-
-  50% {
-    transform: translate3d(12px, 0, 0);
-    opacity: 0.5;
-  }
-}
-
-.animate-reflexo-suave {
-  animation: reflexoSuave 9s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   MICRO-BOLHAS
-   ========================================================== */
-
-@keyframes microBolhas {
-  0%,
-  100% {
-    transform: translate3d(0, 0, 0);
-    opacity: 0.07;
-  }
-
-  50% {
-    transform: translate3d(0, -12px, 0);
-    opacity: 0.12;
-  }
-}
-
-.animate-microbolhas {
-  animation: microBolhas 8s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   ONDA DO CHOPP
-   ========================================================== */
-
-@keyframes ondaChopp {
-  0%,
-  100% {
-    transform:
-      translate3d(-10%, 0, 0)
-      rotate(-2deg);
-
-    opacity: 0.25;
-  }
-
-  50% {
-    transform:
-      translate3d(10%, -8px, 0)
-      rotate(2deg);
-
-    opacity: 0.55;
-  }
-}
-
-.animate-onda-chopp {
-  animation: ondaChopp 14s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-
-/* ==========================================================
-   GLASS PANEL
+   PAINEL DE VIDRO (GLASS PANEL)
    ========================================================== */
 
 .glass-panel {
@@ -595,22 +184,13 @@ textarea {
   border: 1px solid rgba(245, 158, 11, 0.15);
 }
 
-
 /* ==========================================================
-   REDUÇÃO DE MOVIMENTO
+   REDUÇÃO DE MOVIMENTO (ACESSIBILIDADE)
    ========================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  .bolha-randomica,
-  .animate-espuma,
-  .animate-brilho-espuma,
-  .animate-luz-chopp,
-  .animate-luz-chopp-reverse,
-  .animate-reflexo,
-  .animate-reflexo-2,
-  .animate-reflexo-suave,
-  .animate-microbolhas,
-  .animate-onda-chopp {
+  .bolha-chopp {
     animation: none;
+    display: none;
   }
 }
