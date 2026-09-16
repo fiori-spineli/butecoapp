@@ -2,7 +2,6 @@ import Link from "next/link";
 import { exigirBar } from "@/lib/bar";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
-import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 import { CardProduto } from "@/components/card-produto";
 import type { Produto } from "@/lib/types";
 
@@ -21,7 +20,6 @@ export default async function ProdutosPage() {
 
   return (
     <>
-      <AtualizacaoAoVivo />
       <CabecalhoDono ativo="produtos" fotoUrl={bar.foto_url} nomeBar={bar.nome} acoes={
           <Link
             href="/produtos/novo"

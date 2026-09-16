@@ -84,7 +84,7 @@ export async function proxy(request: NextRequest) {
     // sessão nova, a outra recebe "já usado". Apagar os cookies ali jogava
     // fora a sessão que a primeira acabou de gravar — deslogando alguém que
     // estava trabalhando. Com a tela se atualizando a cada 2 s (ver
-    // components/atualizacao-ao-vivo.tsx), essa corrida deixou de ser rara.
+    // lib/sincronia-ao-vivo.ts), essa corrida deixou de ser rara.
     if (codigo === "refresh_token_not_found") {
       for (const { name } of request.cookies.getAll()) {
         if (name.startsWith("sb-")) response.cookies.delete(name);

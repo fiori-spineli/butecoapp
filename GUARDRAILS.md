@@ -173,7 +173,7 @@ arquivo HTML único: a pessoa clica e já reflete". É requisito, não desejo.
   script síncrono **antes da primeira pintura** (`lib/tema.ts`) — guardar no
   banco custaria uma espera antes de pintar.
 - Atualização automática roda **só com a aba à vista**, e busca na hora em que
-  ela volta (`components/atualizacao-ao-vivo.tsx`, `app/c/[token]`). Aba em
+  ela volta (`lib/sincronia-ao-vivo.ts`, `app/c/[token]`). Aba em
   segundo plano não gasta rede, bateria nem servidor.
 - Para refazer dados, `router.refresh()` — nunca `location.reload()`: o
   primeiro troca só a parte servidora e preserva modal aberto, texto digitado e
@@ -232,6 +232,62 @@ pesava no repositório, no build e no otimizador a cada deploy.
 
 ---
 
+## 12. O que mantém o app vivo não mora dentro de um componente
+
+**Incidente — 2026-09-16, periciado numa aba de produção que o dono deixou
+aberta.** O batimento que mantém a tela em dia (`/api/bar/atividade` a cada 2 s)
+vivia no `useEffect` de `<AtualizacaoAoVivo />`, e **cada página montava o seu**
+— sob um pai diferente em cada uma (`<div>` no dashboard, fragmento em
+produtos), o que faz o React DESMONTAR e remontar a cada troca de aba em vez de
+reconciliar. A limpeza do efeito (`ativo = false`, listeners removidos, timer
+cancelado) rodava a cada clique na navegação.
+
+Na aba periciada o poll rodou 112 vezes cravando 8,2 s e **parou de vez**: sem
+navegação nos 6,4 minutos anteriores, sem erro no console, sem requisição
+pendurada, com o React vivo (o filtro da busca ainda respondia), a tela pintando
+(10 frames em 63 ms) e 26 MB de memória. `focus`, `visibilitychange` e `online`
+sintéticos não ressuscitaram nada — a limpeza tinha rodado sem montagem
+correspondente. Navegar também não trouxe de volta. **Só o F5 traria.** Para o
+dono isso não é "a sincronia parou", é "o app congelou": ele lança no celular e
+o caixa nunca mostra.
+
+**Regras:**
+
+- Relógio que sustenta uma promessa do produto é de **módulo**, não de
+  componente. Componente assina e desassina; o relógio não para.
+- Se ainda assim precisar montar em tela, monte no **layout** do grupo, nunca
+  repetido em cada página: layout atravessa a navegação, página não.
+- **Corrente de `setTimeout` que se reagenda é frágil por construção**: cada
+  volta só existe porque a anterior chegou ao fim. Uma promessa que não resolve,
+  uma exceção engolida ou uma limpeza fora de hora arrebenta a corrente em
+  silêncio e para sempre. Prefira um `setInterval` que TICA e decide — ele
+  continua batendo aconteça o que acontecer dentro dele.
+- **Toda espera tem prazo.** `fetch` sem `AbortController` pode pendurar para
+  sempre; trava de reentrada sem prazo transforma uma requisição travada em app
+  mudo. Diante da dúvida, uma requisição a mais é melhor que silêncio eterno.
+- Reagendamento mora no **`finally`**, nunca depois do `await` no corpo do
+  `try` — é a única forma de a próxima volta acontecer quando esta deu errado.
+- Quem escuta `visibilitychange`, `focus` e `pageshow` ao mesmo tempo recebe os
+  três **quase juntos**: se cada um disparar seu próprio ciclo, nascem correntes
+  paralelas. Marque estado e deixe o relógio decidir — uma vez.
+
+**Como verificar (foi assim que este conserto foi aceito):**
+
+1. Medir a **cadência real** no painel Network, não a pretendida. A primeira
+   versão do conserto entregava 3,0 s e 9,0 s onde a documentação prometia 2 s e
+   8 s, porque contava o intervalo a partir do FIM da requisição e a grade de um
+   tique por segundo arredondava para cima.
+2. Rajada de navegação **mais rápida do que a tela troca** (medido: 18
+   navegações em 1659 ms) e conferir que o **maior silêncio da sessão** não
+   passou da cadência ociosa.
+3. Conferir que não nasceram ciclos paralelos: **nenhum** intervalo abaixo da
+   cadência mínima.
+4. Aba escondida: **zero** requisições. Ao voltar: a primeira em menos de 1 s.
+5. Provar que a atualização CHEGA (§2): mudar o dado por fora, ver a tela mudar
+   sozinha, **devolver o dado ao valor exato** e ver a tela voltar sozinha.
+
+---
+
 ## Checklist antes de commitar
 
 1. `git status` — só o que eu pretendia mudar está aí?
@@ -246,3 +302,6 @@ pesava no repositório, no build e no otimizador a cada deploy.
 9. Se adicionou algo que roda sozinho: só com a aba à vista, e sem piscada
    nem pulo de layout (seção 9).
 10. Se adicionou imagem: está em WebP, com teto de resolução (seção 11).
+11. Se mexeu em algo que roda em ciclo: o relógio é de módulo, reagenda no
+    `finally`, tem prazo de espera, e a cadência foi **medida** na rede
+    depois de uma rajada de navegação (seção 12).

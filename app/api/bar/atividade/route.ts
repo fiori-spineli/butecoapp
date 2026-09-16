@@ -7,7 +7,7 @@ const SEM_CACHE = { "Cache-Control": "private, no-store" } as const;
  * "Mudou alguma coisa no meu bar?" em 32 caracteres.
  *
  * As telas do dono perguntam por aqui de segundo em segundo e só recarregam
- * quando a resposta muda (ver components/atualizacao-ao-vivo.tsx). Antes elas
+ * quando a resposta muda (ver lib/sincronia-ao-vivo.ts). Antes elas
  * recarregavam a rota inteira a cada ciclo, mudando algo ou não: mais lento
  * para quem olha e mais caro para o servidor ao mesmo tempo.
  *

@@ -3,7 +3,6 @@ import { buscarRelatorioVendas } from "@/app/actions/relatorios";
 import { formatarReais, formatarDataHora } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
-import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 import { BotaoImprimir } from "@/components/botao-imprimir";
 import { EstatisticasDashboard } from "@/components/estatisticas-dashboard";
 
@@ -69,7 +68,6 @@ export default async function RelatoriosPage() {
 
     return (
         <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-            <AtualizacaoAoVivo />
 
             {/* Cabeçalho com o Botão de Imprimir/Exportar reincorporado */}
             <CabecalhoDono ativo="relatorios" fotoUrl={bar.foto_url} nomeBar={bar.nome} acoes={

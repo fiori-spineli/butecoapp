@@ -16,7 +16,6 @@ import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
 import { BotaoImprimir } from "@/components/botao-imprimir";
 import { PedidosPendentesAlerta, type PedidoPendenteDono } from "@/components/comanda/pedidos-pendentes-alerta";
 import type { ComandaResumo, Produto } from "@/lib/types";
-import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export const dynamic = "force-dynamic";
 
@@ -118,7 +117,6 @@ export default async function ComandaPage({
 
   return (
     <>
-      <AtualizacaoAoVivo />
       <ComprovanteComanda dados={comprovante} />
 
       {/* Cabeçalho Líquido da Comanda */}

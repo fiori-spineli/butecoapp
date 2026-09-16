@@ -5,7 +5,6 @@ import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
 import type { ComandaResumo } from "@/lib/types";
-import { AtualizacaoAoVivo } from "@/components/atualizacao-ao-vivo";
 
 export default async function DashboardPage() {
   const { supabase, bar } = await exigirBar();
@@ -46,7 +45,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">
-      <AtualizacaoAoVivo />
       <CabecalhoDono ativo="comandas" fotoUrl={bar.foto_url} nomeBar={bar.nome} />
 
       <main className="flex flex-1 flex-col">

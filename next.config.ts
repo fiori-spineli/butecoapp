@@ -49,7 +49,7 @@ const nextConfig: NextConfig = {
     // 200 a 800ms pelo servidor, com a tela de carregamento aparecendo ao
     // voltar para Comandas.
     //
-    // Quem mantem o dado fresco agora e o components/atualizacao-ao-vivo.tsx:
+    // Quem mantem o dado fresco agora e o lib/sincronia-ao-vivo.ts:
     // ele pergunta uma assinatura barata do bar e so recarrega quando algo
     // mudou de verdade. Assim a troca de aba e imediata E o dado chega em
     // segundos — em vez de trocar uma coisa pela outra.
