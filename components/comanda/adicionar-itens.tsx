@@ -34,10 +34,6 @@ export function AdicionarItens({
     return produtos.filter((produto) => produto.nome.toLowerCase().includes(termo));
   }, [busca, produtos]);
 
-  const totalSelecionado = produtos.reduce(
-    (soma, produto) => soma + (quantidades[produto.id] ?? 0) * produto.preco_centavos,
-    0,
-  );
   const qtdSelecionada = Object.values(quantidades).reduce((soma, n) => soma + n, 0) + (modoLivre ? qtdLivre : 0);
 
   function ajustar(produtoId: string, delta: number) {
@@ -154,7 +150,7 @@ export function AdicionarItens({
                     onClick={() => ajustar(produto.id, -1)}
                     disabled={quantidade === 0}
                     aria-label={`Remover um ${produto.nome}`}
-                    className="cursor-pointer size-9 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-30 flex items-center justify-center transition-colors"
+                    className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-sm font-bold text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 disabled:opacity-30 flex items-center justify-center transition-colors"
                   >
                     -
                   </button>
@@ -165,7 +161,7 @@ export function AdicionarItens({
                     type="button"
                     onClick={() => ajustar(produto.id, 1)}
                     aria-label={`Adicionar um ${produto.nome}`}
-                    className="cursor-pointer size-9 rounded-lg border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-700 text-sm font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-600 flex items-center justify-center transition-colors"
+                    className="cursor-pointer size-11 rounded-lg border border-amber-700 dark:border-amber-600 bg-amber-700 dark:bg-amber-700 text-sm font-bold text-white hover:bg-amber-600 dark:hover:bg-amber-600 flex items-center justify-center transition-colors"
                   >
                     +
                   </button>
@@ -224,7 +220,7 @@ export function AdicionarItens({
                   <button
                     type="button"
                     onClick={() => setQtdLivre((q) => Math.max(1, q - 1))}
-                    className="size-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm font-black flex items-center justify-center"
+                    className="size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm font-black flex items-center justify-center"
                   >
                     -
                   </button>
@@ -234,7 +230,7 @@ export function AdicionarItens({
                   <button
                     type="button"
                     onClick={() => setQtdLivre((q) => q + 1)}
-                    className="size-10 rounded-lg border border-amber-600 bg-amber-700 text-white text-sm font-black flex items-center justify-center"
+                    className="size-11 rounded-lg border border-amber-600 bg-amber-700 text-white text-sm font-black flex items-center justify-center"
                   >
                     +
                   </button>

@@ -151,7 +151,7 @@ export function DividirConta({
               <button
                 type="button"
                 onClick={() => setPessoas((n) => Math.max(1, n - 1))}
-                className="cursor-pointer size-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
+                className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
               >
                 -
               </button>
@@ -161,7 +161,7 @@ export function DividirConta({
               <button
                 type="button"
                 onClick={() => setPessoas((n) => Math.min(50, n + 1))}
-                className="cursor-pointer size-10 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
+                className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
               >
                 +
               </button>

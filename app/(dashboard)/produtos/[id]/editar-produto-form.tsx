@@ -13,6 +13,13 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
   const acaoComId = atualizarProduto.bind(null, produto.id);
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(acaoComId, null);
 
+  // Campos CONTROLADOS: com `defaultValue`, o React 19 devolve o valor
+  // original quando a action termina — o dono editava o preço, o servidor
+  // recusava, e a tela mostrava o preço ANTIGO como se nada tivesse sido
+  // digitado. Ver o comentário em novo-produto-form.tsx.
+  const precoFormatado = (produto.preco_centavos / 100).toFixed(2).replace(".", ",");
+  const [nome, setNome] = useState(produto.nome);
+  const [preco, setPreco] = useState(precoFormatado);
   const [previa, setPrevia] = useState<string | null>(produto.imagem_url);
   const [imagemUrl, setImagemUrl] = useState(produto.imagem_url ?? "");
   const [subindo, setSubindo] = useState(false);
@@ -69,8 +76,6 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
     }
   }
 
-  const precoFormatado = (produto.preco_centavos / 100).toFixed(2).replace(".", ",");
-
   return (
     <div className="flex flex-1 flex-col p-6 max-w-xl mx-auto w-full">
       <form action={acao} className="flex flex-col gap-6">
@@ -83,7 +88,8 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
           <input
             id="nome"
             name="nome"
-            defaultValue={produto.nome}
+            value={nome}
+            onChange={(e) => setNome(e.target.value)}
             required
             maxLength={120}
             className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 transition-all"
@@ -97,7 +103,9 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
           <input
             id="preco"
             name="preco"
-            defaultValue={precoFormatado}
+            maxLength={12}
+            value={preco}
+            onChange={(e) => setPreco(e.target.value)}
             required
             inputMode="decimal"
             className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-bold transition-all"

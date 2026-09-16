@@ -1,46 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
-type ModoDaltonico = "nenhum" | "deuteranopia" | "protanopia" | "tritanopia" | "monocromatico";
+import { useSyncExternalStore } from "react";
+import { aplicarAcessibilidade, lerAcessibilidade, type ModoDaltonico, type TamanhoFonte } from "@/lib/acessibilidade";
 
 export function AcessibilidadeForm() {
-  const [fonte, setFonte] = useState<"padrao" | "medio" | "grande">("padrao");
-  const [contraste, setContraste] = useState(false);
-  const [daltonismo, setDaltonismo] = useState<ModoDaltonico>("nenhum");
+  /*
+   * Estado lido do proprio <html>, nao copiado para dentro do componente.
+   *
+   * Antes um useEffect lia o localStorage e chamava setState tres vezes na
+   * montagem. Isso custava duas coisas: uma renderizacao em cascata (o lint
+   * acusava) e, pior, a tela abria SEMPRE no padrao e so depois pulava para a
+   * preferencia da pessoa — quem usa fonte grande ou alto contraste via a tela
+   * mudar debaixo do olho, que e exatamente quem menos deveria ver isso.
+   *
+   * Agora o script do layout aplica os atributos antes da primeira pintura
+   * (lib/acessibilidade.ts, mesmo padrao do tema) e este componente apenas
+   * observa o <html>. Fonte unica de verdade, zero piscada, zero cascata.
+   */
+  const estado = useSyncExternalStore(assinar, lerDoDom, lerNoServidor);
+  const { fonte, contraste, daltonismo } = estado;
 
-  useEffect(() => {
-    const f = (localStorage.getItem("buteco_fonte") as any) || "padrao";
-    const c = localStorage.getItem("buteco_contraste") === "true";
-    const d = (localStorage.getItem("buteco_daltonico") as any) || "nenhum";
-    setFonte(f);
-    setContraste(c);
-    setDaltonismo(d);
-    aplicar(f, c, d);
-  }, []);
-
-  function aplicar(f: string, c: boolean, d: string) {
-    document.documentElement.setAttribute("data-fonte", f);
-    document.documentElement.setAttribute("data-contraste", c ? "alto" : "normal");
-    document.documentElement.setAttribute("data-daltonico", d);
+  function aplicar(f: TamanhoFonte, c: boolean, d: ModoDaltonico) {
+    aplicarAcessibilidade({ fonte: f, contraste: c, daltonismo: d });
   }
 
-  function mudarFonte(nova: "padrao" | "medio" | "grande") {
-    setFonte(nova);
-    localStorage.setItem("buteco_fonte", nova);
+  
+
+  function mudarFonte(nova: TamanhoFonte) {
     aplicar(nova, contraste, daltonismo);
   }
 
   function alternarContraste() {
-    const novo = !contraste;
-    setContraste(novo);
-    localStorage.setItem("buteco_contraste", String(novo));
-    aplicar(fonte, novo, daltonismo);
+    aplicar(fonte, !contraste, daltonismo);
   }
 
   function mudarDaltonismo(novo: ModoDaltonico) {
-    setDaltonismo(novo);
-    localStorage.setItem("buteco_daltonico", novo);
     aplicar(fonte, contraste, novo);
   }
 
@@ -114,4 +108,33 @@ export function AcessibilidadeForm() {
       </div>
     </div>
   );
+}
+
+function assinar(aoMudar: () => void) {
+  const obs = new MutationObserver(aoMudar);
+  obs.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ["data-fonte", "data-contraste", "data-daltonico"],
+  });
+  return () => obs.disconnect();
+}
+
+let ultimo = { fonte: "padrao" as TamanhoFonte, contraste: false, daltonismo: "nenhum" as ModoDaltonico };
+
+function lerDoDom() {
+  const atual = lerAcessibilidade();
+  // getSnapshot precisa devolver a MESMA referencia quando nada mudou, senao
+  // o React entra em laco de renderizacao.
+  if (
+    atual.fonte !== ultimo.fonte ||
+    atual.contraste !== ultimo.contraste ||
+    atual.daltonismo !== ultimo.daltonismo
+  ) {
+    ultimo = atual;
+  }
+  return ultimo;
+}
+
+function lerNoServidor() {
+  return { fonte: "padrao" as TamanhoFonte, contraste: false, daltonismo: "nenhum" as ModoDaltonico };
 }

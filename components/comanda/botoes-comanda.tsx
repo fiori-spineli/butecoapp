@@ -172,7 +172,7 @@ export function BotaoRepetirItem({
             registrar(await repetirItem(clienteId, item));
           })
         }
-        className="cursor-pointer size-8 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-800 dark:hover:text-amber-400 hover:border-amber-500 flex items-center justify-center font-bold text-sm transition-colors disabled:opacity-40"
+        className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-amber-100 dark:hover:bg-amber-950/60 hover:text-amber-800 dark:hover:text-amber-400 hover:border-amber-500 flex items-center justify-center font-bold text-sm transition-colors disabled:opacity-40"
       >
         +
       </button>

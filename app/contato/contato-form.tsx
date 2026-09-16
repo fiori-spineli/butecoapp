@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { registrarInteresse, type EstadoInteresse } from "@/app/actions/interesse";
 import { CAMPO_ARMADILHA, ESTILO_ARMADILHA } from "@/lib/armadilha";
 import { apenasDigitos } from "@/lib/telefone";
@@ -29,7 +29,10 @@ export function ContatoForm() {
     null
   );
 
-  const [erroModal, setErroModal] = useState<string | null>(null);
+  // Erro DERIVADO do resultado da action (ver o comentario em login-form.tsx):
+  // copiar para estado dentro de efeito forcava duas renderizacoes por
+  // resposta. Aqui so guardamos qual resultado ja foi dispensado.
+  const [dispensado, setDispensado] = useState<unknown>(null);
 
   const [campos, setCampos] = useState({
     nome: "",
@@ -44,11 +47,7 @@ export function ContatoForm() {
     setCampos((atual) => ({ ...atual, [campo]: valor }));
   }
 
-  useEffect(() => {
-    if (estado && !estado.ok) {
-      setErroModal(estado.mensagem);
-    }
-  }, [estado]);
+  const erroModal = estado && !estado.ok && dispensado !== estado ? estado.mensagem : null;
 
   if (estado?.ok) {
     return (
@@ -73,7 +72,7 @@ export function ContatoForm() {
 
   return (
     <>
-      <ModalAlerta mensagem={erroModal} aoFechar={() => setErroModal(null)} />
+      <ModalAlerta mensagem={erroModal} aoFechar={() => setDispensado(estado)} />
 
       <form action={acao} className="flex flex-col gap-4">
         <div style={ESTILO_ARMADILHA} aria-hidden="true">

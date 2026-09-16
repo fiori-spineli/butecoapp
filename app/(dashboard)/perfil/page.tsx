@@ -57,7 +57,7 @@ export default async function PerfilPage() {
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Dados e Horário de Funcionamento
           </h2>
-          <BarConfigForm bar={bar as any} />
+          <BarConfigForm bar={bar} />
         </div>
 
         {/* 3. Senha */}

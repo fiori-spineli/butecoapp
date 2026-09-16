@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirBar } from "@/lib/bar";
 import { parseReaisParaCentavos } from "@/lib/format";
-import { SUPABASE_URL } from "@/lib/supabase/server";
 import type { EstadoForm } from "@/app/actions/auth";
 
 const MARCADOR_BUCKET = "/storage/v1/object/public/produtos-imagens/";
@@ -45,9 +44,20 @@ function validarProduto(formData: FormData):
     return { ok: false, mensagem: "Essa foto não veio do upload do ButecoApp." };
   }
 
+  // Teto igual ao do banco (produtos_preco_teto, migration 0013). Sem esta
+  // checagem, preço acima do limite passava pela action e só era recusado lá
+  // embaixo, virando erro cru de constraint em vez de recado para o dono.
+  const PRECO_MAXIMO_CENTAVOS = 10_000_000; // R$ 100.000,00
+
   const precoCentavos = parseReaisParaCentavos(precoBruto);
-  if (precoCentavos === null || precoCentavos <= 0) {
-    return { ok: false, mensagem: "Preço inválido." };
+  if (precoCentavos === null) {
+    return { ok: false, mensagem: "Preço inválido. Escreva assim: 14,00" };
+  }
+  if (precoCentavos <= 0) {
+    return { ok: false, mensagem: "O preço precisa ser maior que zero." };
+  }
+  if (precoCentavos > PRECO_MAXIMO_CENTAVOS) {
+    return { ok: false, mensagem: "Preço alto demais. O máximo é R$ 100.000,00." };
   }
 
   return { ok: true, nome, precoCentavos, imagemUrl, categoria, estoque };
@@ -138,17 +148,31 @@ export async function removerProduto(produtoId: string) {
   redirect("/produtos");
 }
 
-export async function atualizarEstoque(produtoId: string, quantidade: number) {
-  const { supabase, bar } = await exigirBar();
+/**
+ * Ajuste rapido de estoque, pelo DELTA e nao pelo valor final.
+ *
+ * A versao anterior recebia o numero absoluto que o navegador calculou a
+ * partir do que o servidor tinha renderizado. Isso perdia toque (todo clique
+ * dado enquanto a gravacao corria era descartado) e perdia ajuste entre
+ * aparelhos (celular e caixa mandavam absolutos calculados sobre a mesma
+ * leitura, e o ultimo apagava o outro).
+ *
+ * Agora quem soma e o banco, sobre o valor que esta la na hora — ver
+ * migration 0022. Quem autoriza continua sendo o RLS de `produtos`.
+ */
+export async function ajustarEstoque(produtoId: string, delta: number) {
+  const { supabase } = await exigirBar();
 
-  const { error } = await supabase
-    .from("produtos")
-    .update({ estoque_atual: Math.max(0, quantidade) })
-    .eq("id", produtoId)
-    .eq("bar_id", bar.id);
+  const { data, error } = await supabase.rpc("ajustar_estoque", {
+    p_produto_id: produtoId,
+    p_delta: delta,
+  });
 
-  if (error) return { ok: false, mensagem: "Erro ao atualizar estoque." };
+  // `null` = o RLS barrou ou o produto nao e deste bar. Nao e erro de rede.
+  if (error || data === null) {
+    return { ok: false, mensagem: "Nao consegui atualizar o estoque." };
+  }
 
   revalidatePath("/produtos");
-  return { ok: true };
+  return { ok: true, estoque: data as number };
 }

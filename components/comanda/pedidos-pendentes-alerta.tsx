@@ -63,7 +63,7 @@ export function PedidosPendentesAlerta({
                       await recusarPedido(p.id, clienteId);
                     });
                   }}
-                  className="cursor-pointer min-h-10 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 px-3.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
+                  className="cursor-pointer min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800 px-3.5 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors disabled:opacity-50"
                 >
                   Recusar
                 </button>
@@ -75,7 +75,7 @@ export function PedidosPendentesAlerta({
                       await confirmarEntrega(p.id, clienteId);
                     });
                   }}
-                  className="cursor-pointer min-h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 text-xs font-bold text-white shadow-xs transition-transform active:scale-95 disabled:opacity-50"
+                  className="cursor-pointer min-h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 text-xs font-bold text-white shadow-xs transition-transform active:scale-95 disabled:opacity-50"
                 >
                   Confirmar Entrega
                 </button>

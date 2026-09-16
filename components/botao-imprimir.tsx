@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ModalAlerta } from "@/components/modal-alerta";
 import { createPortal } from "react-dom";
 
 type BotaoImprimirProps = {
@@ -18,6 +19,9 @@ export function BotaoImprimir({
 }: BotaoImprimirProps) {
   const [modalAberto, setModalAberto] = useState(false);
   const [gerandoPdf, setGerandoPdf] = useState(false);
+  // Sem `alert()`: ele congela a pagina inteira ate a pessoa fechar, e o
+  // erro de PDF costuma aparecer justamente quando o aparelho ja esta lento.
+  const [erroPdf, setErroPdf] = useState<string | null>(null);
 
   function dispararImpressao() {
     window.print();
@@ -41,7 +45,7 @@ export function BotaoImprimir({
       await html2pdf().from(elemento).set(opcoes).save();
     } catch (err) {
       console.error("Erro ao gerar PDF:", err);
-      alert("Não foi possível gerar o PDF. Tente usar o botão de Imprimir.");
+      setErroPdf("Nao consegui gerar o PDF. Use o botao Imprimir, que abre a janela do navegador com a opcao Salvar como PDF.");
     } finally {
       setGerandoPdf(false);
     }
@@ -124,6 +128,9 @@ export function BotaoImprimir({
   }
 
   return (
+    <>
+      <ModalAlerta mensagem={erroPdf} titulo="Exportar" aoFechar={() => setErroPdf(null)} />
+
     <>
       {apenasIcone ? (
         <button
@@ -226,6 +233,7 @@ export function BotaoImprimir({
           </div>,
           document.body
         )}
+    </>
     </>
   );
 }

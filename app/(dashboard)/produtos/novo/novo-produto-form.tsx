@@ -10,6 +10,16 @@ import { EditorDeFoto } from "@/components/produto/editor-de-foto";
 
 export function NovoProdutoForm() {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(criarProduto, null);
+  // Campos CONTROLADOS de propósito.
+  //
+  // O React 19 remonta o formulário quando a server action termina, e um
+  // <input> não controlado volta ao valor inicial — vazio. Na prática: o dono
+  // digitava nome e preço, o servidor recusava o preço, e a tela devolvia o
+  // erro com os dois campos APAGADOS, obrigando a redigitar tudo. A foto
+  // sobrevivia porque já era estado. Mesma correção que o contato e o login
+  // já tinham.
+  const [nome, setNome] = useState("");
+  const [preco, setPreco] = useState("");
   const [previa, setPrevia] = useState<string | null>(null);
   const [imagemUrl, setImagemUrl] = useState("");
   const [subindo, setSubindo] = useState(false);
@@ -100,6 +110,9 @@ export function NovoProdutoForm() {
           name="nome"
           required
           autoFocus
+          maxLength={120}
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
           placeholder="Ex: Cerveja 600ml, Batata Frita"
           className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all"
         />
@@ -118,6 +131,9 @@ export function NovoProdutoForm() {
           name="preco"
           required
           inputMode="decimal"
+          maxLength={12}
+          value={preco}
+          onChange={(e) => setPreco(e.target.value)}
           placeholder="Ex: 14,00"
           className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all font-bold"
         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import Link from "next/link";
 import {
   entrarComGoogle,
@@ -42,9 +42,15 @@ export function LoginForm({
   const [modo, setModo] = useState<ModoAcesso>("senha");
   const [lembrar, setLembrar] = useState(true);
   const [email, setEmail] = useState("");
-  const [erroModal, setErroModal] = useState<string | null>(
-    erroInicial ? MENSAGEM_ERRO[erroInicial] ?? MENSAGEM_ERRO.link : null
-  );
+  // O erro vem DERIVADO do resultado da action, durante a renderizacao.
+  //
+  // Antes tres useEffect copiavam a mensagem para um estado. Copiar resultado
+  // para estado dentro de efeito obriga o React a renderizar duas vezes a cada
+  // resposta (renderiza, roda o efeito, muda o estado, renderiza de novo) — a
+  // "renderizacao em cascata" que o lint acusa. Aqui basta lembrar QUAL
+  // resultado ja foi dispensado.
+  const [dispensado, setDispensado] = useState<unknown>(null);
+  const [erroInicialAberto, setErroInicialAberto] = useState(Boolean(erroInicial));
 
   const [estadoSenha, acaoSenha, enviandoSenha] = useActionState<EstadoForm, FormData>(
     entrarComSenha,
@@ -61,29 +67,25 @@ export function LoginForm({
     null
   );
 
-  // Monitora retornos de erro das ações para disparar o modalzinho
-  useEffect(() => {
-    if (estadoSenha && !estadoSenha.ok) {
-      setErroModal(estadoSenha.mensagem);
-    }
-  }, [estadoSenha]);
+  const resultadoComErro = [estadoSenha, estadoGoogle, estadoRecuperar].find(
+    (e) => e && !e.ok,
+  );
+  const erroModal =
+    resultadoComErro && dispensado !== resultadoComErro
+      ? resultadoComErro.mensagem
+      : erroInicialAberto
+        ? MENSAGEM_ERRO[erroInicial!] ?? MENSAGEM_ERRO.link
+        : null;
 
-  useEffect(() => {
-    if (estadoGoogle && !estadoGoogle.ok) {
-      setErroModal(estadoGoogle.mensagem);
-    }
-  }, [estadoGoogle]);
-
-  useEffect(() => {
-    if (estadoRecuperar && !estadoRecuperar.ok) {
-      setErroModal(estadoRecuperar.mensagem);
-    }
-  }, [estadoRecuperar]);
+  function fecharErro() {
+    setErroInicialAberto(false);
+    if (resultadoComErro) setDispensado(resultadoComErro);
+  }
 
   if (modo === "recuperar") {
     return (
       <>
-        <ModalAlerta mensagem={erroModal} aoFechar={() => setErroModal(null)} />
+        <ModalAlerta mensagem={erroModal} aoFechar={fecharErro} />
 
         <form action={acaoRecuperar} className="flex w-full flex-col gap-4">
           <p className="text-xs leading-relaxed text-stone-600 dark:text-stone-400">
@@ -139,7 +141,7 @@ export function LoginForm({
 
   return (
     <>
-      <ModalAlerta mensagem={erroModal} aoFechar={() => setErroModal(null)} />
+      <ModalAlerta mensagem={erroModal} aoFechar={fecharErro} />
 
       <div className="flex w-full flex-col gap-5">
         {mostrarGoogle && (

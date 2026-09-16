@@ -6,7 +6,9 @@ import type { EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
 import type { Bar } from "@/lib/types";
 
-export function BarConfigForm({ bar }: { bar: Bar & { horario_abertura?: string; horario_fechamento?: string; telefone?: string | null; cidade?: string | null } }) {
+// Os campos de horario, telefone e cidade ja fazem parte do tipo Bar
+// (migrations 0017 e 0020) — redeclarar aqui so escondia o desencontro.
+export function BarConfigForm({ bar }: { bar: Bar }) {
   const [estado, acao, enviando] = useActionState<EstadoForm, FormData>(
     atualizarConfiguracoesBar,
     null

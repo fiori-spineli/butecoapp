@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ModalAlerta } from "@/components/modal-alerta";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -10,6 +11,11 @@ interface BeforeInstallPromptEvent extends Event {
 export function BannerPwa() {
   const [eventoPrompt, setEventoPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visivel, setVisivel] = useState(false);
+  // `alert()` nativo TRAVA a thread principal: enquanto ele fica aberto a
+  // pagina inteira para de responder, e dois toques seguidos empilham dois
+  // dialogos bloqueantes. O app ja tem modal proprio (usado no login e no
+  // contato) — o mesmo aqui mantem a tela viva e a aparencia igual.
+  const [ajuda, setAjuda] = useState<string | null>(null);
 
   useEffect(() => {
     function capturarPrompt(e: Event) {
@@ -41,7 +47,10 @@ export function BannerPwa() {
   }, []);
 
   function mostrarAjuda() {
-    alert("Para instalar:\n\nNo Android (Chrome): Toque nos 3 pontos no canto da tela e escolha 'Adicionar à tela inicial' ou 'Instalar aplicativo'.\n\nNo iPhone (Safari): Toque no ícone de Compartilhar e escolha 'Adicionar à Tela de Início'.");
+    setAjuda(
+      "No Android (Chrome): toque nos 3 pontos e escolha 'Adicionar a tela inicial' ou 'Instalar aplicativo'.\n\n" +
+        "No iPhone (Safari): toque em Compartilhar e escolha 'Adicionar a Tela de Inicio'."
+    );
   }
 
   async function instalar() {
@@ -67,6 +76,9 @@ export function BannerPwa() {
   }
 
   return (
+    <>
+      <ModalAlerta mensagem={ajuda} titulo="Como instalar" aoFechar={() => setAjuda(null)} />
+
     <aside
       aria-label="Instalação do aplicativo"
       className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-amber-300 dark:border-amber-900/60 bg-amber-50/95 dark:bg-amber-950/95 px-3 sm:px-4 py-2.5 text-xs text-amber-950 dark:text-amber-200 animate-in slide-in-from-top-2"
@@ -88,7 +100,7 @@ export function BannerPwa() {
         <button
           type="button"
           onClick={instalar}
-          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 min-h-10 sm:min-h-11 px-3 sm:px-4 py-2 font-bold text-white shadow-xs transition-colors"
+          className="cursor-pointer rounded-lg bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 min-h-11 px-3 sm:px-4 py-2 font-bold text-white shadow-xs transition-colors"
         >
           Instalar
         </button>
@@ -96,7 +108,7 @@ export function BannerPwa() {
           type="button"
           onClick={mostrarAjuda}
           aria-label="Ajuda para instalar"
-          className="cursor-pointer flex size-10 sm:size-11 items-center justify-center rounded-lg border border-amber-300/80 dark:border-amber-700/80 text-amber-800 dark:text-amber-400 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition-colors"
+          className="cursor-pointer flex size-11 items-center justify-center rounded-lg border border-amber-300/80 dark:border-amber-700/80 text-amber-800 dark:text-amber-400 hover:bg-amber-200/50 dark:hover:bg-amber-900/50 transition-colors"
           title="Como instalar?"
         >
           <span className="font-black text-sm">?</span>
@@ -105,7 +117,7 @@ export function BannerPwa() {
           type="button"
           onClick={dispensar}
           aria-label="Fechar aviso de instalação"
-          className="cursor-pointer flex size-10 sm:size-11 items-center justify-center text-amber-700/70 dark:text-amber-400/70 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
+          className="cursor-pointer flex size-11 items-center justify-center text-amber-700/70 dark:text-amber-400/70 hover:text-amber-900 dark:hover:text-amber-200 transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
             <line x1="18" y1="6" x2="6" y2="18" />
@@ -114,5 +126,6 @@ export function BannerPwa() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

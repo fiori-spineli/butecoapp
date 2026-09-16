@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { SCRIPT_TEMA } from "@/lib/tema";
+import { SCRIPT_ACESSIBILIDADE } from "@/lib/acessibilidade";
 import { SpeedInsightsButeco } from "@/components/speed-insights-buteco";
 import { AnalyticsButeco } from "@/components/analytics-buteco";
 import "./globals.css";
@@ -32,6 +33,9 @@ export default async function RootLayout({
         {/* Antes de qualquer pixel: ver lib/tema.ts. Precisa ser síncrono e
             vir primeiro, senão a página pinta clara e escurece depois. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+        {/* Mesma razao do tema: quem precisa de fonte grande ou alto
+            contraste nao pode ver a tela abrir no padrao e mudar depois. */}
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: SCRIPT_ACESSIBILIDADE }} />
 
         {children}
 

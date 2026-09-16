@@ -24,7 +24,9 @@ export function ContaAoVivo({
   const [enviando, iniciarEnvio] = useTransition();
 
   const contaAberta = dados.status === "aberta";
-  const cardapio = dados.cardapio ?? [];
+  // `?? []` cria um array NOVO a cada render, e isso invalidava o useMemo
+  // que depende dele mais abaixo. Memorizado, a lista so muda quando o dado muda.
+  const cardapio = useMemo(() => dados.cardapio ?? [], [dados.cardapio]);
   const todosPedidos = dados.pedidos_pendentes ?? [];
 
   // Separa os que estão aguardando entrega dos que foram recusados pelo garçom
@@ -95,7 +97,8 @@ export function ContaAoVivo({
       const atual = prev[id] ?? 0;
       const nova = Math.max(0, atual + delta);
       if (nova === 0) {
-        const { [id]: _, ...resto } = prev;
+        // Descarta a chave `id` e fica com o resto — o item saiu do carrinho.
+          const resto = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id));
         return resto;
       }
       return { ...prev, [id]: nova };
