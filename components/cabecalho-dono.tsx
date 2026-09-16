@@ -18,11 +18,21 @@ export function CabecalhoDono({
   return (
     <header className="relative flex items-center justify-between border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-4 sm:px-6 py-3 min-h-16">
       
-      {/* 1. Lado Esquerdo: Logo Buteco com tamanho estritamente fixo */}
-      <div className="flex items-center gap-3 z-10">
-        <Link href="/dashboard" className="cursor-pointer">
-          <LogoButeco className="w-32 sm:w-36 h-10 sm:h-11 shrink-0" priority />
+      {/* 1. Lado esquerdo: logo (volta para Comandas) + nome do bar.
+          O nome faltava em TODAS as telas — o dono so via de qual bar era o
+          painel na hora de imprimir o fechamento. Ele trunca em vez de
+          empurrar o resto, para o centro nunca se mexer. */}
+      <div className="flex min-w-0 items-center gap-3 z-10">
+        <Link href="/dashboard" className="cursor-pointer shrink-0" aria-label="Ir para Comandas">
+          <LogoButeco className="w-36 sm:w-44 h-11 sm:h-14 shrink-0" priority />
         </Link>
+        {nomeBar && (
+          <span className="hidden lg:block min-w-0 border-l border-stone-200 dark:border-stone-800 pl-3">
+            <span className="block truncate text-base font-black leading-tight text-stone-900 dark:text-stone-100">
+              {nomeBar}
+            </span>
+          </span>
+        )}
       </div>
 
       {/* 2. Centro: Abas em Posição Absoluta (Nunca mudam de lugar) */}

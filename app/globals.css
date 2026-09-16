@@ -45,6 +45,12 @@ body {
 html {
   background-color: #f5f0e6; /* Tom pastel quente e agradável */
   color: #2b251f;
+
+  /* Reserva o espaço da barra de rolagem SEMPRE.
+     Sem isto, uma tela que rola (Relatórios, com os gráficos) fica alguns
+     pixels mais estreita que uma que não rola, e tudo que é centralizado —
+     as três abas do cabeçalho — anda de lugar ao trocar de tela. */
+  scrollbar-gutter: stable;
 }
 
 html.dark {

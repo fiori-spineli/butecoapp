@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { mascararReais } from "@/lib/format";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import { criarProduto } from "@/app/actions/produtos";
@@ -133,7 +134,7 @@ export function NovoProdutoForm() {
           inputMode="decimal"
           maxLength={12}
           value={preco}
-          onChange={(e) => setPreco(e.target.value)}
+          onChange={(e) => setPreco(mascararReais(e.target.value))}
           placeholder="Ex: 14,00"
           className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500 focus:border-amber-600 focus:ring-2 focus:ring-amber-600/20 transition-all font-bold"
         />

@@ -171,7 +171,13 @@ export function EditorDeFoto({
     const densidade = Math.min(window.devicePixelRatio || 1, 2);
     const buffer = Math.round(LADO_PREVIEW * densidade);
 
-    if (canvas.width !== buffer) {
+    // As DUAS dimensões são conferidas. Um <canvas> nasce 300x150 por padrão do
+    // HTML, e a versão anterior só olhava a largura: numa tela de densidade 1
+    // (monitor comum de desktop) o buffer calculado dava exatamente 300, a
+    // condição era falsa, a ALTURA continuava 150 — e o preview aparecia
+    // esticado 2x na vertical, enquanto a foto final saía certa porque o canvas
+    // de saída define largura e altura explicitamente.
+    if (canvas.width !== buffer || canvas.height !== buffer) {
       canvas.width = buffer;
       canvas.height = buffer;
     }

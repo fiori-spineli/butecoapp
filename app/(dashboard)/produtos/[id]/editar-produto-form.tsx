@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { mascararReais } from "@/lib/format";
 import Image from "next/image";
 import imageCompression from "browser-image-compression";
 import { atualizarProduto, removerProduto } from "@/app/actions/produtos";
@@ -105,7 +106,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
             name="preco"
             maxLength={12}
             value={preco}
-            onChange={(e) => setPreco(e.target.value)}
+            onChange={(e) => setPreco(mascararReais(e.target.value))}
             required
             inputMode="decimal"
             className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800/80 px-4 py-3.5 text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-bold transition-all"

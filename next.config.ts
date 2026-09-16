@@ -43,9 +43,19 @@ const nextConfig: NextConfig = {
     // caixa agora, não daqui a cinco minutos. Com 5s a troca de aba continua
     // instantânea (a ida seguinte vem do cache) sem servir conta velha.
     // Ver GUARDRAILS.md seção 9.
+    // Navegacao entre abas vem do cache do roteador: instantanea, sem ida ao
+    // servidor. Foi reduzido para 5s numa tentativa de manter o dado fresco, e
+    // o efeito foi o oposto do desejado — cada troca de aba passou a esperar
+    // 200 a 800ms pelo servidor, com a tela de carregamento aparecendo ao
+    // voltar para Comandas.
+    //
+    // Quem mantem o dado fresco agora e o components/atualizacao-ao-vivo.tsx:
+    // ele pergunta uma assinatura barata do bar e so recarrega quando algo
+    // mudou de verdade. Assim a troca de aba e imediata E o dado chega em
+    // segundos — em vez de trocar uma coisa pela outra.
     staleTimes: {
-      dynamic: 5,
-      static: 180,
+      dynamic: 180,
+      static: 300,
     },
   },
 
@@ -72,15 +82,17 @@ const nextConfig: NextConfig = {
         // Mesmo motivo do manifesto: o nome é fixo, então "immutable" impede
         // trocar o ícone do app por um ano. Um dia de cache com revalidação.
         source: "/icone-512.{png,webp}",
-        headers: [{ key: "Cache-Control", value: "public, max-age=86400, must-revalidate" }],
+        headers: [{ key: "Cache-Control", value: "public, max-age=86400" }],
       },
       {
-        // O manifesto NÃO é imutável: o nome do arquivo nunca muda, então
-        // marcá-lo como imutável por um ano trancava nome do app, cor e
-        // ícones por um ano no aparelho de quem já instalou. Uma hora, com
-        // revalidação, dá cache de sobra sem prender a mudança.
+        // O manifesto NÃO é imutável (nome de arquivo fixo trancaria nome do
+        // app e ícones por um ano), mas também NÃO leva `must-revalidate`:
+        // com ele o navegador perguntava ao servidor a cada navegação, e o
+        // manifesto puxava o ícone junto — medido em produção, 7 idas de cada
+        // um em poucas trocas de aba. Uma hora de cache simples resolve os
+        // dois lados.
         source: "/manifest.webmanifest",
-        headers: [{ key: "Cache-Control", value: "public, max-age=3600, must-revalidate" }],
+        headers: [{ key: "Cache-Control", value: "public, max-age=3600" }],
       },
     ];
   },

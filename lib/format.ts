@@ -167,3 +167,26 @@ export function inicioDoDiaLocalISO(): string {
   // O Brasil está fixo em UTC-3 desde o fim do horário de verão (2019).
   return `${partes}T00:00:00-03:00`;
 }
+
+/**
+ * Máscara de dinheiro enquanto a pessoa digita.
+ *
+ * Trata o que foi digitado como CENTAVOS e coloca a vírgula sozinha: teclar
+ * 1, 4, 5, 0 mostra "0,01" → "0,14" → "1,45" → "14,50". É o comportamento que
+ * quase todo sistema de caixa usa, e evita o erro mais caro do balcão —
+ * digitar "14" achando que são catorze reais num campo que esperava centavos,
+ * ou o contrário.
+ *
+ * Só dígitos entram; qualquer outra tecla é ignorada em vez de recusada, para
+ * a pessoa não brigar com o campo no meio do movimento.
+ */
+export function mascararReais(entrada: string): string {
+  const digitos = entrada.replace(/\D/g, "").slice(0, 9);
+  if (!digitos) return "";
+
+  const centavos = Number(digitos);
+  const reais = Math.floor(centavos / 100);
+  const resto = String(centavos % 100).padStart(2, "0");
+
+  return `${reais.toLocaleString("pt-BR")},${resto}`;
+}

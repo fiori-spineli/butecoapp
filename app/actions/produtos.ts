@@ -47,7 +47,10 @@ function validarProduto(formData: FormData):
   // Teto igual ao do banco (produtos_preco_teto, migration 0013). Sem esta
   // checagem, preço acima do limite passava pela action e só era recusado lá
   // embaixo, virando erro cru de constraint em vez de recado para o dono.
-  const PRECO_MAXIMO_CENTAVOS = 10_000_000; // R$ 100.000,00
+  // Teto de R$ 10.000,00: é buteco, não casa de leilão. O número existe para
+  // barrar dedo escorregado (digitar 1000000 no lugar de 10,00), não para
+  // limitar negócio nenhum de verdade.
+  const PRECO_MAXIMO_CENTAVOS = 1_000_000; // R$ 10.000,00
 
   const precoCentavos = parseReaisParaCentavos(precoBruto);
   if (precoCentavos === null) {
@@ -57,7 +60,7 @@ function validarProduto(formData: FormData):
     return { ok: false, mensagem: "O preço precisa ser maior que zero." };
   }
   if (precoCentavos > PRECO_MAXIMO_CENTAVOS) {
-    return { ok: false, mensagem: "Preço alto demais. O máximo é R$ 100.000,00." };
+    return { ok: false, mensagem: "Preço alto demais. O máximo é R$ 10.000,00." };
   }
 
   return { ok: true, nome, precoCentavos, imagemUrl, categoria, estoque };
