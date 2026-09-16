@@ -1,5 +1,18 @@
 name: Keep Supabase Project Alive
 
+# O plano free do Supabase pausa o projeto depois de 7 dias sem uso do BANCO.
+# Segunda, quarta e sexta ao meio-dia (UTC) garante que o maior intervalo seja
+# de 3 dias, com folga para uma execucao falhar.
+#
+# A versao anterior chamava a raiz `/rest/v1/`, que devolve so a descricao da
+# API e NAO consulta o Postgres — podia manter o projeto "acordado" no papel e
+# mesmo assim ser pausado por inatividade do banco. Aqui a chamada e um RPC que
+# faz um SELECT de verdade em `clientes`.
+#
+# `comanda_publica` foi escolhida de proposito em vez de criar uma funcao nova:
+# ela ja existe, ja e executavel por anon (e o acesso da tela do cliente) e com
+# um token inexistente devolve `null` sem tocar em nada. Zero superficie nova.
+
 on:
   schedule:
     - cron: '0 12 * * 1,3,5'
@@ -9,10 +22,18 @@ jobs:
   ping-supabase:
     runs-on: ubuntu-latest
     steps:
-      - name: Send API request to Supabase
+      - name: Consulta real ao banco de producao
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          curl -i -X GET "https://zmxytngunmyuscmncdmx.supabase.co/rest/v1/" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY"
+          set -euo pipefail
+
+          resposta=$(curl -sS --fail-with-body             -X POST "https://zmxytngunmyuscmncdmx.supabase.co/rest/v1/rpc/comanda_publica"             -H "apikey: $SUPABASE_KEY"             -H "Authorization: Bearer $SUPABASE_KEY"             -H "Content-Type: application/json"             -d '{"p_token":"00000000-0000-0000-0000-000000000000"}')
+
+          echo "Banco respondeu: $resposta"
+
+          # `null` e a resposta certa para um token que nao existe. Qualquer
+          # outra coisa (ou erro HTTP, pego pelo --fail-with-body) significa que
+          # o keep-alive parou de exercitar o que deveria — e falhar aqui e o
+          # unico jeito de alguem ficar sabendo antes de o projeto ser pausado.
+          test "$resposta" = "null"
