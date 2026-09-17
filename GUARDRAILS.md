@@ -59,6 +59,12 @@ handler, outro contexto de escrita). O token do dono seguia legível.
 mas ela só atualizava a cada 8 s: o teste não esperou um ciclo e não verificou
 que o dado tinha chegado.
 
+(c) 2026-09-16 — o keep-alive do Supabase rodava `curl -i` **sem `--fail` e
+sem conferir o resultado**. O `curl` devolve sucesso em HTTP 401 quando não se
+pede o contrário, então o workflow ficava **verde recusado pelo banco**: a chave
+no segredo do GitHub tinha ficado para trás da migração para o Brasil e o projeto
+não estava sendo mantido acordado coisa nenhuma — só dizia que estava.
+
 **Regras:**
 
 - Exercitar **o caminho que de fato importa**, não um parecido.
@@ -66,6 +72,11 @@ que o dado tinha chegado.
   prova que **a atualização chegou** — ausência de erro não é prova de sucesso.
 - Falha engolida (`if (error) return`) não aparece em listener de erro nem no
   console. Para achar, olhe a rede, não o console.
+- **Verificação que não sabe falhar não é verificação.** Todo check automático
+  precisa de um caminho de falha provado: exercite-o com a entrada errada de
+  propósito (chave inválida, host inexistente) e confirme que ele fica vermelho
+  **e diz o porquê**. Um check que não pode reprovar é pior que nenhum: passa a
+  sensação de cobertura e esconde o problema que existia para achar.
 - Se não der para exercitar agora, dizer **"verificação pendente"** — nunca
   arredondar para "corrigido".
 
