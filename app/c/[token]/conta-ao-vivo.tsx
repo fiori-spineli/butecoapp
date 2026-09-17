@@ -342,6 +342,7 @@ export function ContaAoVivo({
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
+                aria-label="Buscar no cardápio"
                 placeholder="Buscar no cardápio..."
                 className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-4 py-3 text-sm outline-none focus:border-amber-600 transition-colors"
               />

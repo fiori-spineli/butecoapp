@@ -88,11 +88,12 @@ export function DividirConta({
 
       {/* Campo Opcional: Nome de Quem Pagou */}
       <div className="mb-4">
-        <label className="mb-1 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+        <label htmlFor="nome-pagador" className="mb-1 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
           Quem está pagando? <span className="font-normal normal-case text-stone-400">(opcional)</span>
         </label>
         <input
           value={nomePagador}
+          id="nome-pagador"
           onChange={(e) => setNomePagador(e.target.value)}
           maxLength={35}
           placeholder="Ex: João, Lucas, Aniversariante..."
@@ -144,13 +145,14 @@ export function DividirConta({
       {aba === "exata" && (
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between rounded-xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-800/70 p-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+            <span id="qtd-pessoas-divisao" className="text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
               Número de pessoas
             </span>
-            <div className="flex items-center gap-3">
+            <div role="group" aria-labelledby="qtd-pessoas-divisao" className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setPessoas((n) => Math.max(1, n - 1))}
+                aria-label="Menos uma pessoa"
                 className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
               >
                 -
@@ -161,6 +163,7 @@ export function DividirConta({
               <button
                 type="button"
                 onClick={() => setPessoas((n) => Math.min(50, n + 1))}
+                aria-label="Mais uma pessoa"
                 className="cursor-pointer size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-base font-black text-stone-800 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-stone-700 flex items-center justify-center"
               >
                 +
@@ -212,11 +215,12 @@ export function DividirConta({
       {aba === "especifica" && (
         <div className="flex flex-col gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+            <label htmlFor="valor-pagamento" className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
               Quanto o cliente está pagando agora?
             </label>
             <input
               value={valorEspecifico}
+              id="valor-pagamento"
               onChange={(e) => setValorEspecifico(e.target.value)}
               inputMode="decimal"
               placeholder="Ex: 50,00 ou 23,40"

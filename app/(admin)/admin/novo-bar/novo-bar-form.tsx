@@ -92,11 +92,12 @@ export function NovoBarForm() {
     <form action={acao} className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+          <label htmlFor="novo-bar-bar_nome" className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
             Nome do Bar <span className="text-rose-500">*</span>
           </label>
           <input
             name="bar_nome"
+            id="novo-bar-bar_nome"
             required
             maxLength={120}
             value={nomeBar}
@@ -107,11 +108,12 @@ export function NovoBarForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+          <label htmlFor="novo-bar-nome_dono" className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
             Nome do Responsável
           </label>
           <input
             name="nome_dono"
+            id="novo-bar-nome_dono"
             maxLength={120}
             value={nomeDono}
             onChange={(e) => setNomeDono(e.target.value)}
@@ -123,11 +125,12 @@ export function NovoBarForm() {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+          <label htmlFor="novo-bar-email" className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
             E-mail de Acesso <span className="text-rose-500">*</span>
           </label>
           <input
             name="email"
+            id="novo-bar-email"
             type="email"
             required
             value={email}
@@ -138,11 +141,12 @@ export function NovoBarForm() {
         </div>
 
         <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
+          <label htmlFor="novo-bar-telefone" className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400 mb-1.5">
             Telefone / WhatsApp
           </label>
           <input
             name="telefone"
+            id="novo-bar-telefone"
             value={telefone}
             onChange={(e) => setTelefone(e.target.value)}
             placeholder="(11) 98765-4321"
@@ -153,7 +157,7 @@ export function NovoBarForm() {
 
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
+          <label htmlFor="novo-bar-senha" className="block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-400">
             Senha Inicial (Opcional)
           </label>
           <button
@@ -166,6 +170,7 @@ export function NovoBarForm() {
         </div>
         <input
           name="senha"
+          id="novo-bar-senha"
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           placeholder="Deixe em branco para gerar um link de ativação"

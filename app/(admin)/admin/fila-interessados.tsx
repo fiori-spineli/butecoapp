@@ -187,6 +187,7 @@ function CartaoInteressado({ interessado }: { interessado: Interessado }) {
             <input
               name="observacao"
               defaultValue={interessado.observacao ?? ""}
+              aria-label="Nota interna sobre este interessado"
               placeholder="Nota interna (opcional)"
               maxLength={300}
               className="min-h-11 w-48 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3 text-xs text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600"

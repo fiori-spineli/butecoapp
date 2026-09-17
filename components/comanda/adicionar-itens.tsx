@@ -192,6 +192,7 @@ export function AdicionarItens({
             <input
               value={descricaoLivre}
               onChange={(e) => setDescricaoLivre(e.target.value)}
+              aria-label="Descrição do item avulso"
               placeholder="Descrição do item (ex: Dose especial, Porção personalizada)"
               className="rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 px-3.5 py-2.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600"
             />
@@ -199,11 +200,12 @@ export function AdicionarItens({
             <div className="grid grid-cols-2 gap-3 items-center">
               {/* Preço Unitário */}
               <div>
-                <label className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
+                <label htmlFor="valor-item-avulso" className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
                   Valor Unitário (R$)
                 </label>
                 <input
                   value={valorLivre}
+                  id="valor-item-avulso"
                   onChange={(e) => setValorLivre(e.target.value)}
                   inputMode="decimal"
                   placeholder="Ex: 15,00"
@@ -213,13 +215,14 @@ export function AdicionarItens({
 
               {/* Seletor de Quantidade do Item Livre */}
               <div>
-                <label className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
+                <span id="qtd-item-avulso" className="block text-[10px] font-bold uppercase text-stone-500 mb-1">
                   Quantidade
-                </label>
-                <div className="flex items-center gap-2">
+                </span>
+                <div role="group" aria-labelledby="qtd-item-avulso" className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setQtdLivre((q) => Math.max(1, q - 1))}
+                    aria-label="Diminuir quantidade"
                     className="size-11 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-sm font-black flex items-center justify-center"
                   >
                     -
@@ -230,6 +233,7 @@ export function AdicionarItens({
                   <button
                     type="button"
                     onClick={() => setQtdLivre((q) => q + 1)}
+                    aria-label="Aumentar quantidade"
                     className="size-11 rounded-lg border border-amber-600 bg-amber-700 text-white text-sm font-black flex items-center justify-center"
                   >
                     +

@@ -49,9 +49,14 @@ export function ListaComandas({ comandas }: { comandas: ComandaResumo[] }) {
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
+          {/* O <label> em volta só desenha a caixa: o que ele contém é a lupa, e
+              a lupa é aria-hidden. Sem este aria-label o campo chega ao leitor de
+              tela sem nome nenhum — placeholder não é nome acessível, some assim
+              que a pessoa digita. */}
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
+            aria-label="Buscar comanda por nome ou número da mesa"
             placeholder="Buscar por nome ou número da mesa..."
             className="w-full bg-transparent text-sm outline-none placeholder:text-stone-400 dark:placeholder:text-stone-500"
           />

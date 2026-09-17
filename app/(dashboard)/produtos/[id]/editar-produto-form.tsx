@@ -136,6 +136,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
 
               <input
                 ref={inputCamera}
+                aria-label="Tirar foto com a câmera"
                 type="file"
                 accept="image/*"
                 capture="environment"
@@ -147,6 +148,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
               />
               <input
                 ref={inputGaleria}
+                aria-label="Escolher foto da galeria"
                 type="file"
                 accept="image/*"
                 onChange={(e) => {

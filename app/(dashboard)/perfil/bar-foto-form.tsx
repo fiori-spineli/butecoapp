@@ -58,7 +58,7 @@ export function BarFotoForm({ fotoAtual }: { fotoAtual?: string | null }) {
       </div>
 
       <div className="flex-1">
-        <input ref={inputRef} type="file" accept="image/*" onChange={aoSelecionar} className="hidden" />
+        <input ref={inputRef} type="file" accept="image/*" onChange={aoSelecionar} aria-label="Escolher a foto do bar" className="hidden" />
         <button
           type="button"
           disabled={subindo}

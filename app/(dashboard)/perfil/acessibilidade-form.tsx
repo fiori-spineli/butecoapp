@@ -42,15 +42,16 @@ export function AcessibilidadeForm() {
     <div className="flex flex-col gap-5">
       {/* Tamanho da Fonte */}
       <div>
-        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+        <span id="rotulo-tamanho-texto" className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
           Tamanho do Texto
-        </label>
-        <div className="grid grid-cols-3 gap-2">
+        </span>
+        <div role="group" aria-labelledby="rotulo-tamanho-texto" className="grid grid-cols-3 gap-2">
           {(["padrao", "medio", "grande"] as const).map((tam) => (
             <button
               key={tam}
               type="button"
               onClick={() => mudarFonte(tam)}
+              aria-pressed={fonte === tam}
               className={`min-h-11 rounded-xl border text-xs font-bold transition-colors ${
                 fonte === tam
                   ? "border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"
@@ -80,10 +81,10 @@ export function AcessibilidadeForm() {
 
       {/* Opções de Daltonismo */}
       <div>
-        <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
+        <span id="rotulo-daltonismo" className="mb-2 block text-xs font-bold uppercase tracking-wider text-stone-600 dark:text-stone-300">
           Adaptação para Daltonismo
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        </span>
+        <div role="group" aria-labelledby="rotulo-daltonismo" className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {[
             { id: "nenhum", rotulo: "Padrão (Desativado)" },
             { id: "deuteranopia", rotulo: "Deuteranopia (Verde)" },
@@ -95,6 +96,7 @@ export function AcessibilidadeForm() {
               key={opcao.id}
               type="button"
               onClick={() => mudarDaltonismo(opcao.id as ModoDaltonico)}
+              aria-pressed={daltonismo === opcao.id}
               className={`min-h-11 rounded-xl border p-2.5 text-xs font-bold transition-colors text-center ${
                 daltonismo === opcao.id
                   ? "border-amber-600 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300"

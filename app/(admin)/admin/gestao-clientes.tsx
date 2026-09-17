@@ -129,7 +129,7 @@ export function GestaoClientes({ clientes }: { clientes: ClienteAdmin[] }) {
         <input
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
-          placeholder="Buscar por bar ou e-mail..."
+          aria-label="Buscar por bar ou e-mail" placeholder="Buscar por bar ou e-mail..."
           className={CAMPO}
         />
       </div>
