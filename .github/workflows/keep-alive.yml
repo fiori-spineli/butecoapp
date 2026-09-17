@@ -4,7 +4,7 @@ name: Keep Supabase Project Alive
 # Segunda, quarta e sexta ao meio-dia (UTC) garante que o maior intervalo seja
 # de 3 dias, com folga para uma execucao falhar.
 #
-# A versao anterior chamava a raiz `/rest/v1/`, que devolve so a descricao da
+# A versao mais antiga chamava a raiz `/rest/v1/`, que devolve so a descricao da
 # API e NAO consulta o Postgres — podia manter o projeto "acordado" no papel e
 # mesmo assim ser pausado por inatividade do banco. Aqui a chamada e um RPC que
 # faz um SELECT de verdade em `clientes`.
@@ -12,6 +12,20 @@ name: Keep Supabase Project Alive
 # `comanda_publica` foi escolhida de proposito em vez de criar uma funcao nova:
 # ela ja existe, ja e executavel por anon (e o acesso da tela do cliente) e com
 # um token inexistente devolve `null` sem tocar em nada. Zero superficie nova.
+#
+# ATENCAO, duas armadilhas que ja morderam este workflow:
+#
+#   1. A chave vive no segredo SUPABASE_ANON_KEY do repositorio, e ela NAO
+#      acompanha a do `.env.local`. Quando o banco mudou para o Brasil a chave
+#      trocou, o segredo ficou para tras e as execucoes passaram a dar HTTP 401.
+#      Como o script so abortava com "exit code 22", o log nao dizia o motivo.
+#      Por isso este passo agora imprime status e corpo ANTES de decidir, e
+#      explica em texto o que fazer. Ao rotacionar a chave, rode:
+#          gh secret set SUPABASE_ANON_KEY --repo <org>/<repo>
+#
+#   2. O GitHub DESLIGA workflows agendados depois de 60 dias sem atividade no
+#      repositorio. Se as execucoes sumirem do painel sem nenhuma falha, e isto
+#      — basta reativar em Actions.
 
 on:
   schedule:
@@ -25,15 +39,59 @@ jobs:
       - name: Consulta real ao banco de producao
         env:
           SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_URL: https://zmxytngunmyuscmncdmx.supabase.co
         run: |
-          set -euo pipefail
+          # Sem `-e`: quem decide o que e falha aqui embaixo e o script, para
+          # que cada motivo possa ser explicado antes de sair.
+          set -uo pipefail
 
-          resposta=$(curl -sS --fail-with-body             -X POST "https://zmxytngunmyuscmncdmx.supabase.co/rest/v1/rpc/comanda_publica"             -H "apikey: $SUPABASE_KEY"             -H "Authorization: Bearer $SUPABASE_KEY"             -H "Content-Type: application/json"             -d '{"p_token":"00000000-0000-0000-0000-000000000000"}')
+          if [ -z "${SUPABASE_KEY:-}" ]; then
+            echo "::error::O segredo SUPABASE_ANON_KEY esta vazio ou nao existe neste repositorio."
+            exit 1
+          fi
 
-          echo "Banco respondeu: $resposta"
+          corpo_arquivo=$(mktemp)
+          status=$(curl -sS \
+            -o "$corpo_arquivo" \
+            -w '%{http_code}' \
+            -X POST "$SUPABASE_URL/rest/v1/rpc/comanda_publica" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"p_token":"00000000-0000-0000-0000-000000000000"}')
+          curl_saiu=$?
+
+          corpo=$(cat "$corpo_arquivo")
+          echo "HTTP $status — resposta: $corpo"
+
+          if [ "$curl_saiu" -ne 0 ]; then
+            echo "::error::Nao consegui falar com o Supabase (curl saiu com $curl_saiu). Rede ou projeto fora do ar."
+            exit 1
+          fi
+
+          case "$status" in
+            401|403)
+              echo "::error::Chave recusada (HTTP $status). O segredo SUPABASE_ANON_KEY do repositorio esta velho — atualize com a chave atual do projeto (a mesma do NEXT_PUBLIC_SUPABASE_ANON_KEY)."
+              exit 1
+              ;;
+            404)
+              echo "::error::A funcao comanda_publica nao existe neste projeto (HTTP 404). Confira se SUPABASE_URL aponta para o banco certo."
+              exit 1
+              ;;
+            200) ;;
+            *)
+              echo "::error::O banco respondeu HTTP $status, que nao era esperado."
+              exit 1
+              ;;
+          esac
 
           # `null` e a resposta certa para um token que nao existe. Qualquer
-          # outra coisa (ou erro HTTP, pego pelo --fail-with-body) significa que
-          # o keep-alive parou de exercitar o que deveria — e falhar aqui e o
-          # unico jeito de alguem ficar sabendo antes de o projeto ser pausado.
-          test "$resposta" = "null"
+          # outra coisa significa que o keep-alive parou de exercitar o que
+          # deveria — e falhar aqui e o unico jeito de alguem ficar sabendo
+          # antes de o projeto ser pausado.
+          if [ "$corpo" != "null" ]; then
+            echo "::error::Esperava 'null' para um token inexistente e veio outra coisa. A funcao mudou de contrato?"
+            exit 1
+          fi
+
+          echo "Banco consultado com sucesso — projeto segue acordado."
