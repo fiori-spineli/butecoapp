@@ -41,8 +41,14 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           SUPABASE_URL: https://zmxytngunmyuscmncdmx.supabase.co
         run: |
-          # Sem `-e`: quem decide o que e falha aqui embaixo e o script, para
-          # que cada motivo possa ser explicado antes de sair.
+          # O GitHub invoca este passo com `bash -e` (aparece no log como
+          # "shell: /usr/bin/bash -e {0}"), e `set -uo pipefail` NAO desliga
+          # isso. Com `-e` ligado, um curl que nao consegue falar com o servidor
+          # derruba o passo antes de qualquer explicacao chegar ao log — que foi
+          # exatamente como este workflow falhou calado. `+e` devolve a decisao
+          # para o script: aqui embaixo cada motivo de falha se anuncia primeiro
+          # e so depois sai.
+          set +e
           set -uo pipefail
 
           if [ -z "${SUPABASE_KEY:-}" ]; then
