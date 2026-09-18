@@ -249,23 +249,28 @@ html[data-daltonico="monocromatico"] {
 
 /* ==========================================================
    BOLHAS DE CHOPP ULTRA-OTIMIZADAS (60/120 FPS GPU ONLY)
-   ========================================================== */
+   ==========================================================
+   A bolha nasce colada em `bottom: 0` do fundo e SOBE, logo o eixo Y anda
+   para o negativo. Em 2026-09-15 as keyframes foram reescritas com o sinal
+   trocado (+105vh -> -12px): a bolha passava o ciclo inteiro abaixo do
+   recorte e só entrava na área visível no último 1%, já transparente.
+   Vinte bolhas animando a 60 fps sem ninguém ver uma sequer. */
 @keyframes subirBolha {
   0% {
-    transform: translate3d(0, 105vh, 0) scale(0.55);
+    transform: translate3d(0, 12px, 0) scale(0.55);
     opacity: 0;
   }
   12% {
     opacity: var(--max-opacity, 0.75);
   }
   50% {
-    transform: translate3d(var(--drift, 12px), 50vh, 0) scale(0.9);
+    transform: translate3d(var(--drift, 12px), -50vh, 0) scale(0.9);
   }
   85% {
     opacity: var(--max-opacity, 0.75);
   }
   100% {
-    transform: translate3d(calc(var(--drift, 12px) * -0.5), -12px, 0) scale(1.05);
+    transform: translate3d(calc(var(--drift, 12px) * -0.5), -105vh, 0) scale(1.05);
     opacity: 0;
   }
 }
