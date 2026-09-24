@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { EmailOtpType } from "@supabase/supabase-js";
-import { FLUXO_DE_EMAIL, FLUXO_OAUTH, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from "@/lib/supabase/server";
+import { ROTA_RECUPERACAO } from "@/lib/recuperacao";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabase/admin";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -74,8 +75,9 @@ async function verificarAcesso(
 }
 
 /**
- * Destino do magic link. Aceita as duas formas que o Supabase pode enviar:
- * `?code=` (fluxo PKCE) e `?token_hash=&type=` (verificação de OTP).
+ * Destino do login com Google (`?code=`) e dos links de e-mail que não são de
+ * recuperação (`?token_hash=&type=`). Recuperação de senha tem rota própria:
+ * /auth/recuperar.
  *
  * Em caso de falha, devolve ao /login um motivo específico — os três jeitos de
  * falhar aqui pedem ações diferentes de quem está tentando entrar.
@@ -149,11 +151,23 @@ export async function GET(request: NextRequest) {
     return falha(erroSupabase.includes("expired") ? "expirado" : "link");
   }
 
+  /*
+   * Link de RECUPERAÇÃO que caiu aqui — os que o backoffice gerou antes de a
+   * recuperação ganhar rota própria, e que ainda estão em conversas de
+   * WhatsApp. Não gasta o token no GET: repassa para /auth/recuperar, que só
+   * troca o token depois que a pessoa toca no botão. Ver lib/recuperacao.ts.
+   */
+  if (tokenHash && type === "recovery") {
+    const repasse = new URL(ROTA_RECUPERACAO, origin);
+    repasse.searchParams.set("token_hash", tokenHash);
+    repasse.searchParams.set("type", "recovery");
+    return NextResponse.redirect(repasse);
+  }
+
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    // O fluxo tem de casar com o de quem gerou o que está chegando, e são
-    // dois. `?code=` só nasce do login com Google, que usa PKCE; `token_hash`
-    // vem dos e-mails, que usam implicit. Ver lib/supabase/server.ts.
-    auth: { flowType: code ? FLUXO_OAUTH : FLUXO_DE_EMAIL },
+    // Sempre PKCE — o @supabase/ssr não deixa escolher (ver
+    // lib/supabase/server.ts). `?code=` aqui é do login com Google; o de
+    // recuperação vai para /auth/recuperar.
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -206,12 +220,6 @@ export async function GET(request: NextRequest) {
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
     if (error) return falha("expirado");
-
-    // O próprio tipo do token diz a intenção. Isso evita passar o destino como
-    // `?next=` no redirectTo: o template monta o link como
-    // `{{ .RedirectTo }}?token_hash=...`, e um redirectTo que já tivesse query
-    // produziria uma URL com dois "?".
-    if (type === "recovery") return responder("/nova-senha");
 
     return responder(proximo);
   }

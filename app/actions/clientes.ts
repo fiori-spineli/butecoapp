@@ -7,6 +7,10 @@ import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabas
 import { gerarSlug } from "@/lib/bar";
 import { origemDoApp } from "@/lib/url";
 import { analisarEmail, MENSAGEM_DESCARTAVEL } from "@/lib/email-descartavel";
+import { problemaDaSenha } from "@/lib/senha";
+import { MENSAGEM_SENHA_VAZADA, senhaApareceEmVazamento } from "@/lib/senha-vazada";
+import { ROTA_RECUPERACAO } from "@/lib/recuperacao";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 import type { EstadoForm } from "@/app/actions/auth";
 
 /**
@@ -51,24 +55,30 @@ const SEM_CHAVE: EstadoForm = {
  *    a um bar novo.
  *
  * `generateLink` é da API de administração e não passa por captcha nenhum. Com
- * o hashed_token a gente monta a MESMA URL que o template de e-mail montaria, e
- * o admin manda pelo WhatsApp — que é por onde ele já está falando com o dono.
+ * o hashed_token a gente monta a MESMA URL que o template de e-mail monta, e o
+ * admin manda pelo WhatsApp — que é por onde ele já está falando com o dono.
  *
- * Quando houver domínio verificado, dá para voltar a enviar sozinho; o link
- * continua o mesmo.
+ * O destino é /auth/recuperar, que só gasta o token quando a pessoa toca no
+ * botão. A pré-visualização de link do WhatsApp faz um GET sozinha no momento
+ * em que o admin cola o link na conversa; quando o GET gastava o token, o dono
+ * recebia um link que a máquina já tinha usado.
  */
 async function gerarLinkDeSenha(email: string): Promise<string | null> {
   try {
+    const origem = await origemDoApp();
     const { data, error } = await createSupabaseAdminClient().auth.admin.generateLink({
       type: "recovery",
       email,
-      options: { redirectTo: `${await origemDoApp()}/auth/callback` },
+      options: { redirectTo: `${origem}${ROTA_RECUPERACAO}` },
     });
 
     const hash = data?.properties?.hashed_token;
     if (error || !hash) return null;
 
-    return `${await origemDoApp()}/auth/callback?token_hash=${hash}&type=recovery`;
+    const link = new URL(ROTA_RECUPERACAO, origem);
+    link.searchParams.set("token_hash", hash);
+    link.searchParams.set("type", "recovery");
+    return link.toString();
   } catch {
     return null;
   }
@@ -289,12 +299,23 @@ export async function excluirCliente(
   return { ok: true, mensagem: `"${nomeEsperado}" foi excluído junto com todos os dados.` };
 }
 
-/** Usado pela fila de interessados: cria o bar e dá baixa no pedido. */
+/**
+ * Usado pela fila de interessados: cria o bar e dá baixa no pedido.
+ *
+ * A checagem de admin se repete aqui mesmo com o chamador (criarContaDoBar)
+ * já tendo feito a dele: toda função exportada de um arquivo "use server" é
+ * uma URL que aceita POST direto, com os argumentos que quem chama quiser. A
+ * auditoria de 2026-09-24 achou esta sem trava — criava conta e bar com a
+ * chave de serviço e devolvia o link de senha para quem acertasse o id.
+ */
 export async function criarClienteDoPedido(
   interessadoId: string,
   nomeDoBar: string,
   email: string,
 ): Promise<EstadoForm> {
+  if (!(await exigirAdminVerificado())) return NEGADO;
+  if (!serviceRoleConfigurado()) return SEM_CHAVE;
+
   const resultado = await provisionarBar(nomeDoBar, email);
   if (!resultado.ok) return { ok: false, mensagem: resultado.mensagem };
 
@@ -316,7 +337,44 @@ export async function criarClienteDoPedido(
   };
 }
 
-/** Cadastro manual completo feito pela página /admin/novo-bar */
+/**
+ * Procura uma conta pelo e-mail, página por página.
+ *
+ * A API de administração do Auth não busca por e-mail. A versão anterior
+ * olhava só a PRIMEIRA página do listUsers (50 contas): a partir da 51ª, "já
+ * existe" virava "não achei". "Não achei" nunca é prova de que não existe
+ * (GUARDRAILS.md seção 1) — por isso o erro volta como "erro", e quem chama
+ * recusa em vez de seguir.
+ */
+async function buscarContaPorEmail(
+  admin: SupabaseClient,
+  email: string,
+): Promise<User | null | "erro"> {
+  const POR_PAGINA = 200;
+  for (let pagina = 1; pagina <= 100; pagina++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: pagina, perPage: POR_PAGINA });
+    if (error) return "erro";
+    const achada = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (achada) return achada;
+    if (data.users.length < POR_PAGINA) return null;
+  }
+  return "erro";
+}
+
+/**
+ * Cadastro manual completo feito pela página /admin/novo-bar.
+ *
+ * Senha digitada pelo admin é PROVISÓRIA: o dono entra com ela uma vez e o app
+ * o leva a criar a própria (`app_metadata.trocar_senha`, ver proxy.ts). A
+ * senha que o admin ditou pelo WhatsApp não fica valendo para sempre, e o dono
+ * passa a entrar com uma senha que ele mesmo digitou duas vezes.
+ *
+ * E-mail que já tem conta:
+ * - com bar ou cargo de admin → recusa, sem mexer em nada. A versão anterior
+ *   trocava a senha da conta existente em silêncio — criar um "bar novo" com o
+ *   e-mail de um cliente trancava esse cliente para fora da própria conta.
+ * - sem bar e sem cargo (conta que sobrou de um bar excluído) → reaproveita.
+ */
 export async function criarClienteManual(
   _anterior: EstadoForm,
   formData: FormData,
@@ -329,91 +387,127 @@ export async function criarClienteManual(
   }
 
   const nomeDoBar = String(formData.get("bar_nome") ?? "").trim();
-  const nomeDono = String(formData.get("nome_dono") ?? "").trim();
-  const telefone = String(formData.get("telefone") ?? "").trim();
-  const senhaInformada = String(formData.get("senha") ?? "").trim();
+  const nomeDono = String(formData.get("nome_dono") ?? "").trim().slice(0, 120);
+  const telefone = String(formData.get("telefone") ?? "").trim().slice(0, 40);
+  // Sem trim: espaço faz parte da senha. Cortar aqui e não no login é o tipo
+  // de diferença que faz uma senha "certa" ser recusada. problemaDaSenha
+  // recusa espaço nas pontas, e o admin vê o motivo na hora.
+  const senhaInformada = String(formData.get("senha") ?? "");
   const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
 
   if (nomeDoBar.length < 2) return { ok: false, mensagem: "[Erro 400] O nome do bar deve ter ao menos 2 caracteres." };
+  if (nomeDoBar.length > 120) return { ok: false, mensagem: "[Erro 400] O nome do bar ficou longo demais." };
   if (problema === "formato") return { ok: false, mensagem: "[Erro 400] O formato do e-mail é inválido." };
   if (problema === "descartavel") return { ok: false, mensagem: "[Erro 400] E-mails descartáveis/temporários não são permitidos." };
 
-  const senhaFinal = senhaInformada || randomBytes(16).toString("base64url");
+  if (senhaInformada) {
+    const problemaSenha = problemaDaSenha(senhaInformada, email);
+    if (problemaSenha) return { ok: false, mensagem: `[Erro 400] ${problemaSenha}` };
+    if (await senhaApareceEmVazamento(senhaInformada)) {
+      return { ok: false, mensagem: `[Erro 400] ${MENSAGEM_SENHA_VAZADA}` };
+    }
+  }
+
+  const provisoria = Boolean(senhaInformada);
   const admin = createSupabaseAdminClient();
+  const metadados = {
+    nome: nomeDono || nomeDoBar,
+    bar_nome: nomeDoBar,
+    telefone,
+    criado_por: "backoffice_manual",
+  };
 
   let userId: string | null = null;
+  let contaNova = false;
+
   const { data: criado, error: erroUsuario } = await admin.auth.admin.createUser({
     email,
-    password: senhaFinal,
+    // Sem senha digitada, uma aleatória que ninguém vê: quem define a de
+    // verdade é o dono, pelo link.
+    password: senhaInformada || randomBytes(32).toString("base64url"),
     email_confirm: true,
-    user_metadata: {
-      nome: nomeDono || nomeDoBar,
-      bar_nome: nomeDoBar,
-      telefone,
-      criado_por: "backoffice_manual",
-    },
+    user_metadata: metadados,
+    ...(provisoria ? { app_metadata: { trocar_senha: true } } : {}),
   });
 
   if (criado?.user) {
     userId = criado.user.id;
+    contaNova = true;
   } else {
-    // Detecta se o e-mail já existe para vincular ao bar
     const jaExiste =
       erroUsuario?.code === "email_exists" ||
       erroUsuario?.code === "user_already_exists" ||
       /already (been )?registered|already exists/i.test(erroUsuario?.message ?? "");
 
-    if (jaExiste) {
-      const { data: usuarios } = await admin.auth.admin.listUsers();
-      const usuarioExistente = usuarios?.users.find((u) => u.email?.toLowerCase() === email);
-
-      if (usuarioExistente) {
-        userId = usuarioExistente.id;
-        await admin.auth.admin.updateUserById(userId, {
-          password: senhaFinal,
-          user_metadata: {
-            nome: nomeDono || nomeDoBar,
-            bar_nome: nomeDoBar,
-            telefone,
-            criado_por: "backoffice_manual",
-          },
-        });
-      }
-    }
-
-    if (!userId) {
+    if (!jaExiste) {
       return {
         ok: false,
         mensagem: `[Erro ${erroUsuario?.status || 500}] Falha ao registrar usuário: ${erroUsuario?.message || "Erro desconhecido no Auth"}`,
       };
     }
+
+    const existente = await buscarContaPorEmail(admin, email);
+    if (existente === "erro" || !existente) {
+      return {
+        ok: false,
+        mensagem: "[Erro 409] Já existe uma conta com esse e-mail e não consegui conferir se ela está livre. Nada foi alterado.",
+      };
+    }
+
+    const [consultaBar, consultaCargo] = await Promise.all([
+      admin.from("bars").select("id").eq("owner_id", existente.id).limit(1),
+      admin.from("administradores").select("id").eq("user_id", existente.id).limit(1),
+    ]);
+
+    if (consultaBar.error || consultaCargo.error) {
+      return {
+        ok: false,
+        mensagem: "[Erro 409] Já existe uma conta com esse e-mail e não consegui conferir se ela está livre. Nada foi alterado.",
+      };
+    }
+
+    if ((consultaBar.data?.length ?? 0) > 0 || (consultaCargo.data?.length ?? 0) > 0) {
+      return {
+        ok: false,
+        mensagem:
+          "[Erro 409] Esse e-mail já é de um cliente com bar (ou de um administrador). Nada foi alterado. Para mandar um acesso novo a ele, use \"Gerar link de acesso\" na lista de clientes.",
+      };
+    }
+
+    userId = existente.id;
+    const { error: erroAtualizar } = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: metadados,
+      ...(provisoria ? { password: senhaInformada, app_metadata: { trocar_senha: true } } : {}),
+    });
+    if (erroAtualizar) {
+      return { ok: false, mensagem: "[Erro 500] Não consegui preparar a conta existente. Nada foi criado." };
+    }
   }
 
-  // Criação do estabelecimento
   const { data: barCriado, error: erroBar } = await admin
     .from("bars")
-    .insert({
-      owner_id: userId,
-      nome: nomeDoBar,
-      slug: gerarSlug(nomeDoBar),
-    })
+    .insert({ owner_id: userId, nome: nomeDoBar, slug: gerarSlug(nomeDoBar) })
     .select("id")
     .single();
 
   if (erroBar || !barCriado) {
+    // Desfaz só a conta que ESTA chamada acabou de criar e que ficou sem bar.
+    // Raio da cascata: auth.users → bars (nenhum: o insert acabou de falhar).
+    // Conta reaproveitada nunca é apagada aqui — ela existia antes.
+    if (contaNova) await admin.auth.admin.deleteUser(userId).catch(() => undefined);
     return {
       ok: false,
-      mensagem: `[Erro 500] Usuário criado, mas falhou ao registrar o bar: ${erroBar?.message || "Erro de banco"}`,
+      mensagem: `[Erro 500] Não consegui registrar o bar: ${erroBar?.message || "Erro de banco"}. Nada foi salvo.`,
     };
   }
 
-  const link = senhaInformada ? null : await gerarLinkDeSenha(email);
+  const link = provisoria ? null : await gerarLinkDeSenha(email);
 
   revalidatePath("/admin");
   return {
     ok: true,
-    mensagem: senhaInformada
-      ? `SUCESSO_SENHA|${nomeDoBar}|${email}|${senhaFinal}`
+    mensagem: provisoria
+      ? `SUCESSO_SENHA|${nomeDoBar}|${email}|${senhaInformada}`
       : `SUCESSO_LINK|${nomeDoBar}|${email}|${link ?? ""}`,
   };
 }

@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE_LEMBRAR, opcoesDeCookieDeSessao, querSessaoLonga } from "@/lib/sessao";
 import { gerarNonce, montarCsp } from "@/lib/csp";
+import { ROTA_RECUPERACAO } from "@/lib/recuperacao";
 
 /**
  * No Next.js 16 o antigo `middleware` passou a se chamar `proxy`.
@@ -10,6 +11,31 @@ import { gerarNonce, montarCsp } from "@/lib/csp";
  * Content-Security-Policy com o nonce desta requisição (ver lib/csp.ts).
  */
 export async function proxy(request: NextRequest) {
+  // Caminho com codificação quebrada (`/c/%ff`) derrubava as rotas dinâmicas
+  // com 500 na hora de o Next decodificar o parâmetro — barulho no log e no
+  // monitoramento a troco de nada. Pedido malformado é 400, e morre aqui.
+  try {
+    decodeURIComponent(request.nextUrl.pathname);
+  } catch {
+    return new NextResponse(null, { status: 400 });
+  }
+
+  // Link de recuperação que chegou na raiz. Acontece quando o `redirectTo` do
+  // pedido não está na allow list do Supabase (ex.: pedido feito no
+  // localhost): o Auth troca o destino pela Site URL e o template monta
+  // `https://…/?token_hash=…&type=recovery`. Repassar sem gastar o token —
+  // quem gasta é o botão de /auth/recuperar (ver lib/recuperacao.ts).
+  if (
+    request.nextUrl.pathname === "/" &&
+    request.nextUrl.searchParams.get("type") === "recovery" &&
+    request.nextUrl.searchParams.has("token_hash")
+  ) {
+    const destino = new URL(ROTA_RECUPERACAO, request.url);
+    destino.searchParams.set("token_hash", request.nextUrl.searchParams.get("token_hash") ?? "");
+    destino.searchParams.set("type", "recovery");
+    return NextResponse.redirect(destino);
+  }
+
   const nonce = gerarNonce();
   const csp = montarCsp(nonce, process.env.NODE_ENV === "development");
 
@@ -95,6 +121,29 @@ export async function proxy(request: NextRequest) {
   }
 
   const nextUrl = request.nextUrl;
+
+  /*
+   * Senha provisória do backoffice: até a pessoa criar a própria, o único
+   * lugar do app que abre é /nova-senha. Ficam de fora o que não é tela
+   * (/api, /auth) e a comanda pública do cliente (/c), que nem sessão usa.
+   *
+   * É só leitura de propriedade — nada aqui lança (ver o aviso acima). Os
+   * cookies da resposta vão junto: se o getUser acabou de renovar a sessão,
+   * um redirect sem eles jogaria a renovação fora.
+   */
+  const caminho = nextUrl.pathname;
+  if (
+    user?.app_metadata?.trocar_senha === true &&
+    caminho !== "/nova-senha" &&
+    !caminho.startsWith("/api/") &&
+    !caminho.startsWith("/auth/") &&
+    !caminho.startsWith("/c/")
+  ) {
+    const desvio = NextResponse.redirect(new URL("/nova-senha", request.url));
+    for (const cookie of response.cookies.getAll()) desvio.cookies.set(cookie);
+    desvio.headers.set("Cache-Control", "private, no-store");
+    return desvio;
+  }
 
   // Se for usuário autenticado, checa se é Super Admin para blindar rotas comuns
   if (user && (nextUrl.pathname.startsWith("/login") || nextUrl.pathname.startsWith("/onboarding"))) {

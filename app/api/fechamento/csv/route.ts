@@ -15,8 +15,16 @@ import { inicioDoDiaLocalISO } from "@/lib/format";
 
 const SEPARADOR = ";";
 
+/** Valor em reais já formatado ("14,00", "-4,75") — número, não fórmula. */
+const NUMERO = /^-?\d+(,\d+)?$/;
+
 function celula(valor: string | number | null | undefined): string {
-  const texto = valor === null || valor === undefined ? "" : String(valor);
+  let texto = valor === null || valor === undefined ? "" : String(valor);
+  // Nome de comanda e de item é texto que veio de fora (o dono digita, e o
+  // cliente pode ditar "=HYPERLINK(...)" como nome da mesa). O Excel executa
+  // fórmula mesmo dentro de aspas quando a célula começa com = + - @, TAB ou
+  // CR. O apóstrofo na frente faz ele mostrar o texto como texto.
+  if (/^[=+\-@\t\r]/.test(texto) && !NUMERO.test(texto)) texto = `'${texto}`;
   // Aspas duplas viram duas; o campo inteiro vai entre aspas. Resolve de uma
   // vez o ponto e vírgula, a quebra de linha e a aspa dentro do nome do item.
   return `"${texto.replace(/"/g, '""')}"`;

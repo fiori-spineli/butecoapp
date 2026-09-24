@@ -1,20 +1,16 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
-import {
-  entrarComGoogle,
-  entrarComSenha,
-  redefinirSenha,
-  type EstadoForm,
-} from "@/app/actions/auth";
+import { entrarComGoogle, entrarComSenha, type EstadoForm } from "@/app/actions/auth";
 import { LoadingButeco } from "@/components/loading-buteco";
 import { CampoTurnstile } from "@/components/turnstile";
 import { ModalAlerta } from "@/components/modal-alerta";
+import { RecuperarSenha } from "@/components/recuperar-senha";
 
 const MENSAGEM_ERRO: Record<string, string> = {
   expirado:
-    "Esse link já foi usado ou expirou. Peça um novo — se seu e-mail faz varredura automática, ele pode ter consumido o link antes de você.",
+    "Esse link já foi usado ou venceu. Toque em \"Esqueceu a senha?\" e peça um código novo — ele chega por e-mail e vale em qualquer aparelho.",
   navegador:
     "Termine o login no mesmo navegador em que você começou — a verificação fica guardada nele.",
   google:
@@ -23,6 +19,36 @@ const MENSAGEM_ERRO: Record<string, string> = {
     "Essa conta Google não tem acesso ao ButecoApp. O cadastro é criado por nós — peça o seu em /contato e a gente prepara.",
   link: "Não consegui validar esse link. Peça um novo.",
 };
+
+/**
+ * O `?erro=` vem da URL, então é texto de quem quiser. Consultar o objeto com
+ * ele direto devolvia coisa herdada do protótipo: `?erro=__proto__` derrubava
+ * a tela de login inteira (achado da auditoria de 2026-09-24). Só chave própria
+ * do mapa vale; o resto cai na mensagem genérica.
+ */
+function mensagemDoErroDaUrl(erro: string | undefined): string {
+  return erro && Object.hasOwn(MENSAGEM_ERRO, erro) ? MENSAGEM_ERRO[erro] : MENSAGEM_ERRO.link;
+}
+
+/** Olho aberto/fechado do "mostrar senha". */
+function IconeOlho({ aberto }: { aberto: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      {aberto ? (
+        <>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      ) : (
+        <>
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-6.5 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94" />
+          <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19" />
+          <path d="M1 1l22 22" />
+        </>
+      )}
+    </svg>
+  );
+}
 
 type ModoAcesso = "senha" | "recuperar";
 
@@ -35,13 +61,20 @@ const CLASSE_ROTULO =
 export function LoginForm({
   erroInicial,
   mostrarGoogle = false,
+  modoInicial = "senha",
 }: {
   erroInicial?: string;
   mostrarGoogle?: boolean;
+  modoInicial?: ModoAcesso;
 }) {
-  const [modo, setModo] = useState<ModoAcesso>("senha");
+  const [modo, setModo] = useState<ModoAcesso>(modoInicial);
   const [lembrar, setLembrar] = useState(true);
   const [email, setEmail] = useState("");
+  // "Estou digitando a senha certa" quase sempre é Caps Lock ou o celular
+  // trocando a primeira letra por maiúscula. Mostrar a senha e avisar do Caps
+  // Lock resolve a maior parte disso antes de virar "a senha não funciona".
+  const [senhaVisivel, setSenhaVisivel] = useState(false);
+  const [capsLigado, setCapsLigado] = useState(false);
   // O erro vem DERIVADO do resultado da action, durante a renderizacao.
   //
   // Antes tres useEffect copiavam a mensagem para um estado. Copiar resultado
@@ -62,19 +95,12 @@ export function LoginForm({
     null
   );
 
-  const [estadoRecuperar, acaoRecuperar, enviandoRecuperar] = useActionState<EstadoForm, FormData>(
-    redefinirSenha,
-    null
-  );
-
-  const resultadoComErro = [estadoSenha, estadoGoogle, estadoRecuperar].find(
-    (e) => e && !e.ok,
-  );
+  const resultadoComErro = [estadoSenha, estadoGoogle].find((e) => e && !e.ok);
   const erroModal =
     resultadoComErro && dispensado !== resultadoComErro
       ? resultadoComErro.mensagem
       : erroInicialAberto
-        ? MENSAGEM_ERRO[erroInicial!] ?? MENSAGEM_ERRO.link
+        ? mensagemDoErroDaUrl(erroInicial)
         : null;
 
   function fecharErro() {
@@ -82,59 +108,15 @@ export function LoginForm({
     if (resultadoComErro) setDispensado(resultadoComErro);
   }
 
+  function conferirCaps(e: KeyboardEvent<HTMLInputElement>) {
+    setCapsLigado(e.getModifierState("CapsLock"));
+  }
+
   if (modo === "recuperar") {
     return (
       <>
         <ModalAlerta mensagem={erroModal} aoFechar={fecharErro} />
-
-        <form action={acaoRecuperar} className="flex w-full flex-col gap-4">
-          <p className="text-xs leading-relaxed text-stone-600 dark:text-stone-400">
-            Informe o e-mail cadastrado para enviarmos as instruções de redefinição de senha.
-          </p>
-
-          <div>
-            <label htmlFor="email-recuperar" className={CLASSE_ROTULO}>
-              E-mail cadastrado
-            </label>
-            <input
-              id="email-recuperar"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="exemplo@buteco.com"
-              className={CLASSE_CAMPO}
-            />
-          </div>
-
-          <CampoTurnstile acao="recuperar-senha" renovarQuando={estadoRecuperar} />
-
-          <button
-            type="submit"
-            disabled={enviandoRecuperar}
-            className="cursor-pointer w-full rounded-xl bg-amber-700 hover:bg-amber-600 dark:bg-amber-700 dark:hover:bg-amber-600 px-4 py-3.5 font-bold text-white shadow-xs transition-all disabled:opacity-60 text-sm"
-          >
-            {enviandoRecuperar ? <LoadingButeco /> : "Enviar link de recuperação"}
-          </button>
-
-          {estadoRecuperar && estadoRecuperar.ok && (
-            <p className="rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/80 dark:bg-emerald-950/20 p-3 text-xs text-emerald-900 dark:text-emerald-300">
-              {estadoRecuperar.mensagem}
-            </p>
-          )}
-
-          <div className="pt-3 text-center border-t border-stone-200 dark:border-stone-800">
-            <button
-              type="button"
-              onClick={() => setModo("senha")}
-              className="cursor-pointer min-h-11 px-3 text-xs font-bold text-amber-800 dark:text-amber-400 hover:underline"
-            >
-              Voltar ao login
-            </button>
-          </div>
-        </form>
+        <RecuperarSenha modo="login" emailInicial={email} aoVoltar={() => setModo("senha")} />
       </>
     );
   }
@@ -201,15 +183,35 @@ export function LoginForm({
             <label htmlFor="password-login" className={CLASSE_ROTULO}>
               Senha
             </label>
-            <input
-              id="password-login"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              placeholder="••••••••"
-              className={CLASSE_CAMPO}
-            />
+            <div className="relative">
+              <input
+                id="password-login"
+                name="password"
+                type={senhaVisivel ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                placeholder="••••••••"
+                onKeyUp={conferirCaps}
+                onKeyDown={conferirCaps}
+                onBlur={() => setCapsLigado(false)}
+                aria-describedby={capsLigado ? "aviso-caps" : undefined}
+                className={`${CLASSE_CAMPO} pr-12`}
+              />
+              <button
+                type="button"
+                onClick={() => setSenhaVisivel((v) => !v)}
+                aria-label={senhaVisivel ? "Esconder a senha" : "Mostrar a senha"}
+                aria-pressed={senhaVisivel}
+                className="cursor-pointer absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-100"
+              >
+                <IconeOlho aberto={senhaVisivel} />
+              </button>
+            </div>
+            {capsLigado && (
+              <p id="aviso-caps" role="status" className="mt-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                Caps Lock está ligado.
+              </p>
+            )}
             <div className="mt-1.5 text-right">
               <button
                 type="button"

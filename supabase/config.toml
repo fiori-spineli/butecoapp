@@ -248,6 +248,15 @@ otp_expiry = 3600
 subject = "Seu link de acesso ao ButecoApp"
 content_path = "./supabase/templates/magic_link.html"
 
+# Recuperação de senha. O fluxo do app DEPENDE deste conteúdo: o código de
+# 8 dígitos ({{ .Token }}) e o link com token_hash para /auth/recuperar. O
+# template padrão do Supabase não traz nenhum dos dois. O painel do projeto de
+# produção precisa ter o mesmo texto (Authentication > Emails > Reset Password)
+# — ver GUARDRAILS.md seção 13.
+[auth.email.template.recovery]
+subject = "Seu código para criar uma nova senha no ButecoApp"
+content_path = "./supabase/templates/recovery.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

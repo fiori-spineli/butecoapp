@@ -299,6 +299,58 @@ o caixa nunca mostra.
 
 ---
 
+## 13. Recuperar a senha nunca vira login
+
+**Incidente — 2026-09-23, periciado nos logs do Auth.** O dono do "fiori bar"
+passou dias sem entrar: o login devolvia `invalid_credentials` para a senha que
+ele sabia. A conta nasceu em 15/09 pelo cadastro manual do painel, entrou uma
+vez às 20:56 e **a senha nunca mais mudou**. O "Esqueci a senha" não tinha
+como mudá-la:
+
+- O código pedia o fluxo `implicit` para os links de e-mail, e um comentário de
+  vinte linhas explicava por quê. O `@supabase/ssr` grava `flowType: "pkce"`
+  **depois** de espalhar as opções recebidas (`createServerClient.js`): o valor
+  era descartado em silêncio. O link chegava como `?code=`.
+- `?code=` no `/auth/callback` era, para o código, o login do Google. A pessoa
+  caía no painel logada, **sem nunca ver a tela de senha nova**, e saía de lá
+  com a mesma senha que não lembrava. Nos logs de 24/09: `POST /recover` →
+  `GET /verify` 303 (o template do painel era o PADRÃO, `{{ .ConfirmationURL }}`)
+  → `POST /token grant_type=pkce` → `login` → painel.
+- Na migração para o projeto do Brasil, parte da configuração de painel não
+  veio junto: provedor Google desligado e o template de recuperação no padrão
+  do Supabase, em inglês. (O SMTP próprio veio — Gmail, conferido no
+  formulário do painel.) Quatro contas antigas ficaram com `auth.users.email_change` NULL,
+  e o GoTrue responde 500 no `/token` para elas.
+
+**Regras:**
+
+- Recuperação termina em **criar senha nova**, sempre: rota própria
+  (`/auth/recuperar`), nunca a mesma porta do login social.
+- **Nenhum GET gasta token de uso único.** Robô de segurança do e-mail e
+  prévia de link do WhatsApp fazem GET sozinhos. A página abre; quem gasta o
+  token é o botão, num POST. O código digitável (8 dígitos) é a porta que
+  funciona em qualquer aparelho.
+- Trocar senha exige **prova recente do e-mail** (código ou link, 15 minutos).
+  Sessão logada sozinha não troca senha: o celular esquecido no balcão não pode
+  virar a conta de outra pessoa. Gravou, derruba as outras sessões.
+- Senha é conferida **byte a byte igual** na criação e no login. Nada de
+  `trim()` num lado e não no outro: espaço nas pontas é recusado com motivo
+  (`lib/senha.ts`), nunca cortado calado.
+- **Opção passada a uma biblioteca não é prova de comportamento.** Um
+  comentário que descreve o que a opção "faz" só vale depois de conferido no
+  código da biblioteca (`node_modules/…`) ou medido.
+- **Configuração de painel faz parte do sistema.** Template de e-mail mora
+  versionado em `supabase/templates/` e o painel tem de ter o mesmo texto. Ao
+  trocar de projeto, conferir um por um: provedores, SMTP, templates, allow
+  list de URLs, CAPTCHA, limites de taxa e política de senha.
+
+**Como verificar:** conta de teste → "Esqueceu a senha?" → o e-mail traz o
+código e o link → abrir o link com `curl` (GET) e conferir que o token **ainda
+vale** → digitar o código → gravar a senha nova → sair → entrar com a nova
+**e** ver a antiga recusada. Tudo em produção, não no localhost.
+
+---
+
 ## Checklist antes de commitar
 
 1. `git status` — só o que eu pretendia mudar está aí?
@@ -316,3 +368,6 @@ o caixa nunca mostra.
 11. Se mexeu em algo que roda em ciclo: o relógio é de módulo, reagenda no
     `finally`, tem prazo de espera, e a cadência foi **medida** na rede
     depois de uma rajada de navegação (seção 12).
+12. Se mexeu em login, senha ou e-mail do Auth: a recuperação foi feita de
+    ponta a ponta em produção, e o template do painel bate com
+    `supabase/templates/` (seção 13).

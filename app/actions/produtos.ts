@@ -8,6 +8,36 @@ import type { EstadoForm } from "@/app/actions/auth";
 
 const MARCADOR_BUCKET = "/storage/v1/object/public/produtos-imagens/";
 
+/** As mesmas do CHECK de produtos.categoria (migration 0018). */
+const CATEGORIAS = new Set(["comida", "bebida", "entretenimento", "servico", "outros"]);
+
+const ESTOQUE_MAXIMO = 99_999;
+
+/**
+ * A foto tem de ser do NOSSO Storage e da pasta DESTE bar.
+ *
+ * A conferência anterior só procurava o trecho do caminho em qualquer lugar da
+ * string: aceitava o bucket de outro projeto Supabase, de outro bar, e até
+ * `javascript:x//storage/v1/object/public/produtos-imagens/x` (auditoria de
+ * 2026-09-24). Aqui a URL é desmontada e cada parte comparada por igualdade.
+ */
+function fotoDoBar(url: string, barId: string): boolean {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return false;
+  try {
+    const alvo = new URL(url);
+    return (
+      alvo.origin === new URL(base).origin &&
+      alvo.pathname.startsWith(`${MARCADOR_BUCKET}${barId}/`) &&
+      !alvo.pathname.includes("..") &&
+      !alvo.search &&
+      !alvo.hash
+    );
+  } catch {
+    return false;
+  }
+}
+
 function caminhoNoStorage(url: string | null | undefined): string | null {
   if (!url) return null;
   const pos = url.indexOf(MARCADOR_BUCKET);
@@ -27,21 +57,50 @@ async function apagarFoto(
   } catch {}
 }
 
-function validarProduto(formData: FormData):
-  | { ok: true; nome: string; precoCentavos: number; imagemUrl: string; categoria: string; estoque: number }
+/**
+ * Categoria e estoque só entram quando o formulário os manda.
+ *
+ * O formulário de edição tem só foto, nome e preço; o estoque muda pelos
+ * botões de +/- (ajustarEstoque). A versão anterior preenchia o que faltava
+ * com "outros" e 0 e gravava por cima: editar o preço de uma cerveja zerava o
+ * estoque dela (auditoria de 2026-09-24). `undefined` aqui quer dizer "não
+ * mexa".
+ */
+function validarProduto(formData: FormData, barId: string):
+  | {
+      ok: true;
+      nome: string;
+      precoCentavos: number;
+      imagemUrl: string;
+      categoria: string | undefined;
+      estoque: number | undefined;
+    }
   | { ok: false; mensagem: string } {
   const nome = String(formData.get("nome") ?? "").trim();
   const precoBruto = String(formData.get("preco") ?? "").trim();
   const imagemUrl = String(formData.get("imagem_url") ?? "").trim();
-  const categoria = String(formData.get("categoria") ?? "outros");
-  const estoque = parseInt(String(formData.get("estoque") ?? "0"));
+  const categoriaBruta = formData.get("categoria");
+  const estoqueBruto = formData.get("estoque");
 
   if (!nome) return { ok: false, mensagem: "O nome do produto é obrigatório." };
   if (nome.length < 2) return { ok: false, mensagem: "Digite o nome do produto." };
-  
-  // Validação flexível e segura: aceita qualquer URL legítima do bucket produtos-imagens
-  if (imagemUrl && !caminhoNoStorage(imagemUrl)) {
+
+  if (imagemUrl && !fotoDoBar(imagemUrl, barId)) {
     return { ok: false, mensagem: "Essa foto não veio do upload do ButecoApp." };
+  }
+
+  let categoria: string | undefined;
+  if (categoriaBruta !== null) {
+    categoria = String(categoriaBruta);
+    if (!CATEGORIAS.has(categoria)) return { ok: false, mensagem: "Categoria inválida." };
+  }
+
+  let estoque: number | undefined;
+  if (estoqueBruto !== null) {
+    estoque = Number(String(estoqueBruto).trim());
+    if (!Number.isSafeInteger(estoque) || estoque < 0 || estoque > ESTOQUE_MAXIMO) {
+      return { ok: false, mensagem: "Estoque inválido. Use um número inteiro de 0 a 99.999." };
+    }
   }
 
   // Teto igual ao do banco (produtos_preco_teto, migration 0013). Sem esta
@@ -70,19 +129,19 @@ export async function criarProduto(
   _anterior: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
-  const validacao = validarProduto(formData);
+  const { supabase, bar } = await exigirBar();
+  const validacao = validarProduto(formData, bar.id);
   if (!validacao.ok) return { ok: false, mensagem: validacao.mensagem };
 
   const { nome, precoCentavos, imagemUrl, categoria, estoque } = validacao;
-  const { supabase, bar } = await exigirBar();
 
   const { error } = await supabase.from("produtos").insert({
     bar_id: bar.id,
     nome,
     preco_centavos: precoCentavos,
     imagem_url: imagemUrl || null,
-    categoria,
-    estoque_atual: estoque,
+    categoria: categoria ?? "outros",
+    estoque_atual: estoque ?? 0,
   });
 
   if (error) return { ok: false, mensagem: "Não consegui salvar o produto." };
@@ -96,11 +155,11 @@ export async function atualizarProduto(
   _anterior: EstadoForm,
   formData: FormData,
 ): Promise<EstadoForm> {
-  const validacao = validarProduto(formData);
+  const { supabase, bar } = await exigirBar();
+  const validacao = validarProduto(formData, bar.id);
   if (!validacao.ok) return { ok: false, mensagem: validacao.mensagem };
 
   const { nome, precoCentavos, imagemUrl, categoria, estoque } = validacao;
-  const { supabase, bar } = await exigirBar();
 
   const { data: antes } = await supabase
     .from("produtos")
@@ -115,8 +174,8 @@ export async function atualizarProduto(
       nome,
       preco_centavos: precoCentavos,
       imagem_url: imagemUrl || null,
-      categoria,
-      estoque_atual: estoque,
+      ...(categoria !== undefined ? { categoria } : {}),
+      ...(estoque !== undefined ? { estoque_atual: estoque } : {}),
     })
     .eq("id", produtoId)
     .eq("bar_id", bar.id);

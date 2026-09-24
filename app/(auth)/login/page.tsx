@@ -12,9 +12,9 @@ export const dynamic = "force-dynamic";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; modo?: string }>;
 }) {
-  const { erro } = await searchParams;
+  const { erro, modo } = await searchParams;
   const mostrarGoogle = await loginComGoogleDisponivel();
 
   if (supabaseConfigurado()) {
@@ -156,7 +156,11 @@ export default async function LoginPage({
           </div>
 
           <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 md:p-8 shadow-xs">
-            <LoginForm erroInicial={erro} mostrarGoogle={mostrarGoogle} />
+            <LoginForm
+              erroInicial={erro}
+              mostrarGoogle={mostrarGoogle}
+              modoInicial={modo === "recuperar" ? "recuperar" : "senha"}
+            />
           </div>
 
           <div className="mt-6 flex flex-col items-center gap-1.5 text-center text-xs text-stone-500 dark:text-stone-400">

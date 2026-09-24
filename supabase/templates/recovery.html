@@ -1,0 +1,7 @@
+<h2 style="margin:0 0 12px;font-family:Arial,Helvetica,sans-serif;color:#1c1917">Criar uma nova senha</h2>
+<p style="font-family:Arial,Helvetica,sans-serif;color:#44403c">Recebemos um pedido para trocar a senha da sua conta no ButecoApp. Este é o seu código:</p>
+<p style="margin:20px 0;font-family:'Courier New',Courier,monospace;font-size:30px;font-weight:700;letter-spacing:6px;color:#1c1917">{{ .Token }}</p>
+<p style="font-family:Arial,Helvetica,sans-serif;color:#44403c">Digite esse código na tela do ButecoApp — funciona em qualquer aparelho. Se preferir, toque no botão:</p>
+<p style="margin:20px 0"><a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery" style="display:inline-block;padding:14px 24px;border-radius:12px;background:#b45309;color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-weight:700;text-decoration:none">Criar nova senha</a></p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#78716c">O código e o botão valem por 1 hora e uma vez só. Se você pedir outro, só o mais novo vale.</p>
+<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#78716c">Não foi você? Pode ignorar este e-mail: a sua senha continua a mesma, e ninguém entra na sua conta sem este código.</p>

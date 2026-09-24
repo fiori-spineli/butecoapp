@@ -95,13 +95,15 @@ const BUCKET_DE_FOTOS = "produtos-imagens";
 const IDADE_MINIMA_MS = 60 * 60 * 1000;
 
 /**
- * Apaga do Storage as fotos que nenhum produto usa mais.
+ * Apaga do Storage as fotos que nem produto nem logo de bar usam mais.
  *
- * Elas surgem de um jeito só: a pessoa sobe a foto (que já vai para o Storage
- * na hora, ver app/api/produtos/imagem/route.ts) e desiste do formulário sem
- * salvar. Foto salva substitui a anterior, então o resto do fluxo não deixa
- * sobra. Fotos com menos de uma hora ficam — podem ser de um cadastro em
- * andamento.
+ * Elas surgem quando a pessoa sobe a foto (que já vai para o Storage na hora,
+ * ver app/api/produtos/imagem/route.ts) e desiste do formulário sem salvar, ou
+ * quando a troca de logo não conseguiu apagar a anterior. Foto salva substitui
+ * a anterior, então o resto do fluxo não deixa sobra. Fotos com menos de uma
+ * hora ficam — podem ser de um cadastro em andamento.
+ *
+ * Raio: só arquivos do bucket, pasta a pasta. Nenhuma linha do banco é tocada.
  *
  * Roda com a chave de serviço porque cruza todos os bares; o dono só enxerga
  * a própria pasta. Como toda ação do painel, exige o segundo fator.
@@ -116,33 +118,50 @@ export async function limparFotosOrfas(): Promise<{ ok: boolean; mensagem: strin
 
   const admin = createSupabaseAdminClient();
 
-  const { data: bares, error: erroBares } = await admin.from("bars").select("id");
+  const { data: bares, error: erroBares } = await admin.from("bars").select("id, foto_url");
   if (erroBares || !bares) return { ok: false, mensagem: "Não consegui listar os bares." };
-
-  const { data: produtos, error: erroProdutos } = await admin
-    .from("produtos")
-    .select("imagem_url")
-    .not("imagem_url", "is", null);
-  if (erroProdutos || !produtos) return { ok: false, mensagem: "Não consegui listar os produtos." };
-
-  // A URL pública termina em `<bar>/<arquivo>.webp` — é essa a chave no Storage.
-  const emUso = new Set<string>();
-  for (const { imagem_url } of produtos) {
-    const partes = String(imagem_url).split(`/${BUCKET_DE_FOTOS}/`);
-    if (partes[1]) emUso.add(partes[1]);
-  }
 
   const limite = Date.now() - IDADE_MINIMA_MS;
   let removidas = 0;
   let baresComSobra = 0;
+  let baresPulados = 0;
 
-  for (const { id } of bares) {
+  for (const { id, foto_url } of bares) {
+    /*
+     * "Em uso" é conferido bar a bar, e a leitura tem de provar que veio
+     * inteira (GUARDRAILS.md seção 1). A versão anterior lia os produtos de
+     * todos os bares numa consulta só, sem paginação: o PostgREST corta em
+     * 1000 linhas, e a foto que ficasse de fora do corte seria apagada como
+     * "sem produto". E não olhava a logo do bar (bars.foto_url, que veio
+     * depois, na 0020) — apertar o botão apagava a logo em uso de todo bar.
+     */
+    const { data: produtos, count, error: erroProdutos } = await admin
+      .from("produtos")
+      .select("imagem_url", { count: "exact" })
+      .eq("bar_id", id)
+      .not("imagem_url", "is", null);
+    if (erroProdutos || !produtos || count === null || count !== produtos.length) {
+      baresPulados += 1;
+      continue;
+    }
+
+    // A URL pública termina em `<bar>/<arquivo>.webp` — é essa a chave no Storage.
+    const emUso = new Set<string>();
+    for (const url of [foto_url, ...produtos.map((p) => p.imagem_url)]) {
+      const partes = String(url ?? "").split(`/${BUCKET_DE_FOTOS}/`);
+      if (partes[1]) emUso.add(partes[1]);
+    }
+
     const { data: arquivos, error } = await admin.storage.from(BUCKET_DE_FOTOS).list(id, { limit: 1000 });
-    if (error || !arquivos) continue;
+    if (error || !arquivos) {
+      baresPulados += 1;
+      continue;
+    }
 
+    // Arquivo sem data de criação não prova que é velho: fica.
     const sobras = arquivos
-      .filter((a) => !emUso.has(`${id}/${a.name}`))
-      .filter((a) => !a.created_at || new Date(a.created_at).getTime() < limite)
+      .filter((a) => a.id !== null && !emUso.has(`${id}/${a.name}`))
+      .filter((a) => a.created_at !== null && new Date(a.created_at).getTime() < limite)
       .map((a) => `${id}/${a.name}`);
 
     if (sobras.length === 0) continue;
@@ -154,9 +173,14 @@ export async function limparFotosOrfas(): Promise<{ ok: boolean; mensagem: strin
     baresComSobra += 1;
   }
 
-  if (removidas === 0) return { ok: true, mensagem: "Nenhuma foto sobrando. Storage limpo." };
+  const aviso =
+    baresPulados > 0
+      ? ` ${baresPulados} bar${baresPulados === 1 ? " ficou" : "es ficaram"} de fora por falha de leitura — nada deles foi apagado.`
+      : "";
+
+  if (removidas === 0) return { ok: true, mensagem: `Nenhuma foto sobrando.${aviso}` };
   return {
     ok: true,
-    mensagem: `${removidas} foto${removidas === 1 ? "" : "s"} sem produto removida${removidas === 1 ? "" : "s"} (${baresComSobra} bar${baresComSobra === 1 ? "" : "es"}).`,
+    mensagem: `${removidas} foto${removidas === 1 ? "" : "s"} sem uso removida${removidas === 1 ? "" : "s"} (${baresComSobra} bar${baresComSobra === 1 ? "" : "es"}).${aviso}`,
   };
 }

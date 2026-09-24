@@ -65,7 +65,7 @@ export default async function PerfilPage() {
           <h2 className="text-base font-bold text-stone-900 dark:text-stone-100 mb-2">
             Cadastrar ou alterar senha fixa
           </h2>
-          <SenhaForm />
+          <SenhaForm email={user?.email ?? ""} />
         </div>
 
         {/* 4. Acessibilidade */}

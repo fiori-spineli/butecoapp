@@ -146,7 +146,9 @@ function CartaoInteressado({ interessado }: { interessado: Interessado }) {
             </a>
 
             <a
-              href={`mailto:${interessado.email}`}
+              // Codificado: o formato aceito na /contato deixa passar ? & = na
+              // parte local, e cru isso vira cc/bcc/subject no link.
+              href={`mailto:${encodeURIComponent(interessado.email)}`}
               className="cursor-pointer inline-flex min-h-11 items-center font-semibold text-stone-600 dark:text-stone-300 hover:underline"
             >
               {interessado.email}

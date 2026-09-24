@@ -18,14 +18,21 @@ export function NovoBarForm() {
   const [telefone, setTelefone] = useState("");
   const [copiado, setCopiado] = useState(false);
 
-  // Gera uma senha aleatória fácil de ditar
+  // Senha provisória fácil de ditar: sem 0/O, 1/l/I, que se confundem ao
+  // telefone. Vem do gerador criptográfico do navegador — Math.random é
+  // previsível e não serve para senha. Sempre tem letra e número, que são as
+  // regras de lib/senha.ts.
   function gerarSenhaAutomatica() {
-    const chars = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    let gerada = "";
-    for (let i = 0; i < 10; i++) {
-      gerada += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    setSenha(gerada);
+    const letras = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ";
+    const numeros = "23456789";
+    const todos = letras + numeros;
+    const sorteio = new Uint32Array(12);
+    crypto.getRandomValues(sorteio);
+    const escolher = (conjunto: string, n: number) => conjunto[n % conjunto.length];
+    const caracteres = Array.from(sorteio, (n) => escolher(todos, n));
+    caracteres[sorteio[0] % 12] = escolher(letras, sorteio[1]);
+    caracteres[(sorteio[0] % 12 + 5) % 12] = escolher(numeros, sorteio[2]);
+    setSenha(caracteres.join(""));
   }
 
   // Trata resposta de sucesso com dados prontos para o WhatsApp
@@ -38,7 +45,7 @@ export function NovoBarForm() {
 
   const mensagemWhatsApp =
     tipoSucesso === "SUCESSO_SENHA"
-      ? `Olá! Seu acesso ao ButecoApp para o ${barCriado} está pronto:\n\nLink: https://butecoapp.vercel.app/login\nE-mail: ${emailCriado}\nSenha: ${credencialCriada}`
+      ? `Olá! Seu acesso ao ButecoApp para o ${barCriado} está pronto:\n\nLink: https://butecoapp.vercel.app/login\nE-mail: ${emailCriado}\nSenha provisória: ${credencialCriada}\n\nNo primeiro acesso o app vai pedir para você criar a sua própria senha.`
       : `Olá! Seu acesso ao ButecoApp para o ${barCriado} está pronto! Clique no link abaixo para criar sua senha de acesso:\n\n${credencialCriada}`;
 
   async function copiarWhatsApp() {
@@ -174,10 +181,13 @@ export function NovoBarForm() {
           value={senha}
           onChange={(e) => setSenha(e.target.value)}
           placeholder="Deixe em branco para gerar um link de ativação"
+          autoComplete="off"
+          spellCheck={false}
           className="w-full min-h-11 rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 px-3.5 text-sm text-stone-900 dark:text-stone-100 outline-none focus:border-amber-600 font-mono"
         />
         <p className="mt-1.5 text-[11px] text-stone-500 dark:text-stone-400">
-          Se você definir uma senha aqui, o dono poderá entrar direto no painel com ela.
+          Senha provisória: o dono entra com ela uma vez e o app pede para ele criar a
+          própria. Mínimo de 8 caracteres, com letra e número.
         </p>
       </div>
 

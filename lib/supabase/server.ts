@@ -10,54 +10,30 @@ export function supabaseConfigurado() {
 }
 
 /**
- * Fluxo dos links enviados por e-mail (magic link e redefinição de senha).
- *
- * O padrão do @supabase/ssr é PKCE: junto com o link vai um "code verifier"
- * gravado em cookie NO NAVEGADOR QUE PEDIU. Quem abrir o link em outro
- * navegador não tem o verifier e o login falha.
- *
- * Isso quebra no celular, que é onde o app vive: o iOS abre o link do e-mail
- * no navegador padrão do aparelho. Quem pede o link no Safari e tem o Chrome
- * como padrão recebe um link que nunca vai funcionar. O mesmo vale para o app
- * instalado na tela inicial, que tem armazenamento separado do navegador.
- *
- * Com o fluxo `implicit` o token do e-mail se basta: o /auth/callback troca o
- * token por sessão em qualquer navegador. O que se perde é a amarração do link
- * ao navegador de origem — e ela vale pouco aqui, porque quem já tem acesso à
- * caixa postal consegue pedir um link novo de qualquer jeito. O token continua
- * de uso único e de vida curta.
- */
-export const FLUXO_DE_EMAIL = "implicit" as const;
-
-/**
- * Fluxo do "Entrar com Google" — e por que ele é o oposto do de cima.
- *
- * O argumento que derrubou o PKCE nos links de e-mail não vale aqui: o login
- * social começa e termina no MESMO navegador, em segundos, sem passar por
- * caixa de entrada nenhuma. O verifier gravado no cookie estará lá quando o
- * Google devolver a pessoa.
- *
- * E o `implicit` sequer funcionaria: sem PKCE o Supabase devolve os tokens no
- * FRAGMENTO da URL (`#access_token=…`), que o navegador nunca envia ao
- * servidor. O /auth/callback ficaria olhando uma URL vazia. Com PKCE vem
- * `?code=`, que é query e chega até nós.
- */
-export const FLUXO_OAUTH = "pkce" as const;
-
-/**
  * Cliente Supabase para Server Components, Server Actions e Route Handlers.
  * No Next 16 `cookies()` é assíncrono — daí a função ser async.
+ *
+ * O fluxo é SEMPRE PKCE, e não por escolha nossa: o @supabase/ssr grava
+ * `flowType: "pkce"` DEPOIS de espalhar as opções recebidas
+ * (node_modules/@supabase/ssr/dist/main/createServerClient.js, `...options?.auth`
+ * seguido de `flowType: "pkce"`). Até 2026-09-23 este arquivo passava
+ * `implicit` para os links de e-mail e um comentário explicava por quê; a
+ * biblioteca descartava o valor em silêncio, e o link de recuperação chegava
+ * como `?code=` — que só funciona no navegador que pediu e que o callback
+ * confundia com o login do Google. Ver GUARDRAILS.md seção 13.
+ *
+ * O que torna os e-mails independentes de navegador não é o flowType: é o
+ * template do e-mail mandar `token_hash` (ou o código de 8 dígitos), que o
+ * servidor troca por sessão com verifyOtp em qualquer aparelho. Ver
+ * supabase/templates/recovery.html e lib/recuperacao.ts.
  */
-export async function createSupabaseServerClient(
-  fluxo: typeof FLUXO_DE_EMAIL | typeof FLUXO_OAUTH = FLUXO_DE_EMAIL,
-) {
+export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   // Lido aqui, uma vez: é a escolha de "manter conectado" que a action gravou
   // antes de montar este cliente. Ver lib/sessao.ts.
   const sessaoLonga = querSessaoLonga(cookieStore.get(COOKIE_LEMBRAR)?.value);
 
   return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { flowType: fluxo },
     cookies: {
       getAll() {
         return cookieStore.getAll();
