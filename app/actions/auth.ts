@@ -65,35 +65,35 @@ export async function entrarComSenha(
     const res = await fetch(`${base}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        captcha_token: captchaDoFormulario(formData),
+      }),
+      cache: "no-store",
     });
 
-    const dados = await res.json();
-
-    if (dados.token) {
-      // GRAVA O COOKIE QUE O APP/PAGE.TSX PROCURA:
-      const cookieStore = await cookies();
-      cookieStore.set("buteco_session", dados.token, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30, // 30 dias
-      });
+    const texto = await res.text();
+    let dados: any = {};
+    try {
+      dados = JSON.parse(texto);
+    } catch {
+      console.error("[login] Resposta não-JSON recebida:", res.status, texto);
+      return { ok: false, mensagem: `Erro (${res.status}) ao processar no servidor Python.` };
     }
 
     if (!res.ok) {
       if (res.status === 429) return { ok: false, mensagem: MENSAGEM_MUITAS_TENTATIVAS };
       return {
         ok: false,
-        mensagem:
-          dados.detail ||
-          "E-mail ou senha incorretos. Confira se o Caps Lock está desligado.",
+        mensagem: dados.detail || "E-mail ou senha incorretos. Confira se o Caps Lock está desligado.",
       };
     }
 
     if (dados.token) {
       await gravarCookieSessao(dados.token, lembrar);
+    } else {
+      return { ok: false, mensagem: "Resposta inválida do servidor de autenticação." };
     }
   } catch (err) {
     console.error("[login] erro de conexao com o backend FastAPI:", err);
@@ -127,15 +127,21 @@ async function enviarCodigoDeRecuperacao(
       cache: "no-store",
     });
 
+    const texto = await res.text();
+    let dados: any = {};
+    try {
+      dados = JSON.parse(texto);
+    } catch {
+      return { ok: false, mensagem: `Erro (${res.status}) do servidor de recuperação.` };
+    }
+
     if (!res.ok) {
-      const dados = await res.json().catch(() => ({}));
       return { ok: false, mensagem: dados.detail || "Erro ao solicitar código de recuperação." };
     }
 
     return {
       ok: true,
-      mensagem:
-        "Se existe uma conta com esse e-mail, as instruções acabaram de sair. Digite o código aqui.",
+      mensagem: "Se existe uma conta com esse e-mail, as instruções acabaram de sair. Digite o código aqui.",
       enviadoEm: Date.now(),
     };
   } catch {
@@ -278,7 +284,7 @@ export async function salvarNovaSenha(
         userId = u.id;
         emailUsuario = u.email;
       }
-    } catch { }
+    } catch {}
   }
 
   if (userId) {
@@ -329,6 +335,10 @@ export async function salvarNovaSenha(
 
 export async function sair() {
   const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_AUTH);
+  cookieStore.set(COOKIE_AUTH, "", {
+    path: "/",
+    maxAge: 0,
+    expires: new Date(0),
+  });
   redirect("/login");
 }
