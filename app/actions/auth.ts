@@ -65,15 +65,22 @@ export async function entrarComSenha(
     const res = await fetch(`${base}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        captcha_token: captchaDoFormulario(formData),
-      }),
-      cache: "no-store",
+      body: JSON.stringify({ email, password }),
     });
 
-    const dados = await res.json().catch(() => ({}));
+    const dados = await res.json();
+
+    if (dados.token) {
+      // GRAVA O COOKIE QUE O APP/PAGE.TSX PROCURA:
+      const cookieStore = await cookies();
+      cookieStore.set("buteco_session", dados.token, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30, // 30 dias
+      });
+    }
 
     if (!res.ok) {
       if (res.status === 429) return { ok: false, mensagem: MENSAGEM_MUITAS_TENTATIVAS };
@@ -271,7 +278,7 @@ export async function salvarNovaSenha(
         userId = u.id;
         emailUsuario = u.email;
       }
-    } catch {}
+    } catch { }
   }
 
   if (userId) {
