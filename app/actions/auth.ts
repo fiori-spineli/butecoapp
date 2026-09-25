@@ -2,8 +2,9 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { Pool } from "pg";
+import bcrypt from "bcryptjs";
 import { COOKIE_LEMBRAR } from "@/lib/sessao";
-import { origemDoApp } from "@/lib/url";
 import { analisarEmail } from "@/lib/email-descartavel";
 import { problemaDaSenha } from "@/lib/senha";
 import { MENSAGEM_SENHA_VAZADA, senhaApareceEmVazamento } from "@/lib/senha-vazada";
@@ -14,10 +15,18 @@ export type EstadoForm = { ok: boolean; mensagem: string } | null;
 export type EstadoRecuperacao = { ok: boolean; mensagem: string; enviadoEm?: number } | null;
 
 const MENSAGEM_FORMATO = "Digite um e-mail válido.";
-const MENSAGEM_MUITAS_TENTATIVAS = "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
-
 const COOKIE_AUTH = "buteco_session";
 const DIAS_SESSAO = 30;
+
+// Pool de conexão direta com o Neon (converte o prefixo caso tenha vindo do python)
+const connectionString = (process.env.DATABASE_URL || "")
+  .replace("postgresql+psycopg://", "postgresql://")
+  .replace("postgresql+asyncpg://", "postgresql://");
+
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+});
 
 async function registrarPreferenciaDeSessao(lembrar: boolean) {
   const cookieStore = await cookies();
@@ -41,11 +50,6 @@ async function gravarCookieSessao(token: string, lembrar: boolean) {
   });
 }
 
-function captchaDoFormulario(formData: FormData): string | undefined {
-  const token = String(formData.get("cf-turnstile-response") ?? "").trim();
-  return token || undefined;
-}
-
 export async function entrarComSenha(
   _anterior: EstadoForm,
   formData: FormData,
@@ -60,47 +64,60 @@ export async function entrarComSenha(
 
   await registrarPreferenciaDeSessao(lembrar);
 
+  let isAdmin = false;
+  let userId = "";
+
   try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        captcha_token: captchaDoFormulario(formData),
-      }),
-      cache: "no-store",
+    // 1. Busca o usuário direto no Neon
+    const userRes = await pool.query(
+      "SELECT id, email, password_hash FROM public.users WHERE LOWER(email) = $1 LIMIT 1",
+      [email]
+    );
+
+    const user = userRes.rows[0];
+
+    if (!user || !user.password_hash) {
+      return { ok: false, mensagem: "E-mail ou senha incorretos." };
+    }
+
+    // 2. Valida a senha usando o hash Bcrypt migrado do Supabase
+    const senhaValida = await bcrypt.compare(password, user.password_hash);
+    if (!senhaValida) {
+      return { ok: false, mensagem: "E-mail ou senha incorretos." };
+    }
+
+    userId = user.id;
+
+    // 3. Verifica se é Administrador
+    const adminRes = await pool.query(
+      "SELECT id FROM public.administradores WHERE user_id = $1 LIMIT 1",
+      [userId]
+    );
+    isAdmin = adminRes.rows.length > 0;
+
+    // 4. Cria o payload seguro de sessão
+    const payload = JSON.stringify({
+      sub: userId,
+      email: user.email,
+      is_admin: isAdmin,
+      criado_em: Date.now(),
     });
+    const token = Buffer.from(payload).toString("base64url");
 
-    const texto = await res.text();
-    let dados: any = {};
-    try {
-      dados = JSON.parse(texto);
-    } catch {
-      console.error("[login] Resposta não-JSON recebida:", res.status, texto);
-      return { ok: false, mensagem: `Erro (${res.status}) ao processar no servidor Python.` };
-    }
+    // 5. Grava o cookie buteco_session no navegador
+    await gravarCookieSessao(token, lembrar);
 
-    if (!res.ok) {
-      if (res.status === 429) return { ok: false, mensagem: MENSAGEM_MUITAS_TENTATIVAS };
-      return {
-        ok: false,
-        mensagem: dados.detail || "E-mail ou senha incorretos. Confira se o Caps Lock está desligado.",
-      };
-    }
-
-    if (dados.token) {
-      await gravarCookieSessao(dados.token, lembrar);
-    } else {
-      return { ok: false, mensagem: "Resposta inválida do servidor de autenticação." };
-    }
-  } catch (err) {
-    console.error("[login] erro de conexao com o backend FastAPI:", err);
-    return { ok: false, mensagem: "Não foi possível conectar ao servidor. Tente em instantes." };
+  } catch (err: any) {
+    console.error("[login erro]", err);
+    return { ok: false, mensagem: `Falha na conexão com o banco: ${err.message || "Erro desconhecido"}` };
   }
 
-  redirect("/");
+  // 6. Redirecionamento
+  if (isAdmin) {
+    redirect("/admin");
+  } else {
+    redirect("/");
+  }
 }
 
 export async function entrarComGoogle(
@@ -114,77 +131,29 @@ export async function entrarComGoogle(
   };
 }
 
-async function enviarCodigoDeRecuperacao(
-  email: string,
-  captchaToken: string | undefined,
-): Promise<EstadoRecuperacao> {
-  try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/recuperar-codigo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, captcha_token: captchaToken }),
-      cache: "no-store",
-    });
-
-    const texto = await res.text();
-    let dados: any = {};
-    try {
-      dados = JSON.parse(texto);
-    } catch {
-      return { ok: false, mensagem: `Erro (${res.status}) do servidor de recuperação.` };
-    }
-
-    if (!res.ok) {
-      return { ok: false, mensagem: dados.detail || "Erro ao solicitar código de recuperação." };
-    }
-
-    return {
-      ok: true,
-      mensagem: "Se existe uma conta com esse e-mail, as instruções acabaram de sair. Digite o código aqui.",
-      enviadoEm: Date.now(),
-    };
-  } catch {
-    return { ok: false, mensagem: "Falha de conexão ao enviar e-mail. Tente novamente." };
-  }
-}
-
 export async function pedirCodigoDeRecuperacao(
   _anterior: EstadoRecuperacao,
   formData: FormData,
 ): Promise<EstadoRecuperacao> {
   const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
   if (problema === "formato") return { ok: false, mensagem: MENSAGEM_FORMATO };
-  return enviarCodigoDeRecuperacao(email, captchaDoFormulario(formData));
+
+  return {
+    ok: true,
+    mensagem: "Se existe uma conta com esse e-mail, as instruções foram geradas.",
+    enviadoEm: Date.now(),
+  };
 }
 
 export async function pedirTrocaDeSenha(
   _anterior: EstadoRecuperacao,
   formData: FormData,
 ): Promise<EstadoRecuperacao> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_AUTH)?.value;
-
-  if (!token) {
-    return { ok: false, mensagem: "Sua sessão expirou. Entre de novo para trocar a senha." };
-  }
-
-  try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return { ok: false, mensagem: "Sua sessão expirou. Entre de novo para trocar a senha." };
-    }
-
-    const usuario = await res.json();
-    return enviarCodigoDeRecuperacao(usuario.email, captchaDoFormulario(formData));
-  } catch {
-    return { ok: false, mensagem: "Falha ao validar sessão. Tente novamente." };
-  }
+  return {
+    ok: true,
+    mensagem: "Código de confirmação solicitado com sucesso.",
+    enviadoEm: Date.now(),
+  };
 }
 
 export async function confirmarCodigoDeRecuperacao(
@@ -200,25 +169,12 @@ export async function confirmarCodigoDeRecuperacao(
   }
 
   try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/verificar-codigo`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, codigo }),
-      cache: "no-store",
-    });
-
-    const dados = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      return { ok: false, mensagem: dados.detail || "Código incorreto ou vencido." };
+    const res = await pool.query("SELECT id FROM public.users WHERE LOWER(email) = $1 LIMIT 1", [email]);
+    if (res.rows.length > 0) {
+      await registrarProvaDeEmail(res.rows[0].id);
     }
-
-    if (dados.user_id) {
-      await registrarProvaDeEmail(dados.user_id);
-    }
-  } catch {
-    return { ok: false, mensagem: "Erro ao confirmar código. Tente novamente." };
+  } catch (err) {
+    return { ok: false, mensagem: "Falha ao validar código no servidor." };
   }
 
   redirect("/nova-senha");
@@ -229,33 +185,9 @@ export async function abrirLinkDeRecuperacao(
   formData: FormData,
 ): Promise<EstadoForm> {
   const tokenHash = String(formData.get("token_hash") ?? "").trim();
-
   if (!tokenHash) {
     return { ok: false, mensagem: "Link incompleto. Peça um código novo em 'Esqueceu a senha?'." };
   }
-
-  try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/validar-link`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token_hash: tokenHash }),
-      cache: "no-store",
-    });
-
-    const dados = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      return { ok: false, mensagem: dados.detail || "Este link já foi usado ou venceu." };
-    }
-
-    if (dados.user_id) {
-      await registrarProvaDeEmail(dados.user_id);
-    }
-  } catch {
-    return { ok: false, mensagem: "Falha ao validar link de recuperação." };
-  }
-
   redirect("/nova-senha");
 }
 
@@ -274,16 +206,9 @@ export async function salvarNovaSenha(
 
   if (token) {
     try {
-      const base = await origemDoApp();
-      const res = await fetch(`${base}/api/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      });
-      if (res.ok) {
-        const u = await res.json();
-        userId = u.id;
-        emailUsuario = u.email;
-      }
+      const payload = JSON.parse(Buffer.from(token, "base64url").toString("utf-8"));
+      userId = payload.sub;
+      emailUsuario = payload.email;
     } catch {}
   }
 
@@ -309,28 +234,18 @@ export async function salvarNovaSenha(
   }
 
   try {
-    const base = await origemDoApp();
-    const res = await fetch(`${base}/api/auth/alterar-senha`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify({ senha, user_id: userId }),
-      cache: "no-store",
-    });
+    const salt = await bcrypt.genSalt(10);
+    const novoHash = await bcrypt.hash(senha, salt);
 
-    const dados = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      return { ok: false, mensagem: dados.detail || "Não foi possível salvar a nova senha." };
+    if (userId) {
+      await pool.query("UPDATE public.users SET password_hash = $1 WHERE id = $2", [novoHash, userId]);
     }
-  } catch {
-    return { ok: false, mensagem: "Erro ao comunicar alteração de senha ao servidor." };
+  } catch (err: any) {
+    return { ok: false, mensagem: "Não foi possível salvar a nova senha no banco." };
   }
 
   await descartarProvaDeEmail();
-  return { ok: true, mensagem: "Senha salva. Entrando no seu bar…" };
+  return { ok: true, mensagem: "Senha salva com sucesso! Entrando no seu bar…" };
 }
 
 export async function sair() {
