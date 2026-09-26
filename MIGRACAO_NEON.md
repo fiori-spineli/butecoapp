@@ -32,6 +32,7 @@ Na leitura do painel Supabase em 26/09, `public.users` tinha 0 linhas, `administ
 4. Validar o bucket R2 com as cinco variáveis já cadastradas na Vercel, a leitura pública, upload e limpeza. Reconciliar a foto legada que hoje aponta ao Supabase.
 5. Repetir a paridade de dados e arquivos da origem; a consulta SQL de produção via painel Supabase foi barrada pela revisão automática desta sessão, então a conferência detalhada depende de outro caminho autorizado. Não presumir paridade pelo fato de as tabelas operacionais estarem vazias.
 6. Executar testes de ponta a ponta em preview, revisar as variáveis por ambiente e só então promover o deploy. O check de preview da Vercel confirma o build, mas não a operação das páginas dinâmicas. Confirmar que a aplicação não faz requisições ao domínio Supabase.
+7. Após o corte e a conferência de tráfego, remover da Vercel as variáveis e chaves Supabase que não forem mais usadas, conferir URLs antigas no Neon e no R2 e guardar um backup da origem antes de desativá-la. O diretório `supabase/` no repositório é somente histórico e pode ser arquivado fora do código em uma limpeza posterior.
 
 ## Verificação repetível
 
