@@ -14,9 +14,8 @@
 export const SENHA_MINIMO = 8;
 
 /**
- * O bcrypt, que o Supabase usa para guardar a senha, só enxerga os primeiros
- * 72 bytes. Acima disso o resto é ignorado em silêncio — duas senhas diferentes
- * passariam a valer igual. O Auth recusa, mas a mensagem dele sai em inglês.
+ * O bcrypt só enxerga os primeiros 72 bytes. Acima disso o resto é ignorado
+ * em silêncio e duas senhas diferentes poderiam valer igual.
  */
 export const SENHA_MAXIMO_BYTES = 72;
 

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient, supabaseConfigurado } from "@/lib/supabase/server";
-import { loginComGoogleDisponivel } from "@/lib/provedores";
+import { getNeonSession } from "@/lib/neon-session";
+import { neonPool } from "@/lib/neon-db";
+import { turnstileConfigurado } from "@/lib/turnstile";
 import { LoginForm } from "./login-form";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
@@ -15,37 +16,15 @@ export default async function LoginPage({
   searchParams: Promise<{ erro?: string; modo?: string }>;
 }) {
   const { erro, modo } = await searchParams;
-  const mostrarGoogle = await loginComGoogleDisponivel();
+  const mostrarGoogle = false;
 
-  if (supabaseConfigurado()) {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const { data: admin } = await supabase
-        .from("administradores")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      if (admin) {
-        redirect("/admin");
-      }
-
-      const { data: bar } = await supabase
-        .from("bars")
-        .select("id")
-        .eq("owner_id", user.id)
-        .maybeSingle();
-
-      if (bar) {
-        redirect("/dashboard");
-      } else {
-        redirect("/onboarding");
-      }
-    }
+  const session = await getNeonSession();
+  if (session?.isAdmin) redirect("/admin");
+  if (session) {
+    const { rowCount } = await neonPool.query(
+      "SELECT 1 FROM public.bars WHERE owner_id = $1 LIMIT 1", [session.userId],
+    );
+    redirect(rowCount ? "/dashboard" : "/onboarding");
   }
 
   return (
@@ -159,6 +138,7 @@ export default async function LoginPage({
             <LoginForm
               erroInicial={erro}
               mostrarGoogle={mostrarGoogle}
+              mostrarTurnstile={turnstileConfigurado()}
               modoInicial={modo === "recuperar" ? "recuperar" : "senha"}
             />
           </div>

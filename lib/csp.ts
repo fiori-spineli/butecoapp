@@ -17,25 +17,23 @@
  *                é bem menos perigoso que script, e o nonce não cobre
  *                atributo style.
  *   img-src      próprio domínio (next/image), blob: (editor de foto) e o
- *                Storage do Supabase (foto do produto sem otimização).
- *   connect-src  só o próprio domínio: o navegador não fala com o Supabase
- *                direto — tudo passa pelo servidor.
+ *                domínio público R2 para fotos.
+ *   connect-src  só o próprio domínio: banco e armazenamento passam pelo servidor.
  *   frame-src    o iframe do Turnstile, e mais nenhum.
  *   frame-ancestors 'none': ninguém embute o app em iframe (clickjacking).
- *   form-action  o próprio domínio e o começo do OAuth do Google, para o
- *                envio do formulário sem JavaScript continuar funcionando.
+ *   form-action  o próprio domínio para envios de formulários.
  *
  * Em desenvolvimento entram 'unsafe-eval' (o React usa eval para remontar
  * stack de erro) e ws: (HMR). Nada disso vai para produção.
  */
 export function montarCsp(nonce: string, desenvolvimento: boolean) {
-  const supabase = origemDoSupabase();
+  const imagem = origemDasImagens();
 
   const diretivas = [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${desenvolvimento ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' blob: data:${supabase ? ` ${supabase}` : ""}`,
+    `img-src 'self' blob: data:${imagem ? ` ${imagem}` : ""}`,
     "font-src 'self'",
     `connect-src 'self'${desenvolvimento ? " ws: wss:" : ""}`,
     "frame-src https://challenges.cloudflare.com",
@@ -43,7 +41,7 @@ export function montarCsp(nonce: string, desenvolvimento: boolean) {
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
-    `form-action 'self' https://accounts.google.com${supabase ? ` ${supabase}` : ""}`,
+    "form-action 'self'",
     "frame-ancestors 'none'",
   ];
 
@@ -52,11 +50,11 @@ export function montarCsp(nonce: string, desenvolvimento: boolean) {
   return diretivas.join("; ");
 }
 
-function origemDoSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+function origemDasImagens() {
+  const url = process.env.R2_PUBLIC_DOMAIN;
   if (!url) return null;
   try {
-    return new URL(url).origin;
+    return new URL(url.startsWith("http") ? url : `https://${url}`).origin;
   } catch {
     return null;
   }

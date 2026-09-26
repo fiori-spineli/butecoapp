@@ -3,6 +3,7 @@ import { exigirBar } from "@/lib/bar";
 import { VoltarPara } from "@/components/voltar";
 import { EditarProdutoForm } from "./editar-produto-form";
 import type { Produto } from "@/lib/types";
+import { buscarProduto } from "@/lib/neon/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +13,8 @@ export default async function EditarProdutoPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { supabase, bar } = await exigirBar();
-
-  const { data: produto } = await supabase
-    .from("produtos")
-    .select("*")
-    .eq("id", id)
-    .eq("bar_id", bar.id)
-    .maybeSingle();
+  const { bar } = await exigirBar();
+  const produto = await buscarProduto(bar.id, id);
 
   if (!produto) notFound();
 

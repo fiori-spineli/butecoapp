@@ -28,6 +28,7 @@ export async function hashDoIpAtual(): Promise<string | null> {
   const bruto = await ipDoVisitante();
   if (!bruto) return null;
 
-  const sal = process.env.IP_HASH_SALT ?? "buteco-sal-padrao";
+  const sal = process.env.IP_HASH_SALT;
+  if (!sal && process.env.NODE_ENV === "production") throw new Error("IP_HASH_SALT ausente.");
   return createHash("sha256").update(`${sal}:${bruto}`).digest("hex");
 }

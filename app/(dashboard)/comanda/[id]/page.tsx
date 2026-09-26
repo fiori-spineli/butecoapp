@@ -14,8 +14,11 @@ import {
 import { AcoesComanda } from "@/components/comanda/acoes-comanda";
 import { ComprovanteComanda } from "@/components/comanda/comprovante-comanda";
 import { BotaoImprimir } from "@/components/botao-imprimir";
-import { PedidosPendentesAlerta, type PedidoPendenteDono } from "@/components/comanda/pedidos-pendentes-alerta";
-import type { ComandaResumo, Produto } from "@/lib/types";
+import { PedidosPendentesAlerta } from "@/components/comanda/pedidos-pendentes-alerta";
+import {
+  buscarComanda, listarLancamentos, listarPagamentos,
+  listarPedidosPendentes, listarProdutos,
+} from "@/lib/neon/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -28,43 +31,18 @@ export default async function ComandaPage({
 }) {
   const { id } = await params;
   const { nova } = await searchParams;
-  const { supabase, bar } = await exigirBar();
-
-  const [comandaResposta, lancamentosResposta, pagamentosResposta, produtosResposta, pendentesResposta] =
-    await Promise.all([
-      supabase
-        .from("comandas_resumo")
-        .select("*")
-        .eq("id", id)
-        .eq("bar_id", bar.id)
-        .maybeSingle(),
-      supabase
-        .from("lancamentos")
-        .select("id, produto_id, descricao, quantidade, valor_unitario_centavos, created_at, produtos(nome, imagem_url)")
-        .eq("cliente_id", id)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("pagamentos")
-        .select("id, lancamento_id, quantidade_paga, valor_centavos, descricao, created_at")
-        .eq("cliente_id", id)
-        .order("created_at", { ascending: true }),
-      supabase.from("produtos").select("*").eq("bar_id", bar.id).order("nome"),
-      supabase
-        .from("pedidos_pendentes")
-        .select("id, cliente_id, quantidade, valor_unitario_centavos, created_at, produtos(nome)")
-        .eq("cliente_id", id)
-        .eq("status", "pendente")
-        .order("created_at", { ascending: true }),
-    ]);
-
-  const comanda = comandaResposta.data as ComandaResumo | null;
+  const { bar } = await exigirBar();
+  const comanda = await buscarComanda(bar.id, id);
   if (!comanda) notFound();
 
+  const [lancamentos, pagamentos, produtos, pedidosPendentes] = await Promise.all([
+    listarLancamentos(bar.id, id),
+    listarPagamentos(bar.id, id),
+    listarProdutos(bar.id),
+    listarPedidosPendentes(bar.id, id),
+  ]);
+
   const contaAberta = comanda.status === "aberta";
-  const lancamentos = lancamentosResposta.data ?? [];
-  const pagamentos = pagamentosResposta.data ?? [];
-  const produtos = (produtosResposta.data ?? []) as Produto[];
-  const pedidosPendentes = (pendentesResposta.data ?? []) as unknown as PedidoPendenteDono[];
 
   const pagasPorItem = pagamentos.reduce<Record<string, number>>((acc, p) => {
     if (p.lancamento_id && p.quantidade_paga) {

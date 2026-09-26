@@ -1,6 +1,9 @@
 import "server-only";
 
-import { Pool } from "pg";
+import { Pool, types } from "pg";
+
+// Server components pass timestamps to client components as ISO strings.
+types.setTypeParser(1184, value => new Date(value).toISOString());
 
 const connectionString = (process.env.DATABASE_URL || "")
   .replace("postgresql+psycopg://", "postgresql://")

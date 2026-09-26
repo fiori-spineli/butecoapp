@@ -1,7 +1,10 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { segundoFatorAindaVale } from "@/lib/mfa-frescor";
+import { cookies } from "next/headers";
+import { COOKIE_AUTH, createSessionToken, getNeonSession } from "@/lib/neon-session";
+import { COOKIE_LEMBRAR } from "@/lib/sessao";
+import { neonPool } from "@/lib/neon-db";
+import { iniciarMfa, statusMfa, verificarMfa } from "@/lib/neon/mfa";
 
 export interface StatusMFA {
   temFatorAtivo: boolean;
@@ -9,121 +12,64 @@ export interface StatusMFA {
   fatorId?: string;
 }
 
-/** Verifica se o usuário atual já tem 2FA configurado e se a sessão já está em aal2 */
+async function admin() {
+  const session = await getNeonSession();
+  return session?.isAdmin ? session : null;
+}
+
 export async function verificarStatusMFA(): Promise<StatusMFA> {
-  const supabase = await createSupabaseServerClient();
-  const { data: fatores, error } = await supabase.auth.mfa.listFactors();
-
-  if (error || !fatores) {
-    return { temFatorAtivo: false, precisaVerificar: false };
-  }
-
-  const fatorTotpVerificado = fatores.totp.find((f) => f.status === "verified");
-
-  if (!fatorTotpVerificado) {
-    return { temFatorAtivo: false, precisaVerificar: false };
-  }
-
-  // Checa o nível da sessão atual — e há quanto tempo o código foi digitado.
-  //
-  // O nível aal2 não vence: uma vez elevado, a sessão segue elevada enquanto
-  // existir (e ela não tem expiração absoluta). Para um painel que exclui
-  // clientes, isso é frouxo demais. Ver lib/mfa-frescor.ts.
-  const { data: nivelAal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  const { data: sessao } = await supabase.auth.getSession();
-
-  const precisaVerificar =
-    nivelAal?.currentLevel !== "aal2" || !segundoFatorAindaVale(sessao.session?.access_token);
-
+  const session = await admin();
+  if (!session) return { temFatorAtivo: false, precisaVerificar: true };
+  const state = await statusMfa(session.userId);
   return {
-    temFatorAtivo: true,
-    precisaVerificar,
-    fatorId: fatorTotpVerificado.id,
+    temFatorAtivo: state.active,
+    precisaVerificar: !session.mfaVerified,
+    fatorId: state.active ? session.userId : undefined,
   };
 }
 
-/** Inicia o cadastro de um novo aplicativo autenticador e gera o QR Code */
-export async function iniciarCadastroTOTP() {
-  const supabase = await createSupabaseServerClient();
-
-  // Limpa qualquer fator que não tenha sido verificado (ex: se recarregou a tela)
-  const { data: fatores } = await supabase.auth.mfa.listFactors();
-  if (fatores?.all) {
-    for (const f of fatores.all) {
-      if ((f.status as string) !== "verified") {
-        await supabase.auth.mfa.unenroll({ factorId: f.id });
-      }
-    }
+export async function iniciarCadastroTOTP(setupKey: string) {
+  const session = await admin();
+  if (!session) return { ok: false, mensagem: "Acesso negado." };
+  try {
+    const data = await iniciarMfa(session.userId, session.email, setupKey);
+    return { ok: true, ...data, qrCode: data.uri };
+  } catch (error) {
+    return { ok: false, mensagem: error instanceof Error ? error.message : "Não foi possível iniciar o MFA." };
   }
-
-  const { data, error } = await supabase.auth.mfa.enroll({
-    factorType: "totp",
-    issuer: "ButecoApp Admin",
-  });
-
-  if (error || !data) {
-    return { ok: false, mensagem: error?.message || "Não foi possível gerar a chave de segurança." };
-  }
-
-  return {
-    ok: true,
-    fatorId: data.id,
-    qrCode: data.totp.qr_code,
-    secret: data.totp.secret,
-    uri: data.totp.uri,
-  };
 }
 
-/** Confirma o primeiro pareamento do QR Code com o código digitado */
-export async function confirmarCadastroTOTP(fatorId: string, codigo: string) {
-  const supabase = await createSupabaseServerClient();
-  const codigoLimpo = codigo.replace(/\s+/g, "").trim();
-
-  // 1. Cria o desafio
-  const { data: desafio, error: erroDesafio } = await supabase.auth.mfa.challenge({
-    factorId: fatorId,
+async function elevarSessao(userId: string) {
+  const { rows } = await neonPool.query<{ password_hash: string | null }>(
+    "SELECT password_hash FROM public.users WHERE id = $1", [userId],
+  );
+  if (!rows[0]?.password_hash) throw new Error("Conta sem senha local.");
+  const store = await cookies();
+  store.set(COOKIE_AUTH, createSessionToken(userId, rows[0].password_hash,
+    Math.floor(Date.now() / 1000)), {
+    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
+    path: "/", maxAge: store.get(COOKIE_LEMBRAR)?.value === "1" ? 30 * 24 * 60 * 60 : undefined,
   });
-
-  if (erroDesafio || !desafio) {
-    return { ok: false, mensagem: "Erro ao iniciar verificação." };
-  }
-
-  // 2. Valida o código
-  const { error: erroVerificacao } = await supabase.auth.mfa.verify({
-    factorId: fatorId,
-    challengeId: desafio.id,
-    code: codigoLimpo,
-  });
-
-  if (erroVerificacao) {
-    return { ok: false, mensagem: "Código incorreto ou expirado. Tente novamente." };
-  }
-
-  return { ok: true };
 }
 
-/** Valida o login 2FA de rotina para elevar a sessão para aal2 */
-export async function validarCodigoMFA(fatorId: string, codigo: string) {
-  const supabase = await createSupabaseServerClient();
-  const codigoLimpo = codigo.replace(/\s+/g, "").trim();
-
-  const { data: desafio, error: erroDesafio } = await supabase.auth.mfa.challenge({
-    factorId: fatorId,
-  });
-
-  if (erroDesafio || !desafio) {
+async function validar(fatorId: string, codigo: string, enrollment: boolean) {
+  const session = await admin();
+  if (!session || fatorId !== session.userId) return { ok: false, mensagem: "Acesso negado." };
+  try {
+    const valid = await verificarMfa(session.userId, codigo.trim(), enrollment);
+    if (!valid) return { ok: false, mensagem: "Código incorreto, expirado ou já usado." };
+    await elevarSessao(session.userId);
+    return { ok: true };
+  } catch (error) {
+    console.error("[mfa] falha de verificação", error);
     return { ok: false, mensagem: "Não foi possível validar o segundo fator." };
   }
+}
 
-  const { error: erroVerificacao } = await supabase.auth.mfa.verify({
-    factorId: fatorId,
-    challengeId: desafio.id,
-    code: codigoLimpo,
-  });
+export async function confirmarCadastroTOTP(fatorId: string, codigo: string) {
+  return validar(fatorId, codigo, true);
+}
 
-  if (erroVerificacao) {
-    return { ok: false, mensagem: "Código inválido. Verifique o relógio do seu celular." };
-  }
-
-  return { ok: true };
+export async function validarCodigoMFA(fatorId: string, codigo: string) {
+  return validar(fatorId, codigo, false);
 }

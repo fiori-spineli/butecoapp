@@ -2,70 +2,31 @@
 
 import { revalidatePath } from "next/cache";
 import { exigirBar } from "@/lib/bar";
-import { createSupabaseAnonClient } from "@/lib/supabase/publico";
+import { criarPedidoPublico, processarPedido } from "@/lib/neon/pedidos";
 
-type RetornoRpc = {
-  ok: boolean;
-  mensagem?: string;
-  pedidos?: number;
-};
-
-export async function enviarPedidoCliente(
-  token: string,
-  itens: { produto_id: string; quantidade: number }[]
-) {
-  if (!token || !itens.length) {
-    return { ok: false, mensagem: "Selecione ao menos um produto." };
-  }
-
-  const supabase = createSupabaseAnonClient();
-  const { data, error } = await supabase.rpc("fazer_pedido_cliente", {
-    p_token: token,
-    p_itens: itens,
-  });
-
-  const res = data as RetornoRpc | null;
-
-  if (error || !res?.ok) {
-    return { ok: false, mensagem: res?.mensagem || "Não foi possível enviar o pedido." };
-  }
-
-  revalidatePath(`/c/${token}`);
-  return { ok: true, pedidos: res.pedidos };
+export async function enviarPedidoCliente(token: string,
+  itens: { produto_id: string; quantidade: number }[]) {
+  const result = await criarPedidoPublico(token, itens);
+  if (result.ok) revalidatePath(`/c/${token}`);
+  return result;
 }
 
 export async function confirmarEntrega(pedidoId: string, clienteId: string) {
-  const { supabase } = await exigirBar();
-
-  const { data, error } = await supabase.rpc("confirmar_entrega_pedido", {
-    p_pedido_id: pedidoId,
-  });
-
-  const res = data as RetornoRpc | null;
-
-  if (error || !res?.ok) {
-    return { ok: false, mensagem: res?.mensagem || "Falha ao confirmar entrega." };
+  const { bar } = await exigirBar();
+  const result = await processarPedido(bar.id, pedidoId, clienteId, true);
+  if (result.ok) {
+    revalidatePath(`/comanda/${clienteId}`);
+    revalidatePath("/dashboard");
   }
-
-  revalidatePath(`/comanda/${clienteId}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
+  return result;
 }
 
 export async function recusarPedido(pedidoId: string, clienteId: string) {
-  const { supabase } = await exigirBar();
-
-  const { data, error } = await supabase.rpc("recusar_pedido_pendente", {
-    p_pedido_id: pedidoId,
-  });
-
-  const res = data as RetornoRpc | null;
-
-  if (error || !res?.ok) {
-    return { ok: false, mensagem: res?.mensagem || "Falha ao recusar pedido." };
+  const { bar } = await exigirBar();
+  const result = await processarPedido(bar.id, pedidoId, clienteId, false);
+  if (result.ok) {
+    revalidatePath(`/comanda/${clienteId}`);
+    revalidatePath("/dashboard");
   }
-
-  revalidatePath(`/comanda/${clienteId}`);
-  revalidatePath("/dashboard");
-  return { ok: true };
+  return result;
 }

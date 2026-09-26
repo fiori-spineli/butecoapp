@@ -139,14 +139,14 @@ export function AdminViewContainer({
                         detalhe="Pooler e requisições concorrentes"
                     />
                     <CardMetrica
-                        rotulo="Total de Usuários (Auth)"
+                        rotulo="Total de Usuários"
                         valor={String(metricas.infra.total_usuarios)}
-                        detalhe="Contas cadastradas no auth.users"
+                        detalhe="Contas cadastradas no Neon"
                     />
                     <CardMetrica
                         rotulo="PostgreSQL Engine"
-                        valor="v17 AWS Cloud"
-                        detalhe={metricas.infra.versao_postgres.split(" ")[0]}
+                        valor={`v${metricas.infra.versao_postgres.split(" ")[0]}`}
+                        detalhe="Versão do banco Neon"
                     />
                 </div>
             </section>

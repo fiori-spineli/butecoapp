@@ -1,5 +1,6 @@
 import { exigirBar } from "@/lib/bar";
 import { inicioDoDiaLocalISO } from "@/lib/format";
+import { neonPool } from "@/lib/neon-db";
 
 /**
  * Backup do movimento em planilha.
@@ -60,34 +61,34 @@ type LinhaComanda = {
 };
 
 export async function GET() {
-  const { supabase, bar } = await exigirBar();
+  const { bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
   // O que interessa num fechamento: o que está aberto agora (de qualquer dia,
   // inclusive a mesa esquecida de ontem) e o que foi fechado hoje.
-  const { data: comandasCru } = await supabase
-    .from("comandas_resumo")
-    .select(
-      "id, nome, numero_mesa, status, created_at, fechada_em, total_centavos, pago_centavos, restante_centavos",
-    )
-    .eq("bar_id", bar.id)
-    .or(`status.eq.aberta,fechada_em.gte.${inicioDoDia}`)
-    .order("created_at", { ascending: true });
-
-  const comandas = (comandasCru ?? []) as LinhaComanda[];
-
-  const { data: lancamentosCru } = comandas.length
-    ? await supabase
-        .from("lancamentos")
-        .select("cliente_id, quantidade, valor_unitario_centavos, descricao, created_at, produtos(nome)")
-        .in(
-          "cliente_id",
-          comandas.map((c) => c.id),
-        )
-        .order("created_at", { ascending: true })
-    : { data: [] };
-
-  const lancamentos = lancamentosCru ?? [];
+  const { rows: comandasCru } = await neonPool.query<LinhaComanda>(
+    `SELECT id, nome, numero_mesa, status, created_at, fechada_em,
+            total_centavos, pago_centavos, restante_centavos
+       FROM public.comandas_resumo
+      WHERE bar_id = $1 AND (status = 'aberta' OR fechada_em >= $2)
+      ORDER BY created_at`, [bar.id, inicioDoDia],
+  );
+  const comandas = comandasCru.map(c => ({
+    ...c, total_centavos: Number(c.total_centavos), pago_centavos: Number(c.pago_centavos),
+    restante_centavos: Number(c.restante_centavos),
+  }));
+  const { rows: lancamentos } = await neonPool.query<{
+    cliente_id: string; quantidade: number; valor_unitario_centavos: number;
+    descricao: string | null; created_at: string; produtos: { nome: string } | null;
+  }>(
+    `SELECT l.cliente_id, l.quantidade, l.valor_unitario_centavos,
+            l.descricao, l.created_at,
+            CASE WHEN p.id IS NULL THEN NULL ELSE json_build_object('nome', p.nome) END AS produtos
+       FROM public.lancamentos l JOIN public.clientes c ON c.id = l.cliente_id
+       LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = c.bar_id
+      WHERE c.bar_id = $1 AND (c.status = 'aberta' OR c.fechada_em >= $2)
+      ORDER BY l.created_at`, [bar.id, inicioDoDia],
+  );
 
   const cabecalho = [
     "Comanda",

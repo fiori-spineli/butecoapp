@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
-import { createSupabaseAnonClient } from "@/lib/supabase/publico";
+import { buscarComandaPublica } from "@/lib/neon/queries";
 import { ContaAoVivo } from "./conta-ao-vivo";
 import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
-import type { ComandaPublica } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +12,7 @@ export default async function PaginaCliente({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const supabase = createSupabaseAnonClient();
-
-  const { data } = await supabase.rpc("comanda_publica", { p_token: token });
-  const comanda = data as ComandaPublica | null;
+  const comanda = await buscarComandaPublica(token);
 
   if (!comanda) {
     notFound();

@@ -24,7 +24,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 export function SpeedInsightsButeco() {
   const caminho = usePathname();
 
-  if (caminho?.startsWith("/c/")) return null;
+  if (caminho?.startsWith("/c/") || caminho === "/auth/recuperar") return null;
 
   return <SpeedInsights />;
 }

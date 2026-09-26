@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { exigirBar, gerarSlug } from "@/lib/bar";
 import type { EstadoForm } from "@/app/actions/auth";
 import { LIMITE_DE_CARACTERES } from "@/lib/mensagem-qr";
+import { neonPool } from "@/lib/neon-db";
 
 /**
  * Salva a mensagem que acompanha o link da comanda no WhatsApp.
@@ -25,14 +26,13 @@ export async function salvarMensagemQr(
     };
   }
 
-  const { supabase, bar } = await exigirBar();
-
-  const { error } = await supabase
-    .from("bars")
-    .update({ mensagem_qr: bruta || null })
-    .eq("id", bar.id);
-
-  if (error) {
+  const { bar, user } = await exigirBar();
+  try {
+    await neonPool.query(
+      "UPDATE public.bars SET mensagem_qr = $1 WHERE id = $2 AND owner_id = $3",
+      [bruta || null, bar.id, user.id],
+    );
+  } catch {
     return { ok: false, mensagem: "Não consegui salvar a mensagem. Tente de novo." };
   }
 
@@ -64,21 +64,16 @@ export async function atualizarConfiguracoesBar(
     return { ok: false, mensagem: "O nome do bar precisa ter ao menos 2 caracteres." };
   }
 
-  const { supabase, bar } = await exigirBar();
-
-  const { error } = await supabase
-    .from("bars")
-    .update({
-      nome,
-      horario_abertura: horarioAbertura || "18:00:00",
-      horario_fechamento: horarioFechamento || "03:00:00",
-      telefone: telefone || null,
-      cidade: cidade || null,
-      slug: gerarSlug(nome),
-    })
-    .eq("id", bar.id);
-
-  if (error) {
+  const { bar, user } = await exigirBar();
+  try {
+    await neonPool.query(
+      `UPDATE public.bars SET nome = $1, horario_abertura = $2,
+       horario_fechamento = $3, telefone = $4, cidade = $5, slug = $6
+       WHERE id = $7 AND owner_id = $8`,
+      [nome, horarioAbertura || "18:00:00", horarioFechamento || "03:00:00",
+        telefone || null, cidade || null, gerarSlug(nome), bar.id, user.id],
+    );
+  } catch {
     return { ok: false, mensagem: "Não foi possível salvar as configurações. Tente de novo." };
   }
 

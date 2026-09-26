@@ -10,10 +10,11 @@ const cabecalhosDeSeguranca = [
   },
 ];
 
-/** Host do projeto Supabase deste ambiente, lido da mesma variável que o app usa. */
-const hostDoSupabase = (() => {
+/** Host público do bucket R2 configurado neste ambiente. */
+const hostDoR2 = (() => {
   try {
-    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname || null;
+    const domain = process.env.R2_PUBLIC_DOMAIN ?? "";
+    return new URL(domain.startsWith("http") ? domain : `https://${domain}`).hostname || null;
   } catch {
     return null;
   }
@@ -33,15 +34,12 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000,
-    // Só o Storage do NOSSO projeto. O coringa `**.supabase.co` deixava o
-    // otimizador buscar e servir imagem de qualquer projeto Supabase do mundo
-    // (auditoria de 2026-09-24). Sem a variável no build, nenhuma imagem
-    // remota passa — falha fechada, e o build da Vercel sempre a tem.
+    // Somente o domínio R2 configurado pode fornecer imagens remotas.
     remotePatterns: [
       {
         protocol: "https",
-        hostname: hostDoSupabase ?? "supabase-nao-configurado.invalid",
-        pathname: "/storage/v1/object/public/produtos-imagens/**",
+        hostname: hostDoR2 ?? "r2-nao-configurado.invalid",
+        pathname: "/**",
       },
     ],
   },

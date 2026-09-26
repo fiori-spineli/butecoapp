@@ -6,7 +6,7 @@ import { normalizarTelefone } from "@/lib/telefone";
 import { conferirTurnstile } from "@/lib/turnstile";
 import { avisarSobreInteresse } from "@/lib/aviso-interesse";
 import { CAMPO_ARMADILHA } from "@/lib/armadilha";
-import { createSupabaseAdminClient, serviceRoleConfigurado } from "@/lib/supabase/admin";
+import { registrarInteresseNoNeon } from "@/lib/neon/interessados";
 
 export type EstadoInteresse = { ok: boolean; mensagem: string } | null;
 
@@ -23,9 +23,8 @@ const AGRADECIMENTO =
  * 3. Validação de e-mail (formato + descartável) e de telefone brasileiro.
  * 4. Limite de 3 por IP por dia, conferido dentro do banco.
  *
- * E uma quinta, que é estrutural: a função que grava só é executável pelo
- * `service_role`. A chave anônima do app não alcança ela, então não existe
- * "chamar a API direto e pular o formulário" — ver a migration 0010.
+ * A inserção usa a conexão Neon apenas no servidor. O cliente não recebe
+ * credenciais do banco e o limite é conferido dentro de uma transação.
  */
 export async function registrarInteresse(
   _anterior: EstadoInteresse,
@@ -47,8 +46,9 @@ export async function registrarInteresse(
   const cidade = String(formData.get("cidade") ?? "").trim();
   const mensagem = String(formData.get("mensagem") ?? "").trim();
 
-  if (nome.length < 2) return { ok: false, mensagem: "Diga como podemos te chamar." };
-  if (barNome.length < 2) return { ok: false, mensagem: "Informe o nome do bar." };
+  if (nome.length < 2 || nome.length > 120) return { ok: false, mensagem: "Informe seu nome em até 120 caracteres." };
+  if (barNome.length < 2 || barNome.length > 120) return { ok: false, mensagem: "Informe o nome do bar em até 120 caracteres." };
+  if (cidade.length > 120) return { ok: false, mensagem: "O nome da cidade ficou longo demais." };
 
   const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
   if (problema === "formato") return { ok: false, mensagem: "Digite um e-mail válido." };
@@ -80,30 +80,18 @@ export async function registrarInteresse(
     };
   }
 
-  if (!serviceRoleConfigurado()) {
-    return {
-      ok: false,
-      mensagem:
-        "O formulário está fora do ar por um problema de configuração do servidor. Fale com a gente pelo LinkedIn, no rodapé desta página.",
-    };
-  }
-
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin.rpc("registrar_interesse", {
-    p_nome: nome,
-    p_bar_nome: barNome,
-    p_email: email,
-    p_telefone: telefone,
-    p_cidade: cidade || null,
-    p_mensagem: mensagem || null,
-    p_ip_hash: await hashDoIpAtual(),
-  });
-
-  if (error) {
+  let resultado: "ok" | "limite" | "duplicado";
+  try {
+    resultado = await registrarInteresseNoNeon({
+      nome, barNome, email, telefone, cidade: cidade || null,
+      mensagem: mensagem || null, ipHash: await hashDoIpAtual(),
+    });
+  } catch (error) {
+    console.error("Falha ao registrar interesse no Neon", error);
     return { ok: false, mensagem: "Não consegui registrar seu pedido agora. Tente novamente." };
   }
 
-  switch (data as string) {
+  switch (resultado) {
     case "limite":
       return {
         ok: false,
@@ -115,9 +103,6 @@ export async function registrarInteresse(
         ok: true,
         mensagem: "Já temos o seu pedido de hoje. Pode deixar que a gente entra em contato em breve.",
       };
-    case "faltando":
-    case "tamanho":
-      return { ok: false, mensagem: "Confira os campos e tente novamente." };
   }
 
   await avisarSobreInteresse({
