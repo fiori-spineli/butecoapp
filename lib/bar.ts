@@ -1,31 +1,25 @@
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { SESSAO_INDISPONIVEL, usuarioAtual } from "@/lib/supabase/usuario";
+import { getNeonSession } from "@/lib/neon-session";
+import { neonPool } from "@/lib/neon-db";
 import type { Bar } from "@/lib/types";
 
 /**
  * Sessão + bar do dono logado. Manda para /login quem não tem sessão.
  *
- * Quem NÃO tem sessão e quem a gente não conseguiu verificar são casos
- * diferentes (ver lib/supabase/usuario.ts). O segundo estoura, e aí o
- * app/error.tsx oferece "tentar de novo" — antes ele caía no mesmo
- * `redirect("/login")`, e uma instabilidade de dez segundos no provedor
- * deslogava todo mundo que estivesse com a tela aberta.
+ * A sessão é conferida no Neon antes da consulta ao bar. Todas as leituras
+ * de negócio usam o identificador do bar obtido aqui, nunca do formulário.
  */
 export async function contextoDoDono() {
-  const supabase = await createSupabaseServerClient();
-  const { user, indisponivel } = await usuarioAtual(supabase);
-
-  if (indisponivel) throw new Error(SESSAO_INDISPONIVEL);
-  if (!user) redirect("/login");
-
-  const { data: bar } = await supabase
-    .from("bars")
-    .select("*")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  return { supabase, user, bar: (bar as Bar | null) ?? null };
+  const session = await getNeonSession();
+  if (!session) redirect("/login");
+  const { rows } = await neonPool.query<Bar>(
+    "SELECT * FROM public.bars WHERE owner_id = $1 ORDER BY created_at LIMIT 1",
+    [session.userId],
+  );
+  return {
+    user: { id: session.userId, email: session.email },
+    bar: rows[0] ?? null,
+  };
 }
 
 /** Igual ao anterior, mas exige que o bar já exista (senão manda pro onboarding). */

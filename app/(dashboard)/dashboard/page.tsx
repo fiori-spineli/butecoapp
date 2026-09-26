@@ -4,44 +4,18 @@ import { formatarReais, inicioDoDiaLocalISO } from "@/lib/format";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { ListaComandas } from "@/components/comanda/lista-comandas";
-import type { ComandaResumo } from "@/lib/types";
+import { listarComandas, totaisDoDia } from "@/lib/neon/queries";
 
 export default async function DashboardPage() {
-  const { supabase, bar } = await exigirBar();
+  const { bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
-    supabase
-      .from("comandas_resumo")
-      .select(
-        "id, nome, numero_mesa, status, created_at, fechada_em, total_centavos, pago_centavos, restante_centavos, itens",
-      )
-      .eq("bar_id", bar.id)
-      .order("status", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("lancamentos")
-      .select("quantidade, valor_unitario_centavos, clientes!inner(bar_id)")
-      .eq("clientes.bar_id", bar.id)
-      .gte("created_at", inicioDoDia),
-    supabase
-      .from("pagamentos")
-      .select("valor_centavos, clientes!inner(bar_id)")
-      .eq("clientes.bar_id", bar.id)
-      .gte("created_at", inicioDoDia),
+  const [comandas, totais] = await Promise.all([
+    listarComandas(bar.id),
+    totaisDoDia(bar.id, inicioDoDia),
   ]);
-
-  const comandas = (comandasResposta.data ?? []) as ComandaResumo[];
   const abertas = comandas.filter((c) => c.status === "aberta");
-
-  const consumoHoje = (consumoResposta.data ?? []).reduce(
-    (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
-    0,
-  );
-  const recebidoHoje = (recebidoResposta.data ?? []).reduce(
-    (soma, item) => soma + item.valor_centavos,
-    0,
-  );
+  const { consumoHoje, recebidoHoje } = totais;
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">

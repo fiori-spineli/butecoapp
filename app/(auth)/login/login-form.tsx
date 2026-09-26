@@ -61,10 +61,12 @@ const CLASSE_ROTULO =
 export function LoginForm({
   erroInicial,
   mostrarGoogle = false,
+  mostrarTurnstile = false,
   modoInicial = "senha",
 }: {
   erroInicial?: string;
   mostrarGoogle?: boolean;
+  mostrarTurnstile?: boolean;
   modoInicial?: ModoAcesso;
 }) {
   const [modo, setModo] = useState<ModoAcesso>(modoInicial);
@@ -234,7 +236,7 @@ export function LoginForm({
             <span>Manter conectado neste aparelho</span>
           </label>
 
-          <CampoTurnstile acao="login" renovarQuando={estadoSenha} />
+          {mostrarTurnstile && <CampoTurnstile acao="login" renovarQuando={estadoSenha} />}
 
           <button
             type="submit"
