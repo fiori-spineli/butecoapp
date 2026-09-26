@@ -17,7 +17,7 @@ Atualizado em 26/09/2026. Branch de código: `codex/neon-auth-security`; PR em r
 | CSP e proteção de formulários | Aplicadas; home local sem erro após correção de hidratação |
 | Sigilo de URLs de convite e comanda nas métricas | Analytics limpa os tokens; Speed Insights não mede essas rotas |
 
-As migrations `0001_core.sql`, `0002_identity.sql` e `0003_recovery.sql` foram aplicadas **somente** no branch Neon de teste. Para aplicar na produção, use conexão direta com `NEON_EXPECTED_HOST` correspondente, após snapshot/backup e conferência do plano de corte. Nunca copie dados do branch de teste para produção.
+As migrations `0001_core.sql`, `0002_identity.sql`, `0003_recovery.sql` e `0004_email_identity.sql` foram aplicadas **somente** no branch Neon de teste. A última impede identidades com e-mails iguais ao ignorar maiúsculas; uma consulta de produção encontrou zero grupos duplicados antes do corte. Para aplicar na produção, use conexão direta com `NEON_EXPECTED_HOST` correspondente, após snapshot/backup e conferência do plano de corte. Nunca copie dados do branch de teste para produção.
 
 ## Dados de origem observados
 

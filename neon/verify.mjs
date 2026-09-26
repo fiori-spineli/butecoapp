@@ -31,6 +31,10 @@ try {
   const user = (await client.query(
     "INSERT INTO public.users(email, password_hash) VALUES ($1, 'test-only') RETURNING id", [email],
   )).rows[0].id;
+  await rejects(
+    "INSERT INTO public.users(email, password_hash) VALUES ($1, 'test-only')",
+    [email.toUpperCase()], "23505",
+  );
   const barA = (await client.query(
     "INSERT INTO public.bars(owner_id, nome, slug) VALUES ($1, 'Teste A', $2) RETURNING id",
     [user, `verify-a-${crypto.randomUUID()}`],
@@ -85,7 +89,7 @@ try {
     "INSERT INTO public.lancamentos(cliente_id, descricao, quantidade, valor_unitario_centavos) VALUES ($1, 'Tarde', 1, 500)",
     [cliente],
   );
-  console.log(`verified ${checks} money and tenant guards; test transaction rolled back`);
+  console.log(`verified ${checks} identity, money and tenant guards; test transaction rolled back`);
 } finally {
   await client.query("ROLLBACK");
   await client.end();

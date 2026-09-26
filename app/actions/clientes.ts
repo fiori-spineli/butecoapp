@@ -34,7 +34,7 @@ async function provisionar(nome: string, email: string, interessadoId?: string):
     }
     const user = await client.query<{ id: string }>(
       `INSERT INTO public.users(email, password_hash) VALUES ($1, NULL)
-       ON CONFLICT (email) DO NOTHING RETURNING id`, [email]);
+       ON CONFLICT DO NOTHING RETURNING id`, [email]);
     let userId = user.rows[0]?.id;
     if (!userId) {
       const existing = await client.query<{ id: string; occupied: boolean }>(
