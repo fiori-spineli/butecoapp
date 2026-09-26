@@ -16,6 +16,7 @@ Atualizado em 26/09/2026. Branch de código: `codex/neon-auth-security`; PR em r
 | Retirada do backend Python antigo | Concluída; o app usa somente as rotas Next.js e as Server Actions |
 | CSP e proteção de formulários | Aplicadas; home local sem erro após correção de hidratação |
 | Sigilo de URLs de convite e comanda nas métricas | Analytics limpa os tokens; Speed Insights não mede essas rotas |
+| Checagem de senha em base pública de vazamentos | Pendente; a revisão automática rejeitou a consulta externa derivada da senha nesta sessão. As regras locais de senha continuam ativas |
 
 As migrations `0001_core.sql`, `0002_identity.sql`, `0003_recovery.sql` e `0004_email_identity.sql` foram aplicadas **somente** no branch Neon de teste. A última impede identidades com e-mails iguais ao ignorar maiúsculas; uma consulta de produção encontrou zero grupos duplicados antes do corte. Para aplicar na produção, use conexão direta com `NEON_EXPECTED_HOST` correspondente, após snapshot/backup e conferência do plano de corte. Nunca copie dados do branch de teste para produção.
 
