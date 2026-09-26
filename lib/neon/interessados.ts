@@ -64,7 +64,7 @@ export async function mudarStatusInteresse(id: string, status: string, observaca
   const { rowCount } = await neonPool.query(
     `UPDATE public.interessados SET status = $1, observacao = $2,
             atendido_em = CASE WHEN $1 = 'novo' THEN NULL ELSE now() END
-      WHERE id = $3`, [status, observacao || null, id],
+      WHERE id = $3 AND status <> 'convertido'`, [status, observacao || null, id],
   );
   return !!rowCount;
 }

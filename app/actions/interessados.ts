@@ -34,7 +34,7 @@ export async function mudarStatusInteressado(_anterior: EstadoForm, formData: Fo
   if (!/^[0-9a-f-]{36}$/i.test(id) || !["novo", "contatado", "descartado"].includes(status) ||
       observacao.length > 2000) return { ok: false, mensagem: "Dados inválidos." };
   if (!(await mudarStatusInteresse(id, status, observacao))) {
-    return { ok: false, mensagem: "Pedido não encontrado." };
+    return { ok: false, mensagem: "Pedido não encontrado ou já convertido em cliente." };
   }
   revalidatePath("/admin");
   return { ok: true, mensagem: "Pedido atualizado." };

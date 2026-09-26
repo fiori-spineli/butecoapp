@@ -71,18 +71,22 @@ export async function requestRecovery(email: string, ipHash: string): Promise<bo
   if (!process.env.RESEND_API_KEY || !process.env.RESEND_FROM_EMAIL) {
     throw new Error("Envio de e-mail não configurado.");
   }
-  const limitKey = digest(`recovery:request:${email}:${ipHash}`);
-  const { rows: rate } = await neonPool.query<{ attempts: number }>(
-    `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
-     VALUES ($1, now(), 1)
-     ON CONFLICT (key_hash) DO UPDATE SET
-       attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
-         THEN 1 ELSE auth_rate_limits.attempts + 1 END,
-       window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
-         THEN now() ELSE auth_rate_limits.window_start END
-     RETURNING attempts`, [limitKey],
-  );
-  if (rate[0].attempts > 3) return true;
+  const count = async (scope: string) => {
+    const { rows } = await neonPool.query<{ attempts: number }>(
+      `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
+       VALUES ($1, now(), 1)
+       ON CONFLICT (key_hash) DO UPDATE SET
+         attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
+           THEN 1 ELSE auth_rate_limits.attempts + 1 END,
+         window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
+           THEN now() ELSE auth_rate_limits.window_start END
+       RETURNING attempts`, [digest(`recovery:request:v2:${scope}`)],
+    );
+    return rows[0].attempts;
+  };
+  const emailAttempts = await count(`email:${email}`);
+  const ipAttempts = await count(`ip:${ipHash}`);
+  if (emailAttempts > 3 || ipAttempts > 10) return true;
   const { rows } = await neonPool.query<{ id: string; email: string }>(
     "SELECT id, email FROM public.users WHERE lower(email) = $1 AND suspended_at IS NULL LIMIT 1",
     [email],

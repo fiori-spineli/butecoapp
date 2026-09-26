@@ -10,7 +10,7 @@ Atualizado em 26/09/2026. Branch de código: `codex/neon-auth-security`; PR em r
 | TOTP administrativo com segredo cifrado e bloqueio de repetição | Implementado; exige ativação e teste real |
 | Convite de uso único e redefinição com código Resend | Implementado; entrega de e-mail ainda sem credenciais |
 | Leituras e mutações de comandas, pedidos, produtos, relatórios e admin | Portadas para Neon; testes de fluxos completos pendentes |
-| Regras de integridade financeira e isolamento entre bares no banco | Sete verificações passaram no branch de teste |
+| Regras de integridade financeira, identidade e isolamento entre bares no banco | Oito verificações passaram nos branches de teste e produção, sempre com rollback |
 | Upload de imagens para R2 com escopo por bar | Implementado; acesso ao bucket e leitura pública ainda não validados |
 | Remoção do cliente Supabase e do keep-alive | Concluída no código; `supabase/` guardado como histórico |
 | Retirada do backend Python antigo | Concluída; o app usa somente as rotas Next.js e as Server Actions |
@@ -18,11 +18,11 @@ Atualizado em 26/09/2026. Branch de código: `codex/neon-auth-security`; PR em r
 | Sigilo de URLs de convite e comanda nas métricas | Analytics limpa os tokens; Speed Insights não mede essas rotas |
 | Checagem de senha em base pública de vazamentos | Pendente; a revisão automática rejeitou a consulta externa derivada da senha nesta sessão. As regras locais de senha continuam ativas |
 
-As migrations `0001_core.sql`, `0002_identity.sql`, `0003_recovery.sql` e `0004_email_identity.sql` foram aplicadas **somente** no branch Neon de teste. A última impede identidades com e-mails iguais ao ignorar maiúsculas; uma consulta de produção encontrou zero grupos duplicados antes do corte. Para aplicar na produção, use conexão direta com `NEON_EXPECTED_HOST` correspondente, após snapshot/backup e conferência do plano de corte. Nunca copie dados do branch de teste para produção.
+As migrations `0001_core.sql`, `0002_identity.sql`, `0003_recovery.sql` e `0004_email_identity.sql` foram aplicadas nos branches Neon de teste e produção. Antes de aplicá-las à produção, foi criado o snapshot `snap-dry-wind-b687fvq3` em 26/09/2026. A última migration impede identidades com e-mails iguais ao ignorar maiúsculas; a consulta de produção encontrou zero grupos duplicados. O banco de produção confirmou quatro migrations registradas, e as oito verificações transacionais passaram com rollback. Nunca copie dados do branch de teste para produção.
 
 ## Dados de origem observados
 
-Na leitura do painel Supabase em 26/09, `public.users` tinha 0 linhas, `administradores` 2 e as tabelas operacionais estavam vazias. O Auth tinha 7 usuários; os sete IDs foram encontrados no Neon de produção, que tinha 8 usuários. Três usuários migrados tinham `password_hash` nulo e precisam definir uma senha pelo convite/recuperação. No Neon de produção havia 1 bar, com foto apontando para URL antiga do Storage Supabase. O bucket `produtos-imagens` mostrava um único objeto visível, em pasta e nome diferentes dessa URL; é necessário reconciliar os arquivos antes de cortar.
+Na leitura do painel Supabase em 26/09, `public.users` tinha 0 linhas, `administradores` 2 e as tabelas operacionais estavam vazias. O Auth tinha 7 usuários; os sete IDs foram encontrados no Neon de produção, que tinha 8 usuários. Três usuários migrados tinham `password_hash` nulo e precisam definir uma senha pelo convite/recuperação. Os dois administradores têm senha, mas nenhum tem MFA ativo. No Neon de produção havia 1 bar, com foto apontando para URL antiga do Storage Supabase. O bucket `produtos-imagens` mostrava um único objeto visível, em pasta e nome diferentes dessa URL; é necessário reconciliar os arquivos antes de cortar.
 
 ## Bloqueios de produção
 
@@ -31,7 +31,7 @@ Na leitura do painel Supabase em 26/09, `public.users` tinha 0 linhas, `administ
 3. Configurar `NEXT_PUBLIC_SITE_URL=https://butecoapp.vercel.app`; validar convites e QR codes.
 4. Validar o bucket R2 com as cinco variáveis já cadastradas na Vercel, a leitura pública, upload e limpeza. Reconciliar a foto legada que hoje aponta ao Supabase.
 5. Repetir a paridade de dados e arquivos da origem; a consulta SQL de produção via painel Supabase foi barrada pela revisão automática desta sessão, então a conferência detalhada depende de outro caminho autorizado. Não presumir paridade pelo fato de as tabelas operacionais estarem vazias.
-6. Executar testes de ponta a ponta em preview, aplicar migrations ao Neon de produção, revisar as variáveis por ambiente e só então promover o deploy. Confirmar que a aplicação não faz requisições ao domínio Supabase.
+6. Executar testes de ponta a ponta em preview, revisar as variáveis por ambiente e só então promover o deploy. O check de preview da Vercel confirma o build, mas não a operação das páginas dinâmicas. Confirmar que a aplicação não faz requisições ao domínio Supabase.
 
 ## Verificação repetível
 
