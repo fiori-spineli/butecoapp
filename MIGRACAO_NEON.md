@@ -1,6 +1,6 @@
 # Migração para Neon: estado e corte
 
-Atualizado em 26/09/2026. Branch de código: `codex/neon-auth-security`; PR em rascunho: #1. **Produção ainda não foi promovida.** O branch Neon de teste `br-winter-wave-b6gegw08` expira em 02/10/2026; ele não é a base de produção.
+Atualizado em 28/09/2026. Branch de código: `codex/neon-auth-security`; PR em rascunho: #1. **Produção ainda não foi promovida.** O branch Neon de teste `br-winter-wave-b6gegw08` expira em 02/10/2026; ele não é a base de produção.
 
 ## Implementado no código
 
@@ -23,6 +23,14 @@ As migrations `0001_core.sql`, `0002_identity.sql`, `0003_recovery.sql` e `0004_
 ## Dados de origem observados
 
 Na leitura do painel Supabase em 26/09, `public.users` tinha 0 linhas, `administradores` 2 e as tabelas operacionais estavam vazias. O Auth tinha 7 usuários; os sete IDs foram encontrados no Neon de produção, que tinha 8 usuários. Três usuários migrados tinham `password_hash` nulo e precisam definir uma senha pelo convite/recuperação. Os dois administradores têm senha, mas nenhum tem MFA ativo. No Neon de produção havia 1 bar, com foto apontando para URL antiga do Storage Supabase. O bucket `produtos-imagens` mostrava um único objeto visível, em pasta e nome diferentes dessa URL; é necessário reconciliar os arquivos antes de cortar.
+
+### Rechecagem independente da origem em 28/09/2026
+
+O MCP do Supabase consultou o projeto `butecoapp_prod` (`zmxytngunmyuscmncdmx`) em modo somente leitura. As contagens atuais continuam: `auth.users` 7, `public.administradores` 2, `public.users` 0, `public.bars` 0, `public.clientes` 0, `public.produtos` 0, `public.lancamentos` 0, `public.pagamentos` 0, `public.pedidos_pendentes` 0, `public.interessados` 0 e `storage.objects` 1, no bucket `produtos-imagens`. Entre os sete usuários do Auth, seis já tinham feito login e quatro tinham senha criptografada. Esta rechecagem confirma apenas o lado Supabase; não substitui a comparação linha a linha com o Neon.
+
+O Security Advisor do Supabase reportou a tabela vazia `public.users` com RLS sem política, funções `SECURITY DEFINER` executáveis por `anon`/`authenticated` e proteção contra senhas vazadas desativada no Auth antigo. As funções públicas de comanda e pedido fazem parte do desenho legado; a classificação e eventual correção de cada aviso precisam considerar a autorização interna e o tráfego de produção antes de alterar permissões. O relatório completo fica no painel Supabase. Nenhuma configuração da origem foi alterada nesta rechecagem.
+
+O preview do PR responde com redirecionamento para o SSO da Vercel quando acessado sem sessão. Assim, o status `Ready` do deploy não permite executar os fluxos de preview anonimamente. O conector Vercel desta sessão não listou a equipe do projeto, e o conector Neon exige o ID do projeto para consultar o destino. Essas duas verificações aguardam acesso aos projetos corretos; nenhum segredo deve ser enviado por mensagem.
 
 ## Bloqueios de produção
 
