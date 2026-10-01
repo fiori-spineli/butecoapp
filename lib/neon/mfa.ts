@@ -61,8 +61,12 @@ function passoValido(secret: Buffer, code: string, lastUsed: number | null): num
   return null;
 }
 
+function chaveDoLimite(userId: string): Buffer {
+  return createHmac("sha256", chave()).update(`mfa:${userId}`).digest();
+}
+
 async function contarTentativa(client: PoolClient, userId: string): Promise<boolean> {
-  const key = createHmac("sha256", chave()).update(`mfa:${userId}`).digest();
+  const key = chaveDoLimite(userId);
   const { rows } = await client.query<{ attempts: number }>(
     `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
      VALUES ($1, now(), 1)
@@ -146,6 +150,10 @@ export async function verificarMfa(userId: string, code: string, enrollment: boo
        SET last_used_step = $1, confirmed_at = COALESCE(confirmed_at, now())
        WHERE user_id = $2`, [step, userId],
     );
+    // Same rule as the password login: only failures accumulate. Otherwise an
+    // admin signing in on a few devices in a row locks themself out.
+    await client.query("DELETE FROM app_private.auth_rate_limits WHERE key_hash = $1",
+      [chaveDoLimite(userId)]);
     await client.query("COMMIT");
     return true;
   } catch (error) {

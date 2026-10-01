@@ -6,6 +6,9 @@ import sharp from "sharp";
 
 let storageClient: S3Client | undefined;
 
+/** The upload's fault (400), never the storage's: kept apart so logs don't blame R2. */
+export class ImagemInvalida extends Error {}
+
 function configuracao() {
   const endpoint = process.env.R2_ENDPOINT_URL;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -40,17 +43,23 @@ export function chaveDaImagem(url: string | null | undefined, pasta: "produtos" 
 }
 
 export async function salvarImagem(arquivo: File, pasta: "produtos" | "logos", barId: string) {
-  if (arquivo.size < 1 || arquivo.size > 6 * 1024 * 1024) {
-    throw new Error("A imagem deve ter até 6 MB.");
-  }
+  if (arquivo.size < 1) throw new ImagemInvalida("O arquivo está vazio.");
+  if (arquivo.size > 6 * 1024 * 1024) throw new ImagemInvalida("A imagem deve ter até 6 MB.");
   const bytes = Buffer.from(await arquivo.arrayBuffer());
   const image = sharp(bytes, { limitInputPixels: 20_000_000, failOn: "error" });
-  const metadata = await image.metadata();
-  if (!(["jpeg", "png", "webp", "avif"] as Array<string>).includes(metadata.format || "")) {
-    throw new Error("Formato de imagem inválido.");
+  let webp: Buffer;
+  try {
+    const metadata = await image.metadata();
+    if (!(["jpeg", "png", "webp", "avif"] as Array<string>).includes(metadata.format || "")) {
+      throw new ImagemInvalida("Formato de imagem inválido. Use JPEG, PNG, WebP ou AVIF.");
+    }
+    webp = await image.rotate().resize({ width: 800, withoutEnlargement: true })
+      .webp({ quality: 80 }).toBuffer();
+  } catch (error) {
+    if (error instanceof ImagemInvalida) throw error;
+    // sharp rejects corrupt files and anything above the pixel ceiling here.
+    throw new ImagemInvalida("Não foi possível ler esta imagem. Envie outro arquivo, de até 20 megapixels.");
   }
-  const webp = await image.rotate().resize({ width: 800, withoutEnlargement: true })
-    .webp({ quality: 80 }).toBuffer();
   const { client, bucket, publicUrl } = configuracao();
   const key = `${pasta}/${barId}/${randomUUID()}.webp`;
   await client.send(new PutObjectCommand({

@@ -6,6 +6,7 @@ import { neonPool } from "@/lib/neon-db";
 import { gerarSlug } from "@/lib/bar";
 import { analisarEmail, MENSAGEM_DESCARTAVEL } from "@/lib/email-descartavel";
 import { createInviteLink } from "@/lib/neon/recovery";
+import { revokeUserSessions } from "@/lib/neon-session";
 import { listarObjetos, apagarObjeto } from "@/lib/r2";
 import type { EstadoForm } from "@/app/actions/auth";
 
@@ -116,6 +117,8 @@ export async function alternarSuspensao(_anterior: EstadoForm, formData: FormDat
     `UPDATE public.users SET suspended_at = CASE WHEN $1 THEN now() ELSE NULL END
       WHERE id=$2 AND EXISTS(SELECT 1 FROM public.bars WHERE owner_id=$2)`, [suspender, ownerId]);
   if (!result.rowCount) return { ok: false, mensagem: "Dono não encontrado." };
+  // Without this, lifting the suspension would bring every old token back to life.
+  if (suspender) await revokeUserSessions(neonPool, ownerId);
   revalidatePath("/admin");
   return { ok: true, mensagem: suspender ? "Acesso suspenso; dados preservados." : "Acesso reativado." };
 }

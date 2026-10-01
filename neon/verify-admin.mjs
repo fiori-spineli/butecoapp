@@ -2,9 +2,18 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import pg from "pg";
 
+// Writes (then rolls back) a user, a bar and a lead. The operator must name the
+// disposable branch AND the production host; the run refuses if they match.
+// The old lock pinned ep-late-voice-b66b813x, a branch that no longer exists.
 const url = process.env.DATABASE_URL;
-if (!url || !new URL(url).hostname.startsWith("ep-late-voice-b66b813x")) {
-  throw new Error("Este teste de escrita só aceita o branch Neon de migração.");
+const disposable = process.env.NEON_DISPOSABLE_HOST;
+const production = process.env.NEON_PRODUCTION_HOST;
+const host = url ? new URL(url).hostname : "";
+if (!url || !disposable || !production || host !== disposable ||
+    host === production || host.includes("-pooler")) {
+  throw new Error(
+    "Defina NEON_DISPOSABLE_HOST (conexão direta da branch descartável) e NEON_PRODUCTION_HOST; " +
+    "este teste de escrita recusa produção e pooler.");
 }
 const client = new pg.Client({ connectionString: url });
 await client.connect();

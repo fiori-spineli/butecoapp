@@ -89,7 +89,23 @@ try {
     "INSERT INTO public.lancamentos(cliente_id, descricao, quantidade, valor_unitario_centavos) VALUES ($1, 'Tarde', 1, 500)",
     [cliente],
   );
-  console.log(`verified ${checks} identity, money and tenant guards; test transaction rolled back`);
+  // Session registry (0005): only a live, unrevoked row for this user matches.
+  const live = async (sid, uid) => (await client.query(
+    `SELECT count(*)::int AS n FROM app_private.sessions
+      WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL AND expires_at > now()`,
+    [sid, uid])).rows[0].n;
+  const sid = crypto.randomUUID();
+  await client.query(
+    "INSERT INTO app_private.sessions(id, user_id, expires_at) VALUES ($1, $2, now() + interval '1 hour')",
+    [sid, user]);
+  assert.equal(await live(sid, user), 1, "sessão nova deve valer"); checks++;
+  assert.equal(await live(sid, secondUser), 0, "sessão não vale para outro usuário"); checks++;
+  await client.query("UPDATE app_private.sessions SET revoked_at = now() WHERE id = $1", [sid]);
+  assert.equal(await live(sid, user), 0, "sessão revogada não pode valer"); checks++;
+  await rejects(
+    "INSERT INTO app_private.sessions(id, user_id, created_at, expires_at) VALUES ($1, $2, now(), now() - interval '1 second')",
+    [crypto.randomUUID(), user]);
+  console.log(`verified ${checks} identity, money, tenant and session guards; test transaction rolled back`);
 } finally {
   await client.query("ROLLBACK");
   await client.end();

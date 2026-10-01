@@ -3,7 +3,7 @@ import "server-only";
 import { NextRequest, NextResponse } from "next/server";
 import { neonPool } from "@/lib/neon-db";
 import { getNeonSession } from "@/lib/neon-session";
-import { apagarImagem, salvarImagem } from "@/lib/r2";
+import { apagarImagem, ImagemInvalida, salvarImagem } from "@/lib/r2";
 
 export async function uploadImagem(request: NextRequest, pasta: "produtos" | "logos") {
   const origin = request.headers.get("origin");
@@ -44,7 +44,7 @@ export async function uploadImagem(request: NextRequest, pasta: "produtos" | "lo
     }
     return NextResponse.json({ url }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
-    if (error instanceof Error && /imagem|Formato/.test(error.message)) {
+    if (error instanceof ImagemInvalida) {
       return NextResponse.json({ erro: error.message }, { status: 400 });
     }
     console.error("[upload] falha no R2", error);

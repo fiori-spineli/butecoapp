@@ -1,8 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
-import { COOKIE_AUTH, createSessionToken, getNeonSession } from "@/lib/neon-session";
-import { COOKIE_LEMBRAR } from "@/lib/sessao";
+import { getNeonSession, openSession } from "@/lib/neon-session";
 import { neonPool } from "@/lib/neon-db";
 import { iniciarMfa, statusMfa, verificarMfa } from "@/lib/neon/mfa";
 
@@ -39,17 +37,16 @@ export async function iniciarCadastroTOTP(setupKey: string) {
   }
 }
 
-async function elevarSessao(userId: string) {
+/** Privilege change rotates the session: the pre-MFA token stops working. */
+async function elevarSessao(userId: string, previousSessionId: string) {
   const { rows } = await neonPool.query<{ password_hash: string | null }>(
     "SELECT password_hash FROM public.users WHERE id = $1", [userId],
   );
   if (!rows[0]?.password_hash) throw new Error("Conta sem senha local.");
-  const store = await cookies();
-  store.set(COOKIE_AUTH, createSessionToken(userId, rows[0].password_hash,
-    Math.floor(Date.now() / 1000)), {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
-    path: "/", maxAge: store.get(COOKIE_LEMBRAR)?.value === "1" ? 30 * 24 * 60 * 60 : undefined,
-  });
+  await openSession(userId, rows[0].password_hash, { mfaAt: Math.floor(Date.now() / 1000) });
+  await neonPool.query(
+    "UPDATE app_private.sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2",
+    [previousSessionId, userId]);
 }
 
 async function validar(fatorId: string, codigo: string, enrollment: boolean) {
@@ -58,7 +55,7 @@ async function validar(fatorId: string, codigo: string, enrollment: boolean) {
   try {
     const valid = await verificarMfa(session.userId, codigo.trim(), enrollment);
     if (!valid) return { ok: false, mensagem: "Código incorreto, expirado ou já usado." };
-    await elevarSessao(session.userId);
+    await elevarSessao(session.userId, session.sessionId);
     return { ok: true };
   } catch (error) {
     console.error("[mfa] falha de verificação", error);

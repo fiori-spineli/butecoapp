@@ -5,8 +5,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import { neonPool } from "@/lib/neon-db";
 import { enviarEmail } from "@/lib/email-resend";
-import { COOKIE_AUTH, createSessionToken } from "@/lib/neon-session";
-import { COOKIE_LEMBRAR } from "@/lib/sessao";
+import { openSession, revokeUserSessions } from "@/lib/neon-session";
 import { problemaDaSenha } from "@/lib/senha";
 import { origemDoApp } from "@/lib/url";
 
@@ -208,16 +207,14 @@ export async function saveRecoveryPassword(password: string): Promise<boolean> {
        WHERE id = $2`, [hash, proof.userId],
     );
     await client.query("DELETE FROM app_private.password_recovery WHERE user_id = $1", [proof.userId]);
+    // The new password ends every other device, even one still holding a valid cookie.
+    await revokeUserSessions(client, proof.userId);
+    await openSession(proof.userId, hash, { client });
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");
     throw error;
   } finally { client.release(); }
-  const store = await cookies();
-  store.delete(COOKIE_RECOVERY);
-  store.set(COOKIE_AUTH, createSessionToken(proof.userId, hash), {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
-    path: "/", maxAge: store.get(COOKIE_LEMBRAR)?.value === "1" ? 30 * 24 * 60 * 60 : undefined,
-  });
+  (await cookies()).delete(COOKIE_RECOVERY);
   return true;
 }

@@ -18,6 +18,12 @@ export type Resultado = { ok: boolean; mensagem?: string };
 
 function falha(error: unknown, generica: string): Resultado {
   if (error instanceof ComandaErro) return { ok: false, mensagem: error.message };
+  // Money triggers (neon/migrations/0001) RAISE with text written for the owner;
+  // a plain CHECK violation has no PL/pgSQL context and stays generic.
+  const pg = error as { code?: string; where?: string; message?: string };
+  if (pg?.code === "23514" && pg.where?.includes("PL/pgSQL") && pg.message) {
+    return { ok: false, mensagem: pg.message };
+  }
   console.error("[comanda] operação recusada", error);
   return { ok: false, mensagem: generica };
 }

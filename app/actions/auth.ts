@@ -7,7 +7,7 @@ import bcrypt from "bcryptjs";
 import { COOKIE_LEMBRAR } from "@/lib/sessao";
 import { analisarEmail } from "@/lib/email-descartavel";
 import { neonPool } from "@/lib/neon-db";
-import { COOKIE_AUTH, createSessionToken, getNeonSession } from "@/lib/neon-session";
+import { COOKIE_AUTH, closeCurrentSession, getNeonSession, openSession } from "@/lib/neon-session";
 import { confirmRecovery, requestRecovery, saveRecoveryPassword } from "@/lib/neon/recovery";
 import { conferirTurnstile } from "@/lib/turnstile";
 import { hashDoIpAtual, ipDoVisitante } from "@/lib/ip";
@@ -30,10 +30,7 @@ async function gravarSessao(userId: string, hash: string, lembrar: boolean) {
     httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
     path: "/", maxAge: 400 * 24 * 60 * 60,
   });
-  store.set(COOKIE_AUTH, createSessionToken(userId, hash), {
-    httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production",
-    path: "/", maxAge: lembrar ? 30 * 24 * 60 * 60 : undefined,
-  });
+  await openSession(userId, hash, { lembrar });
 }
 
 export async function entrarComSenha(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
@@ -154,7 +151,12 @@ export async function salvarNovaSenha(_anterior: EstadoForm,
 }
 
 export async function sair() {
-  const store = await cookies();
-  store.set(COOKIE_AUTH, "", { path: "/", maxAge: 0, expires: new Date(0) });
+  try {
+    await closeCurrentSession();
+  } catch (error) {
+    // Logging out must still clear this browser; the row expires on its own.
+    console.error("[logout] revogação no servidor falhou", error);
+    (await cookies()).set(COOKIE_AUTH, "", { path: "/", maxAge: 0, expires: new Date(0) });
+  }
   redirect("/login");
 }
