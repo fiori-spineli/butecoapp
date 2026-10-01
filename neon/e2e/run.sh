@@ -26,7 +26,8 @@ export NEXT_PUBLIC_TURNSTILE_SITE_KEY=1x00000000000000000000AA TURNSTILE_SECRET_
 export NEXT_PUBLIC_SITE_URL="http://localhost:$PORT" R2_ENDPOINT_URL=https://127.0.0.1:9 R2_ACCESS_KEY_ID=fake \
   R2_SECRET_ACCESS_KEY=fake R2_BUCKET_NAME=fake R2_PUBLIC_DOMAIN=https://img.example.test
 npm run build > "$WORK/build.log" 2>&1
-npx next start -p "$PORT" > "$WORK/server.log" 2>&1 & SERVER=$!
+# node directly, not npx: the trap must kill the server itself, not a wrapper.
+node node_modules/next/dist/bin/next start -p "$PORT" > "$WORK/server.log" 2>&1 & SERVER=$!
 trap 'kill $SERVER 2>/dev/null || true; docker rm -f "$C" >/dev/null 2>&1 || true' EXIT
 until curl -s -o /dev/null "http://localhost:$PORT/login"; do sleep 1; done
 
