@@ -30,7 +30,7 @@ node neon/migrate.mjs
 node neon/verify.mjs
 ```
 
-O migrador confere o SHA-256 de cada arquivo aplicado. Crie sempre um arquivo numerado novo; não edite migrations já aplicadas. `neon/verify.mjs` executa seus testes em transação e faz rollback. `neon/verify-admin.mjs` só aceita o host do branch de migração criado em 2026-09-25; ajuste esse bloqueio para um novo branch de teste antes de usá-lo.
+O migrador confere o SHA-256 de cada arquivo aplicado. Crie sempre um arquivo numerado novo; não edite migrations já aplicadas. `neon/verify.mjs` executa seus testes em transação e faz rollback. `neon/verify-admin.mjs` grava (e desfaz) dados de teste: exige `NEON_DISPOSABLE_HOST` igual ao host da URL e `NEON_PRODUCTION_HOST` diferente dele. `neon/auditoria.sql` é a leitura somente-leitura de paridade e esquema; `bash neon/e2e/run.sh` repete a prova local completa.
 
 ## Operação e segurança
 

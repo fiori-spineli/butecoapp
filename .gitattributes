@@ -1,0 +1,4 @@
+# neon/migrate.mjs compares each migration's SHA-256 with the one recorded in
+# app_private.schema_migrations. Any end-of-line conversion changes the bytes and
+# makes an applied migration look edited. Keep them byte-for-byte as committed.
+neon/migrations/*.sql -text
