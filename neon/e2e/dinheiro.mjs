@@ -7,7 +7,11 @@ const BASE = "http://localhost:3100";
 const C = readFileSync(`${S}/ca.txt`, "utf8"); // dono B
 const m = JSON.parse(readFileSync(".next/server/server-reference-manifest.json", "utf8")).node;
 const id = n => Object.entries(m).find(([, v]) => v.exportedName === n)[0];
-const sql = q => execFileSync("docker", ["exec", process.env.PG_CONTAINER || "buteco-pg-e2e", "psql", "-U", "postgres", "-d", "buteco", "-Atc", q]).toString().trim();
+// Local Docker by default; a disposable Neon branch when TEST_DATABASE_URL is set.
+const sql = q => (process.env.TEST_DATABASE_URL
+  ? execFileSync("node", ["neon/e2e/sql.mjs", q], { env: { ...process.env, NODE_NO_WARNINGS: "1" } })
+  : execFileSync("docker", ["exec", process.env.PG_CONTAINER || "buteco-pg-e2e", "psql", "-U", "postgres", "-d", "buteco", "-Atc", q])
+).toString().trim();
 const call = async (n, args) => {
   const r = await fetch(`${BASE}/dashboard`, { method: "POST", headers: { "Next-Action": id(n),
     "Content-Type": "text/plain;charset=UTF-8", Origin: BASE, Cookie: C }, body: JSON.stringify(args) });

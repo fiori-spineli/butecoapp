@@ -1,13 +1,13 @@
 # Migração para Neon: estado e corte
 
-Atualizado em **01/10/2026**. Branch `codex/neon-auth-security`, PR #1 em rascunho, base `master`.
+Atualizado em **01/10/2026** (segunda rodada, com acesso ao Neon pelo `neonctl`). Branch `codex/neon-auth-security`, PR #1 em rascunho, base `master`.
 **Não está pronto para merge nem para corte.** A condição de corte está no fim deste arquivo; hoje
 quatro dos seis critérios estão bloqueados por acesso, não por código.
 
 ## 0. O que mudou de entendimento nesta rodada
 
 1. **A produção já não roda o app do Supabase.** `butecoapp.vercel.app` serve o deploy
-   `dpl_6S657c2dZ8wCt39RNSsBmdeEppfN`, commit `99182fe` da `master` (25/09). É um híbrido: o login
+   de produção do commit `99182fe` da `master` (25/09). É um híbrido: o login
    lê `public.users` no Neon, mas o resto das telas ainda chama `supabase.auth.getUser()`.
    O último deploy da `master` (`d90f227`) falhou no build. Consequências medidas em 01/10:
    - o cookie de sessão da produção é **JSON em base64 sem assinatura** (`{sub, email, is_admin}`):
@@ -39,11 +39,13 @@ indicado (`neon/e2e/run.sh`); **não é evidência sobre o Neon nem sobre o prev
 | # | Requisito | Ambiente | Commit | Resultado | Evidência | Próximo passo / responsável |
 |---|---|---|---|---|---|---|
 | 1 | Migrations 0001–0005 aplicam, são idempotentes e o migrador recusa host errado/pooler | Local | `6f19aa7` | PASS | `run.sh`: 5 aplicadas, 5 `skip` na segunda execução; host divergente recusado | — |
-| 1 | `schema_migrations` e hashes no Neon de teste e produção | Neon | — | BLOCKED | sem acesso ao projeto Neon nesta sessão | rodar `neon/auditoria.sql` §4 e comparar com a tabela de hashes abaixo · dono do projeto Neon |
+| 1 | `schema_migrations` e hashes no Neon de produção | Neon produção | — | PASS | as 4 linhas registradas em 26/09 têm exatamente os SHA-256 da tabela abaixo | — |
+| 1 | `0005` aplica no esquema real e é idempotente | Neon descartável (cópia da produção, com expiração) | `6f19aa7` | PASS | `applied 0005_sessions.sql`, depois `skip` | aplicar na produção antes do merge (precisa de autorização, ver §8) |
 | 1 | Esquema base reproduzível | — | — | FAIL | a 0001 pressupõe `users`, `bars`, `clientes` etc. já existentes; nenhuma migration as cria | gerar `pg_dump --schema-only` da produção como baseline versionada fora de `migrations/` |
-| 1 | Índices, FKs, triggers, grants, ownership | Neon | — | BLOCKED | `auditoria.sql` §5–9 pronto e testado localmente | rodar no Neon; conferir FKs compostas de tenant e CHECKs de dinheiro, que a base ORM **não tem** |
+| 1 | Índices, FKs, triggers, grants, ownership | Neon produção | — | BLOCKED | a auditoria rodou (saída 0) e as tabelas pertencem à role dona do banco, sem RLS; a leitura das seções 6–9 foi barrada pela revisão automática ("Production Reads") | o dono lê a saída ou libera a leitura |
 | 2 | Paridade origem × destino | Origem | — | PASS (lado origem) | impressão digital abaixo, recalculada em 01/10 | — |
-| 2 | Paridade origem × destino | Neon | — | BLOCKED | `auditoria.sql` §1–3 dá a mesma fórmula | rodar e comparar; explicar o 8º usuário com §1b |
+| 2 | Paridade de identidades | Neon produção | — | PASS | administradores: MD5 idêntico (`59c234…`). Usuários: os 7 da origem batem um a um por instante de criação e presença de senha (3 sem senha nos dois lados). O 8º do Neon foi criado em 15/09, tem senha e é o dono do único bar; **não existe mais no Auth da origem**: o Neon preservou um cliente que a origem perdeu | — |
+| 2 | Paridade operacional | Neon produção | — | PASS (com perda anterior) | Neon: 1 bar, 0 comandas, 0 produtos, 0 lançamentos, 0 pagamentos, 0 pedidos, 0 interessados; zero órfãos, zero saldo negativo. As linhas que a origem teve (§0.2) **não estão no Neon**: foram perdidas antes da migração, não nela | decidir se há algo a recuperar (backup diário do Supabase, se o plano tiver) · dono |
 | 2 | Backup verificável da origem | Origem | — | Parcial | único objeto do Storage baixado; MD5 = eTag | `pg_dump` completo (exige senha do banco, BLOCKED) · dono |
 | 3 | Revogação de sessão no servidor (logout, senha, suspensão, rotação no MFA) | Local | `6f19aa7` | PASS | 42/42 em `sessao-mfa-isolamento.mjs` | repetir no preview |
 | 3 | Cookie `HttpOnly` + `Secure` + `SameSite=Lax` | Local (build de produção) | `6f19aa7` | PASS | `Set-Cookie` do login | repetir no preview |
@@ -53,14 +55,15 @@ indicado (`neon/e2e/run.sh`); **não é evidência sobre o Neon nem sobre o prev
 | 5 | Senha para os 3 usuários sem `password_hash` | Neon | — | BLOCKED | depende do Resend ou de convite manual pelo painel admin | — |
 | 5 | Checagem de senha vazada | — | — | BLOCKED (decisão) | removida no PR; regras locais seguem ativas | decidir: k-anonimato HIBP (só 5 hex do SHA-1 saem do servidor) ou aceitar o risco por escrito · dono |
 | 6 | Isolamento entre bares em actions, rotas, upload e URL de comanda | Local | `6f19aa7` | PASS | 11 tentativas cruzadas recusadas, dados do outro bar intactos; 7 URLs de foto forjadas recusadas | repetir no preview com duas contas reais de teste |
-| 6 | `verify.mjs` / `verify-admin.mjs` em branch Neon descartável | Neon | — | BLOCKED | ambos passam localmente; `verify.mjs` provado capaz de reprovar (trigger removido → falha nomeada) | rodar numa branch criada a partir da produção |
+| 6 | `verify.mjs` / `verify-admin.mjs` em branch Neon descartável | Neon descartável | `6f19aa7` | PASS | 12 checagens + provisionamento/cascata, tudo com rollback | — |
+| 6/7/8 | App inteiro (`next start`) contra o esquema real do Neon | Neon descartável | `6f19aa7` | PASS | 42/42 sessão/MFA/isolamento, 7/7 dinheiro e concorrência, upload e URLs de foto, com contas `@example.test` só na branch descartável | — |
 | 7 | Concorrência e regras de dinheiro | Local | `6f19aa7` | PASS | 10 pagamentos simultâneos do saldo → 1 aceito; 6 de 1 un. num item de 3 → 3; remoção de item pago, fechamento com pendente e lançamento em comanda fechada recusados | repetir no Neon (isolamento e locks reais) |
-| 7 | Views × cálculo da app × origem | Neon | — | BLOCKED | `comandas_resumo` exata em centavos no local | comparar no Neon com dados reais |
+| 7 | Views × cálculo da app | Neon descartável | `6f19aa7` | PASS | `comandas_resumo` exata em centavos (3 × 25,50 = 76,50) no esquema real; a produção não tem comanda nenhuma para comparar | — |
 | 8 | Validação de upload (vazio, >6 MB, inválido, >20 MP, origem, sessão) | Local | `6f19aa7` | PASS | `upload.mjs` | — |
 | 8 | Bucket R2 real, leitura pública, exclusão, mídia legada | R2 | — | BLOCKED | `R2_*` só em Production; nenhum teste contra o bucket | testar no preview com variáveis de Preview |
 | 9 | Variáveis por ambiente | Vercel | — | FAIL | ver §4 | — |
 | 9 | Nenhum segredo com `NEXT_PUBLIC_` | Vercel | — | PASS | só `NEXT_PUBLIC_SITE_URL` e `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | — |
-| 9 | Preview autenticado, logs de build e runtime | Vercel | `c0521b3` | BLOCKED | SSO; conector sem escopo `butequeiros` | gerar link de compartilhamento ou reautorizar o conector |
+| 9 | Preview autenticado, logs de build e runtime | Vercel | — | BLOCKED | o preview não tem variáveis; criá-las (para a branch Neon descartável) foi barrado pela revisão automática ("Secret-Store Writes") | o dono autoriza a gravação de variáveis ou as cria (§8) |
 | 10 | Ponta a ponta em preview | Vercel | — | BLOCKED | depende de 4, 5, 8 e 9 | — |
 | 11 | Runtime sem Supabase | Código + origem | `6f19aa7` | PASS | nenhuma referência em `app/`, `lib/`, `components/`, `proxy.ts`, `package.json`; logs da origem em 24 h: zero requisições do app (só uma curl manual e o download do backup) | repetir no preview pelo painel de rede |
 | 11 | Avisos do Security Advisor da origem | Origem | — | Classificado | ver §5 | resolver desativando a origem após o corte |
@@ -81,7 +84,7 @@ faria o migrador recusar uma migration já aplicada.
 
 ## 2. Dados e mídia
 
-### Impressão digital da origem (Supabase `zmxytngunmyuscmncdmx`, leitura de 01/10/2026)
+### Impressão digital da origem (Supabase de origem, leitura de 01/10/2026)
 
 Fórmula: `count(*)` e `md5(string_agg(id::text, ',' ORDER BY id))`. A mesma fórmula está em
 `neon/auditoria.sql`.
@@ -94,8 +97,9 @@ Fórmula: `count(*)` e `md5(string_agg(id::text, ',' ORDER BY id))`. A mesma fó
 | `bars`, `clientes`, `produtos`, `lancamentos`, `pagamentos`, `pedidos_pendentes`, `interessados` | 0 | vazio | as seis primeiras tiveram dados; ver §0.2 |
 | `storage.objects` | 1 | `7fbcd316d5379c08ef8c870dd121e672` | ver abaixo |
 
-**O oitavo usuário do Neon** (26/09: 8 no Neon, 7 na origem) continua sem explicação. A §1b do
-`auditoria.sql` lista data de criação e vínculos de cada usuário do Neon, sem e-mail, para isso.
+**O oitavo usuário do Neon** está explicado (matriz, gate 2): é o dono do único bar, criado em 15/09 e depois apagado do Auth da origem.
+
+Neon de produção em 01/10 (projeto, branch, banco e role identificados e conferidos antes de qualquer SQL; os identificadores ficam fora deste repositório público): Impressão digital: `users` 8 (`720bf089…`, 3 sem senha, 0 suspensos), `administradores` 2 (`59c234…`), `bars` 1 (`48ba8a3a…`), demais 0. A branch de teste antiga expira em 03/10; a branch de auditoria criada nesta rodada expira em 04/10.
 
 ### Mídia legada
 
@@ -105,7 +109,7 @@ Fórmula: `count(*)` e `md5(string_agg(id::text, ',' ORDER BY id))`. A mesma fó
 | MD5 (= eTag do Storage) | `df4a58be4533a1a8d9a8ce8a0f3ab7ab` |
 | SHA-256 | `31e714bbf3f0433550ded3802adcfb7b5d05a24ed508126ac15853d4e10c7afc` |
 | Backup | baixado e conferido em 01/10, fora do repositório |
-| Referência no Neon | em 26/09 a foto do bar apontava para outra URL do Storage antigo. O script local de 26/09 testava se a pasta do objeto (`170bfba9-…`) é o id do bar no Neon, mas o resultado não foi registrado: **não presumir**. Reconciliar antes de mexer: ler a URL atual (`auditoria.sql` §3), baixar se ainda existir, comparar checksums, subir para `logos/<bar_id>/<uuid>.webp` no R2, conferir leitura pública HTTPS e só então atualizar `bars.foto_url`. A URL antiga é recusada pela validação do R2, então nada a apaga por engano. |
+| Referência no Neon | em 01/10 a única `foto_url` do Neon aponta para o Storage do Supabase de origem. O id do bar no Neon **não** é a pasta `170bfba9-…` do único objeto do bucket (MD5 do id difere), e o bucket teve 6 exclusões: a foto do bar provavelmente aponta para um arquivo que já não existe. Ler o caminho exato é leitura de produção, barrada nesta rodada. Em 26/09 a foto do bar apontava para outra URL do Storage antigo. O script local de 26/09 testava se a pasta do objeto (`170bfba9-…`) é o id do bar no Neon, mas o resultado não foi registrado: **não presumir**. Reconciliar antes de mexer: ler a URL atual (`auditoria.sql` §3), baixar se ainda existir, comparar checksums, subir para `logos/<bar_id>/<uuid>.webp` no R2, conferir leitura pública HTTPS e só então atualizar `bars.foto_url`. A URL antiga é recusada pela validação do R2, então nada a apaga por engano. |
 
 ## 3. Vulnerabilidades e defeitos, por severidade
 
@@ -202,16 +206,22 @@ ausência de Supabase no tráfego do preview; rollback ensaiado.
 
 **Rollback:** até o passo 6, nada em produção mudou além da `0005`, que é aditiva (tabela nova) e não
 afeta o código atual da `master`. Depois do passo 6: promover de volta o deploy anterior na Vercel
-(`dpl_6S657c2dZ8wCt39RNSsBmdeEppfN`). Lembrete honesto: esse deploy é o híbrido degradado de §0.1,
+(o do commit `99182fe`, marcado como candidato a rollback no painel). Lembrete honesto: esse deploy é o híbrido degradado de §0.1,
 então o rollback devolve um sistema que já não atende o dono; um rollback "bom" exigiria restaurar
 as variáveis do Supabase **e** os dados que foram apagados da origem. Por isso o passo 1 é
 inegociável.
 
 ## 8. Do que esta auditoria precisa para continuar
 
-1. **Neon:** o ID do projeto e acesso por um caminho autorizado, por exemplo `! npx neonctl auth`
-   (OAuth no navegador). Nada de colar `DATABASE_URL` em chat.
-2. **Vercel:** reautorizar o conector para o escopo `butequeiros` (logs e preview) ou gerar um link de
-   compartilhamento do preview.
-3. **Resend:** domínio remetente verificado.
-4. **Decisões do dono:** checagem de senha vazada (§1, gate 5) e janela de observação pós-corte.
+Acesso ao Neon resolvido em 01/10 pelo `neonctl` autenticado no navegador do dono, e a CLI da
+Vercel também está autenticada. O que falta são **autorizações**, não credenciais. A revisão
+automática do Claude Code barrou três categorias, e cada uma é decisão do dono:
+
+1. **Leitura da produção Neon** (seções 6–9 do `auditoria.sql` e o caminho de `bars.foto_url`).
+2. **Gravação em cofre de segredos**: variáveis de Preview para a branch do PR e as que faltam em
+   Production (`ADMIN_MFA_ENROLLMENT_KEY`). Os valores iriam de arquivo para a CLI pela entrada
+   padrão, sem aparecer em chat ou log.
+3. **Escrita na produção**: aplicar a `0005` no Neon de produção, mesclar o PR e promover o deploy.
+
+Fora do alcance de qualquer autorização: **domínio verificado no Resend** (exige um domínio do dono,
+com DNS) e a decisão sobre a checagem de senha vazada.

@@ -8,7 +8,11 @@ const BASE = "http://localhost:3100";
 const manifest = JSON.parse(readFileSync(".next/server/server-reference-manifest.json", "utf8")).node;
 const ids = {};
 for (const [id, v] of Object.entries(manifest)) ids[`${v.filename}#${v.exportedName}`] = id;
-const sql = q => execFileSync("docker", ["exec", process.env.PG_CONTAINER || "buteco-pg-e2e", "psql", "-U", "postgres", "-d", "buteco", "-Atc", q]).toString().trim();
+// Local Docker by default; a disposable Neon branch when TEST_DATABASE_URL is set.
+const sql = q => (process.env.TEST_DATABASE_URL
+  ? execFileSync("node", ["neon/e2e/sql.mjs", q], { env: { ...process.env, NODE_NO_WARNINGS: "1" } })
+  : execFileSync("docker", ["exec", process.env.PG_CONTAINER || "buteco-pg-e2e", "psql", "-U", "postgres", "-d", "buteco", "-Atc", q])
+).toString().trim();
 
 let pass = 0, fail = 0;
 const results = [];
