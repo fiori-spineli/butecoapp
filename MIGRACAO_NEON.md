@@ -52,7 +52,8 @@ indicado (`neon/e2e/run.sh`); **não é evidência sobre o Neon nem sobre o prev
 | 4 | TOTP: chave errada, janela ±1, replay, 5 tentativas/15 min, MFA vencido, chamada direta sem UI | Local | `6f19aa7` | PASS | mesmo roteiro | — |
 | 4 | `ADMIN_MFA_ENROLLMENT_KEY` e inscrição dos dois admins | Vercel / pessoas | — | BLOCKED | variável **ausente** em todos os ambientes | criar a chave (≥32 caracteres aleatórios), inscrever os dois admins · dono + admins |
 | 5 | Recuperação por e-mail | Resend | — | BLOCKED | conta Resend conectada **sem nenhum domínio**; `RESEND_*` ausentes em todos os ambientes | verificar domínio remetente, criar as variáveis, testar com destinatário controlado · dono |
-| 5 | Senha para os 3 usuários sem `password_hash` | Neon | — | BLOCKED | depende do Resend ou de convite manual pelo painel admin | — |
+| 5 | Senha para os 3 usuários sem `password_hash` | Neon produção | — | PASS (nada a fazer) | os 3 não têm bar nem são admin: entravam por link mágico/Google e não têm o que acessar. Se algum virar dono, "criar cliente" no `/admin` reaproveita a conta e gera o convite | — |
+| 9 | TLS ao banco resistente a upgrade do `pg` | Neon descartável via pooler | `cbf32aa` | PASS | `sslmode=require` vira `verify-full`; baterias verdes pelo pooler, log sem aviso de SSL | — |
 | 5 | Checagem de senha vazada | — | — | BLOCKED (decisão) | removida no PR; regras locais seguem ativas | decidir: k-anonimato HIBP (só 5 hex do SHA-1 saem do servidor) ou aceitar o risco por escrito · dono |
 | 6 | Isolamento entre bares em actions, rotas, upload e URL de comanda | Local | `6f19aa7` | PASS | 11 tentativas cruzadas recusadas, dados do outro bar intactos; 7 URLs de foto forjadas recusadas | repetir no preview com duas contas reais de teste |
 | 6 | `verify.mjs` / `verify-admin.mjs` em branch Neon descartável | Neon descartável | `6f19aa7` | PASS | 12 checagens + provisionamento/cascata, tudo com rollback | — |
