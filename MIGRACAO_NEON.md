@@ -1,8 +1,31 @@
 # Migração para Neon: estado e corte
 
-Atualizado em **01/10/2026** (segunda rodada, com acesso ao Neon pelo `neonctl`). Branch `codex/neon-auth-security`, PR #1 em rascunho, base `master`.
-**Não está pronto para merge nem para corte.** A condição de corte está no fim deste arquivo; hoje
-quatro dos seis critérios estão bloqueados por acesso, não por código.
+## Corte concluído em 01/10/2026
+
+A produção (`butecoapp.vercel.app`) roda o código do PR #1 (merge `3913217`) sobre o Neon. Feito:
+
+- migration `0005` aplicada no Neon de produção antes do merge (8 comandos, registro em `schema_migrations`);
+- `ADMIN_MFA_ENROLLMENT_KEY` criada em Production antes do deploy;
+- conferido de fora: páginas restritas mandam ao login, CSP e HSTS ativos, o navegador não chama o Supabase;
+- primeiro admin entrou com senha + TOTP; o segundo cadastra o autenticador dele;
+- Supabase de origem **pausado** (reversível); branches Neon de teste apagadas.
+
+Pendências depois do corte:
+
+| Item | Situação |
+|---|---|
+| "Esqueci a senha" por e-mail | Depende de domínio próprio verificado no Resend + `RESEND_API_KEY`/`RESEND_FROM_EMAIL` em Production. Até lá, convite pelo `/admin`. |
+| Upload de imagens (R2) | Variáveis presentes em Production; primeiro upload real ainda não feito. |
+| Contas de teste no Neon | Só os 2 admins importam; limpeza das demais preparada para o dono executar. |
+| Segredo `SUPABASE_ANON_KEY` no GitHub Actions | Órfão (nenhum workflow o usa); apagar em Settings → Secrets. |
+| Chave da API do Resend usada pelo SMTP do Supabase | Revogar quando a chave nova (com domínio) existir. |
+| Supabase pausado | Excluir de vez só por decisão explícita; o plano gratuito restaura projeto pausado por tempo limitado. |
+
+O restante deste arquivo é o registro da auditoria **anterior** ao corte, mantido como histórico.
+
+---
+
+Registro pré-corte (01/10/2026, segunda rodada).
 
 ## 0. O que mudou de entendimento nesta rodada
 
