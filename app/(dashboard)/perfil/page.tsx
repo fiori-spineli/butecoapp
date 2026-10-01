@@ -13,8 +13,7 @@ import { BarFotoForm } from "./bar-foto-form";
 export const dynamic = "force-dynamic";
 
 export default async function PerfilPage() {
-  const { bar } = await exigirBar();
-  const { data: { user } } = await (await import("@/lib/supabase/server")).createSupabaseServerClient().then(s => s.auth.getUser());
+  const { bar, user } = await exigirBar();
 
   return (
     <div className="flex flex-1 flex-col animate-in fade-in duration-150">

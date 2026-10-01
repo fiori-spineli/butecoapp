@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Vitrine } from "@/components/vitrine";
+import { getNeonSession } from "@/lib/neon-session";
 
 export const dynamic = "force-dynamic";
 
@@ -12,35 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Home() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("buteco_session")?.value;
-
-  // 1. Se não tem sessão, exibe a Vitrine imediatamente
-  if (!token) {
-    return <Vitrine />;
-  }
-
-  let destino: string | null = null;
-
-  // 2. Lê os dados do token sem colocar redirect() dentro do try/catch
-  try {
-    const payloadJson = Buffer.from(token, "base64url").toString("utf-8");
-    const dados = JSON.parse(payloadJson);
-
-    if (dados.is_admin) {
-      destino = "/admin";
-    } else {
-      destino = "/dashboard";
-    }
-  } catch (err) {
-    // Se o token estiver corrompido, limpa e exibe a vitrine
-    return <Vitrine />;
-  }
-
-  // 3. O redirect DEVE ser chamado fora do try/catch no Next.js:
-  if (destino) {
-    redirect(destino);
-  }
-
-  return <Vitrine />;
+  const session = await getNeonSession();
+  if (!session) return <Vitrine />;
+  redirect(session.isAdmin ? "/admin" : "/dashboard");
 }

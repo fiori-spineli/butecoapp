@@ -8,7 +8,7 @@ import {
   type EstadoForm,
   type EstadoRecuperacao,
 } from "@/app/actions/auth";
-import { mascararEmail } from "@/lib/recuperacao";
+import { mascararEmail } from "@/lib/mascarar-email";
 import { CampoTurnstile } from "@/components/turnstile";
 import { LoadingButeco } from "@/components/loading-buteco";
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getNeonSession } from "@/lib/neon-session";
 import { contextoDoDono } from "@/lib/bar";
 import { TemaToggle } from "@/components/tema-toggle";
 import { BotaoSair } from "@/components/botao-sair";
@@ -21,20 +21,8 @@ export const dynamic = "force-dynamic";
  * saídas honestas — falar com a gente ou sair da conta.
  */
 export default async function OnboardingPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    const { data: admin } = await supabase
-      .from("administradores")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (admin) redirect("/admin");
-  }
+  const session = await getNeonSession();
+  if (session?.isAdmin) redirect("/admin");
 
   const { bar } = await contextoDoDono();
   if (bar) redirect("/dashboard");

@@ -1,87 +1,55 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { Pool } from "pg";
+import { getNeonSession } from "@/lib/neon-session";
+import { neonPool } from "@/lib/neon-db";
+import { verificarStatusMFA } from "@/app/actions/mfa";
+import { listarInteressadosNoNeon } from "@/lib/neon/interessados";
 import { AdminViewContainer } from "./admin-view-container";
+import type { ClienteAdmin } from "./gestao-clientes";
 
 export const dynamic = "force-dynamic";
 
-const connectionString = (process.env.DATABASE_URL || "")
-  .replace("postgresql+psycopg://", "postgresql://")
-  .replace("postgresql+asyncpg://", "postgresql://");
+export interface TelemetriaAdmin {
+  infra: { tamanho_banco: string; conexoes_ativas: number; versao_postgres: string; total_usuarios: number };
+  negocio: { total_bares: number; total_produtos: number; comandas_abertas: number; comandas_fechadas: number };
+  bares: ClienteAdmin[];
+}
 
-const pool = new Pool({
-  connectionString,
-  ssl: { rejectUnauthorized: false },
-});
+async function metricasAdmin(): Promise<TelemetriaAdmin> {
+  const [infra, negocio, bares] = await Promise.all([
+    neonPool.query<{
+      tamanho_banco: string; conexoes_ativas: number; versao_postgres: string; total_usuarios: number;
+    }>(`SELECT pg_size_pretty(pg_database_size(current_database())) AS tamanho_banco,
+       (SELECT count(*)::int FROM pg_stat_activity WHERE datname=current_database()) AS conexoes_ativas,
+       current_setting('server_version') AS versao_postgres,
+       (SELECT count(*)::int FROM public.users) AS total_usuarios`),
+    neonPool.query<{
+      total_bares: number; total_produtos: number; comandas_abertas: number; comandas_fechadas: number;
+    }>(`SELECT (SELECT count(*)::int FROM public.bars) AS total_bares,
+       (SELECT count(*)::int FROM public.produtos) AS total_produtos,
+       (SELECT count(*)::int FROM public.clientes WHERE status='aberta') AS comandas_abertas,
+       (SELECT count(*)::int FROM public.clientes WHERE status='fechada') AS comandas_fechadas`),
+    neonPool.query<ClienteAdmin>(`SELECT b.id,b.nome,b.slug,b.created_at,b.owner_id,
+       u.email AS owner_email,(u.email_verified_at IS NOT NULL) AS email_confirmado,
+       u.last_login_at AS ultimo_login,(u.suspended_at IS NOT NULL) AS suspenso,
+       (SELECT count(*)::int FROM public.produtos p WHERE p.bar_id=b.id) AS total_produtos,
+       (SELECT count(*)::int FROM public.clientes c WHERE c.bar_id=b.id) AS total_comandas,
+       (SELECT count(*)::int FROM public.clientes c WHERE c.bar_id=b.id AND c.status='aberta') AS comandas_abertas,
+       (SELECT max(c.created_at) FROM public.clientes c WHERE c.bar_id=b.id) AS ultima_atividade
+      FROM public.bars b JOIN public.users u ON u.id=b.owner_id ORDER BY b.created_at DESC`),
+  ]);
+  return { infra: infra.rows[0], negocio: negocio.rows[0], bares: bares.rows };
+}
 
 export default async function AdminPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("buteco_session")?.value;
-
-  if (!token) redirect("/login");
-
-  let isAdmin = false;
-  try {
-    const dados = JSON.parse(Buffer.from(token, "base64url").toString("utf-8"));
-    isAdmin = Boolean(dados.is_admin);
-  } catch {
-    redirect("/login");
-  }
-
-  if (!isAdmin) redirect("/dashboard");
-
-  // Busca as métricas direto do PostgreSQL no Neon
-  let totalBares = 0;
-  let totalProdutos = 0;
-  let comandasAbertas = 0;
-  let comandasFechadas = 0;
-  let interessados: any[] = [];
-
-  try {
-    const [bRes, pRes, cRes, iRes] = await Promise.all([
-      pool.query("SELECT count(*) FROM public.bars"),
-      pool.query("SELECT count(*) FROM public.produtos"),
-      pool.query("SELECT count(*) FILTER (WHERE status = 'aberta') as abertas, count(*) FILTER (WHERE status = 'fechada') as fechadas FROM public.clientes"),
-      pool.query("SELECT * FROM public.interessados ORDER BY created_at DESC LIMIT 50"),
-    ]);
-
-    totalBares = parseInt(bRes.rows[0]?.count || "0");
-    totalProdutos = parseInt(pRes.rows[0]?.count || "0");
-    comandasAbertas = parseInt(cRes.rows[0]?.abertas || "0");
-    comandasFechadas = parseInt(cRes.rows[0]?.fechadas || "0");
-    interessados = iRes.rows || [];
-  } catch (err) {
-    console.error("[admin page] erro ao consultar Neon:", err);
-  }
-
-  const metricas: any = {
-    infra: {
-      tamanho_banco: "Neon Serverless",
-      conexoes_ativas: 1,
-      versao_postgres: "PostgreSQL 16 (AWS sa-east-1)",
-      total_usuarios: 8,
-    },
-    negocio: {
-      total_bares: totalBares,
-      total_produtos: totalProdutos,
-      comandas_abertas: comandasAbertas,
-      comandas_fechadas: comandasFechadas,
-    },
-    bares: [],
-  };
-
-  const statusMfa = {
-    temFatorAtivo: true,
-    precisaVerificar: false,
-  };
-
-  return (
-    <main className="min-h-screen w-full bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 transition-colors p-6 md:p-10">
-      <AdminViewContainer
-        statusMfa={statusMfa}
-        metricas={metricas}
-        interessados={interessados}
-      />
-    </main>
-  );
+  const session = await getNeonSession();
+  if (!session) redirect("/login");
+  if (!session.isAdmin) redirect("/dashboard");
+  const statusMfa = await verificarStatusMFA();
+  const verified = statusMfa.temFatorAtivo && !statusMfa.precisaVerificar;
+  const [metricas, interessados] = verified
+    ? await Promise.all([metricasAdmin(), listarInteressadosNoNeon()])
+    : [null, []];
+  return <main className="min-h-screen bg-stone-100 p-6 text-stone-900 dark:bg-stone-950 dark:text-stone-100 md:p-10">
+    <AdminViewContainer statusMfa={statusMfa} metricas={metricas} interessados={interessados} />
+  </main>;
 }

@@ -116,7 +116,13 @@ export default function PrivacidadePage() {
           <p>Só com os serviços que fazem o sistema funcionar:</p>
           <ul className="ml-4 list-disc space-y-2">
             <li>
-              <strong>Supabase</strong> — banco de dados, contas e fotos dos produtos.
+              <strong>Neon</strong> — banco de dados e contas.
+            </li>
+            <li>
+              <strong>Cloudflare R2</strong> — fotos dos produtos e dos bares.
+            </li>
+            <li>
+              <strong>Resend</strong> — envio de códigos de recuperação de acesso.
             </li>
             <li>
               <strong>Vercel</strong> — hospedagem do site.

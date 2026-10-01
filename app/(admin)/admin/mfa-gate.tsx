@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import Image from "next/image";
+import { useState, useTransition } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import {
   iniciarCadastroTOTP,
   confirmarCadastroTOTP,
@@ -27,27 +27,24 @@ export function MfaGate({
   const status = statusInicial;
   const [dadosCadastro, setDadosCadastro] = useState<DadosCadastro | null>(null);
   const [codigo, setCodigo] = useState("");
+  const [chaveInicial, setChaveInicial] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
   const [carregando, iniciar] = useTransition();
 
   // Se não tem fator cadastrado, inicia o cadastro gerando o QR Code na hora
-  useEffect(() => {
-    if (!status.temFatorAtivo && !dadosCadastro) {
-      iniciar(async () => {
-        const res = await iniciarCadastroTOTP();
-        if (res.ok && res.fatorId && res.qrCode && res.secret) {
-          setDadosCadastro({
-            fatorId: res.fatorId,
-            qrCode: res.qrCode,
-            secret: res.secret,
-          });
-        } else {
-          setErro("Falha ao preparar autenticador. Verifique as configurações no Supabase.");
-        }
-      });
-    }
-  }, [status.temFatorAtivo, dadosCadastro]);
+  function prepararFator() {
+    setErro(null);
+    iniciar(async () => {
+      const res = await iniciarCadastroTOTP(chaveInicial);
+      if (res.ok && "fatorId" in res && res.fatorId && res.qrCode && res.secret) {
+        setDadosCadastro({ fatorId: res.fatorId, qrCode: res.qrCode, secret: res.secret });
+        setChaveInicial("");
+      } else {
+        setErro(res.mensagem || "Não foi possível preparar o autenticador.");
+      }
+    });
+  }
 
   // Função para copiar o código manual (caso a pessoa esteja no celular e não possa mirar a câmera)
   async function copiarChave() {
@@ -103,15 +100,10 @@ export function MfaGate({
             Escaneie o código abaixo com o aplicativo de autenticação da sua preferência (<strong>Google Authenticator</strong>, <strong>Microsoft Authenticator</strong> ou <strong>Chaves do Mac/iPhone</strong>):
           </p>
 
-          {/* QR Code SVG direto do Supabase */}
+          {/* The QR is rendered locally from the TOTP provisioning URI. */}
           <div className="my-5 rounded-2xl border border-stone-200 dark:border-stone-700 bg-white p-4 shadow-xs">
-            <Image
-              src={dadosCadastro.qrCode}
-              alt="QR Code de Segurança"
-              width={180}
-              height={180}
-              className="size-44 object-contain"
-            />
+            <QRCodeSVG value={dadosCadastro.qrCode} size={180} role="img"
+              aria-label="QR Code de segurança" />
           </div>
 
           {/* Chave de texto alternativa (caso esteja acessando pelo próprio celular) */}
@@ -136,7 +128,24 @@ export function MfaGate({
       )}
 
       {/* 2. MODO: VALIDAÇÃO DO CÓDIGO (Primeiro acesso ou rotina) */}
-      <form onSubmit={submeterCodigo} className="flex flex-col gap-4">
+      {!status.temFatorAtivo && !dadosCadastro && (
+        <div className="mb-5 space-y-3">
+          <label htmlFor="chave-inicial-mfa" className="block text-xs font-bold">
+            Chave de ativação do administrador
+          </label>
+          <input id="chave-inicial-mfa" type="password" autoComplete="off"
+            value={chaveInicial} onChange={event => setChaveInicial(event.target.value)}
+            className="w-full rounded-xl border border-stone-300 bg-white p-3 text-sm text-stone-900"
+            placeholder="Chave de ativação" />
+          <button type="button" onClick={prepararFator}
+            disabled={carregando || chaveInicial.length < 32}
+            className="w-full rounded-xl bg-amber-700 p-3 font-bold text-white disabled:opacity-50">
+            Preparar autenticador
+          </button>
+          {erro && <p role="alert" className="text-sm text-rose-600">{erro}</p>}
+        </div>
+      )}
+      {(status.temFatorAtivo || dadosCadastro) && <form onSubmit={submeterCodigo} className="flex flex-col gap-4">
         {status.temFatorAtivo && (
           <div className="text-center mb-2">
             <div className="mx-auto mb-3 inline-flex size-12 items-center justify-center rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
@@ -184,7 +193,7 @@ export function MfaGate({
         >
           {carregando ? <LoadingButeco fraseFixa="Verificando chave..." /> : "Liberar painel de admin"}
         </button>
-      </form>
+      </form>}
     </div>
   );
 }

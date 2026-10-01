@@ -28,7 +28,7 @@ export default async function RootLayout({
   const nonce = (await headers()).get("x-nonce") ?? undefined;
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className="min-h-dvh bg-stone-100 text-stone-900 dark:bg-stone-950 dark:text-stone-100 antialiased">
         {/* Antes de qualquer pixel: ver lib/tema.ts. Precisa ser síncrono e
             vir primeiro, senão a página pinta clara e escurece depois. */}

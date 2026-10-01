@@ -9,50 +9,22 @@ import {
 import { descreverDuracao } from "@/lib/tempo";
 import { VoltarPara } from "@/components/voltar";
 import { BotaoImprimir } from "@/components/botao-imprimir";
-import type { ComandaResumo } from "@/lib/types";
+import { itensDasComandasAbertas, listarComandas, totaisDoDia } from "@/lib/neon/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function FechamentoPage() {
-  const { supabase, bar } = await exigirBar();
+  const { bar } = await exigirBar();
   const geradoEm = new Date();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  const [comandasResposta, consumoResposta, recebidoResposta] = await Promise.all([
-    supabase
-      .from("comandas_resumo")
-      .select(
-        "id, nome, numero_mesa, status, created_at, fechada_em, total_centavos, pago_centavos, restante_centavos, itens",
-      )
-      .eq("bar_id", bar.id)
-      .eq("status", "aberta")
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("lancamentos")
-      .select("quantidade, valor_unitario_centavos, clientes!inner(bar_id)")
-      .eq("clientes.bar_id", bar.id)
-      .gte("created_at", inicioDoDia),
-    supabase
-      .from("pagamentos")
-      .select("valor_centavos, clientes!inner(bar_id)")
-      .eq("clientes.bar_id", bar.id)
-      .gte("created_at", inicioDoDia),
+  const [todas, totais, itensCru] = await Promise.all([
+    listarComandas(bar.id),
+    totaisDoDia(bar.id, inicioDoDia),
+    itensDasComandasAbertas(bar.id),
   ]);
-
-  const abertas = (comandasResposta.data ?? []) as ComandaResumo[];
-
-  const { data: itensCru } = abertas.length
-    ? await supabase
-        .from("lancamentos")
-        .select("cliente_id, quantidade, valor_unitario_centavos, descricao, created_at, produtos(nome)")
-        .in(
-          "cliente_id",
-          abertas.map((c) => c.id),
-        )
-        .order("created_at", { ascending: true })
-    : { data: [] };
-
-  const itens = (itensCru ?? []) as Array<{
+  const abertas = todas.filter(c => c.status === "aberta").reverse();
+  const itens = itensCru as Array<{
     cliente_id: string;
     quantidade: number;
     valor_unitario_centavos: number;
@@ -65,14 +37,7 @@ export default async function FechamentoPage() {
   const pagoEmAberto = abertas.reduce((soma, c) => soma + c.pago_centavos, 0);
   const aReceber = abertas.reduce((soma, c) => soma + c.restante_centavos, 0);
 
-  const consumoHoje = (consumoResposta.data ?? []).reduce(
-    (soma, item) => soma + item.quantidade * item.valor_unitario_centavos,
-    0,
-  );
-  const recebidoHoje = (recebidoResposta.data ?? []).reduce(
-    (soma, item) => soma + item.valor_centavos,
-    0,
-  );
+  const { consumoHoje, recebidoHoje } = totais;
 
   const conteudoRelatorio = (
     <div className="mx-auto w-full max-w-3xl">

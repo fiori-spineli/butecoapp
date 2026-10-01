@@ -3,20 +3,13 @@ import { exigirBar } from "@/lib/bar";
 import { TabBar } from "@/components/tab-bar";
 import { CabecalhoDono } from "@/components/cabecalho-dono";
 import { CardProduto } from "@/components/card-produto";
-import type { Produto } from "@/lib/types";
+import { listarProdutos } from "@/lib/neon/queries";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProdutosPage() {
-  const { supabase, bar } = await exigirBar();
-
-  const { data } = await supabase
-    .from("produtos")
-    .select("*")
-    .eq("bar_id", bar.id)
-    .order("nome");
-
-  const produtos = (data ?? []) as Produto[];
+  const { bar } = await exigirBar();
+  const produtos = await listarProdutos(bar.id);
 
   return (
     <>

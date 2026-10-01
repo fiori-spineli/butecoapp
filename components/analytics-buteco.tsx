@@ -24,6 +24,12 @@ export function AnalyticsButeco() {
 
           if (url.pathname.startsWith("/c/")) {
             url.pathname = "/c/[token]";
+            url.search = "";
+            return { ...evento, url: url.toString() };
+          }
+
+          if (url.pathname === "/auth/recuperar") {
+            url.search = "";
             return { ...evento, url: url.toString() };
           }
 
