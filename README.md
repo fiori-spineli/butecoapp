@@ -40,7 +40,7 @@ O migrador confere o SHA-256 de cada arquivo aplicado. Crie sempre um arquivo nu
 - Configure e verifique um domínio remetente no Resend. Recuperação de senha depende de `RESEND_API_KEY` e `RESEND_FROM_EMAIL`.
 - Configure as duas chaves do Turnstile. Em produção, ausência de configuração bloqueia os formulários protegidos.
 - O primeiro cadastro TOTP de um administrador exige a chave de ativação. Depois, a sessão administrativa exige código de seis dígitos e expira a elevação após 12 horas.
-- Não ative o deploy de produção antes de conferir todas as etapas de `MIGRACAO_NEON.md`.
+- O corte para o Neon foi feito em 01/10/2026; pendências e histórico em `MIGRACAO_NEON.md`. Toda migration nova vai em `neon/migrations/` com número novo e é aplicada no Neon **antes** do deploy que depende dela.
 
 ## Dados antigos
 
