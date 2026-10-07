@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useFocoPreso } from "@/lib/use-foco-preso";
 
 export function ModalAlerta({
   mensagem,
@@ -11,6 +12,9 @@ export function ModalAlerta({
   titulo?: string;
   aoFechar: () => void;
 }) {
+  const dialogo = useRef<HTMLDivElement>(null);
+  useFocoPreso(dialogo, !!mensagem);
+
   useEffect(() => {
     if (!mensagem) return;
 
@@ -33,6 +37,8 @@ export function ModalAlerta({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/70 backdrop-blur-xs animate-in fade-in duration-150">
       <div
+        ref={dialogo}
+        tabIndex={-1}
         role="alertdialog"
         aria-modal="true"
         aria-label={titulo}

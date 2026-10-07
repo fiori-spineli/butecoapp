@@ -28,7 +28,8 @@ export function AnalyticsButeco() {
             return { ...evento, url: url.toString() };
           }
 
-          if (url.pathname === "/auth/recuperar") {
+          // Convite e recuperação carregam e-mail e token na query.
+          if (url.pathname.startsWith("/auth/")) {
             url.search = "";
             return { ...evento, url: url.toString() };
           }

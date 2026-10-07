@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { buscarComandaPublica } from "@/lib/neon/queries";
 import { ContaAoVivo } from "./conta-ao-vivo";
@@ -5,6 +6,13 @@ import { TemaToggle } from "@/components/tema-toggle";
 import { LogoButeco } from "@/components/logo-buteco";
 
 export const dynamic = "force-dynamic";
+
+// O endereço desta página É a chave da conta do cliente: buscador nenhum deve
+// guardá-lo, e nenhum link de saída deve levá-lo no Referer.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+  referrer: "no-referrer",
+};
 
 export default async function PaginaCliente({
   params,

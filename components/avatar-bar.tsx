@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 
 export function AvatarBar({
@@ -9,13 +12,17 @@ export function AvatarBar({
   nome?: string;
   tamanho?: number;
 }) {
-  if (url) {
+  // Uma logo que não carrega (ex.: URL antiga do Supabase, já desligado, que o
+  // otimizador recusa com 400) vira a caneca padrão, não um quadro quebrado.
+  const [falhou, setFalhou] = useState<string | null>(null);
+  if (url && falhou !== url) {
     return (
       <div
         className="relative rounded-full border border-amber-600/50 overflow-hidden shrink-0 shadow-xs bg-stone-100 dark:bg-stone-800"
         style={{ width: tamanho, height: tamanho }}
       >
-        <Image src={url} alt={nome ?? "Logo do Bar"} fill className="object-cover" />
+        <Image src={url} alt={nome ?? "Logo do Bar"} fill sizes={`${tamanho}px`}
+          onError={() => setFalhou(url)} className="object-cover" />
       </div>
     );
   }

@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, useTransition, useCallback } from "react";
+import { LIMITE_DE_PEDIDOS_PENDENTES, QUANTIDADE_MAXIMA_POR_ITEM } from "@/lib/pedido-limites";
 import Image from "next/image";
 import { formatarMomento, formatarReais } from "@/lib/format";
 import { enviarPedidoCliente } from "@/app/actions/pedidos";
 import { LoadingButeco } from "@/components/loading-buteco";
+import { useFocoPreso } from "@/lib/use-foco-preso";
 import type { ComandaPublica } from "@/lib/types";
+
+/** localStorage não avisa a própria aba; a lista só muda quando ela mesma grava. */
+const semAssinatura = () => () => {};
 
 export function ContaAoVivo({
   token,
@@ -21,6 +26,21 @@ export function ContaAoVivo({
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [dispensados, setDispensados] = useState<Set<string>>(() => new Set());
+  // "OK, entendido" vale para este aparelho: sem guardar, o aviso voltava a cada
+  // recarga enquanto o pedido recusado ainda aparece (2 h). Conveniência local,
+  // então localStorage, com try/catch para navegação privada.
+  const chaveDispensados = `buteco:recusas-vistas:${token}`;
+  const vistosSalvos = useSyncExternalStore(
+    semAssinatura,
+    () => { try { return localStorage.getItem(chaveDispensados) ?? "[]"; } catch { return "[]"; } },
+    () => "[]",
+  );
+  const vistosNoAparelho = useMemo(() => {
+    try {
+      const lista = JSON.parse(vistosSalvos);
+      return new Set<string>(Array.isArray(lista) ? lista.filter((x) => typeof x === "string") : []);
+    } catch { return new Set<string>(); }
+  }, [vistosSalvos]);
   const [enviando, iniciarEnvio] = useTransition();
 
   const contaAberta = dados.status === "aberta";
@@ -32,46 +52,67 @@ export function ContaAoVivo({
   // Separa os que estão aguardando entrega dos que foram recusados pelo garçom
   const pedidosPendentes = todosPedidos.filter((p) => p.status === "pendente");
   const pedidosRecusados = todosPedidos.filter(
-    (p) => p.status === "cancelado" && !dispensados.has(p.id)
+    (p) => p.status === "cancelado" && !dispensados.has(p.id) && !vistosNoAparelho.has(p.id)
   );
+  const avisoRecusa = useRef<HTMLDivElement>(null);
+  useFocoPreso(avisoRecusa, pedidosRecusados.length > 0);
+
+  // Uma busca por vez, com prazo, e só a resposta mais recente vale.
+  // Antes: sem trava, `focus` e `visibilitychange` disparavam duas buscas
+  // juntas, uma requisição lenta podia chegar depois de uma nova e repor dado
+  // velho, e uma pendurada não tinha prazo (GUARDRAILS §12).
+  const emVoo = useRef(false);
+  const geracao = useRef(0);
+  const falhas = useRef(0);
+  const ultimaBusca = useRef(0);
 
   const sincronizarConta = useCallback(async () => {
+    if (emVoo.current) return;
+    emVoo.current = true;
+    ultimaBusca.current = Date.now();
+    const minha = ++geracao.current;
     try {
       const resposta = await fetch(`/api/comanda/${token}`, {
         cache: "no-store",
+        signal: AbortSignal.timeout(8000),
       });
-      if (resposta.ok) {
-        const atualizado = await resposta.json();
-        if (atualizado) {
-          setDados(atualizado as ComandaPublica);
-        }
-      }
+      if (!resposta.ok) throw new Error(String(resposta.status));
+      const atualizado = await resposta.json();
+      falhas.current = 0;
+      if (atualizado && minha === geracao.current) setDados(atualizado as ComandaPublica);
     } catch {
-      // Ignora erro passageiro de rede
+      // Rede ruim no bar é rotina: espera mais a cada falha, até 30 s.
+      falhas.current = Math.min(falhas.current + 1, 4);
+    } finally {
+      emVoo.current = false;
     }
   }, [token]);
 
-  // Atualização em tempo real a cada 2,5 segundos
+  // Relógio que tica a cada segundo e decide; busca a cada 2,5 s com a aba à
+  // vista, recua diante de falhas e não gasta nada com a aba escondida.
   useEffect(() => {
     if (!contaAberta) return;
 
-    const intervalo = setInterval(() => {
-      if (!document.hidden) {
-        sincronizarConta();
-      }
-    }, 2500);
+    const intervaloAtual = () => (falhas.current ? Math.min(2500 * 2 ** falhas.current, 30000) : 2500);
+    const relogio = setInterval(() => {
+      if (document.hidden) return;
+      if (Date.now() - ultimaBusca.current < intervaloAtual() - 100) return;
+      void sincronizarConta();
+    }, 1000);
 
+    // Voltar à aba só antecipa a próxima volta do relógio: os eventos chegam
+    // juntos e cada um disparando a própria busca criava chamadas paralelas.
     const aoVoltar = () => {
-      if (!document.hidden) {
-        sincronizarConta();
-      }
+      if (document.hidden) return;
+      falhas.current = 0;
+      ultimaBusca.current = 0;
     };
 
     document.addEventListener("visibilitychange", aoVoltar);
     window.addEventListener("focus", aoVoltar);
 
     return () => {
-      clearInterval(intervalo);
+      clearInterval(relogio);
       document.removeEventListener("visibilitychange", aoVoltar);
       window.removeEventListener("focus", aoVoltar);
     };
@@ -82,6 +123,9 @@ export function ContaAoVivo({
     setDispensados((prev) => {
       const proximo = new Set(prev);
       pedidosRecusados.forEach((p) => proximo.add(p.id));
+      const lembrar = new Set([...vistosNoAparelho, ...proximo]);
+      try { localStorage.setItem(chaveDispensados, JSON.stringify([...lembrar].slice(-100))); }
+      catch { /* sem armazenamento: vale só nesta visita */ }
       return proximo;
     });
   }
@@ -95,7 +139,10 @@ export function ContaAoVivo({
   function alterarQtd(id: string, delta: number) {
     setCarrinho((prev) => {
       const atual = prev[id] ?? 0;
-      const nova = Math.max(0, atual + delta);
+      // Mesmo teto do servidor: o carrinho não deixa montar um pedido que
+      // seria recusado.
+      const nova = Math.min(QUANTIDADE_MAXIMA_POR_ITEM, Math.max(0, atual + delta));
+      if (delta > 0 && !prev[id] && Object.keys(prev).length >= LIMITE_DE_PEDIDOS_PENDENTES) return prev;
       if (nova === 0) {
         // Descarta a chave `id` e fica com o resto — o item saiu do carrinho.
           const resto = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id));
@@ -124,7 +171,9 @@ export function ContaAoVivo({
 
     iniciarEnvio(async () => {
       const res = await enviarPedidoCliente(token, itens);
-      if (res.ok) {
+      // O servidor aceita o pedido inteiro ou nada; a mensagem só diz "enviado"
+      // quando tudo foi gravado, e o carrinho só esvazia nesse caso.
+      if (res.ok && res.pedidos === itens.length) {
         setCarrinho({});
         setAba("conta");
         setMensagemSucesso("Pedido enviado! O garçom confirmará a entrega em instantes.");
@@ -140,7 +189,9 @@ export function ContaAoVivo({
       {/* MODAL DE PEDIDO RECUSADO PELO BAR */}
       {pedidosRecusados.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-3xl border border-rose-300 dark:border-rose-900 bg-white dark:bg-stone-900 p-6 shadow-2xl text-center">
+          <div ref={avisoRecusa} tabIndex={-1} role="alertdialog" aria-modal="true"
+            aria-label="Pedido recusado pelo bar"
+            className="w-full max-w-sm rounded-3xl border border-rose-300 dark:border-rose-900 bg-white dark:bg-stone-900 p-6 shadow-2xl text-center">
             <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -366,6 +417,7 @@ export function ContaAoVivo({
                               src={prod.imagem_url}
                               alt={prod.nome}
                               fill
+                              sizes="48px"
                               className="object-cover"
                             />
                           ) : (
