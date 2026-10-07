@@ -9,6 +9,7 @@ import {
   excluirLancamento, excluirPagamento, encerrarComanda, reabrirComanda,
   repetirLancamento, ComandaErro,
 } from "@/lib/neon/comandas";
+import { auditar } from "@/lib/auditoria";
 
 export type ItemParaLancar =
   | { tipo: "produto"; produto_id: string; quantidade: number }
@@ -62,9 +63,10 @@ export async function lancarItens(clienteId: string, itens: ItemParaLancar[]): P
 }
 
 export async function removerLancamento(clienteId: string, lancamentoId: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   try {
     await excluirLancamento(bar.id, clienteId, lancamentoId);
+    await auditar("item_removido", { ator: user.id, alvo: clienteId, ok: true, detalhe: lancamentoId });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui remover o item."); }
@@ -72,10 +74,11 @@ export async function removerLancamento(clienteId: string, lancamentoId: string)
 
 export async function registrarPagamento(clienteId: string, valorCentavos: number,
   descricao: string, nomePagador?: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   const final = `${nomePagador?.trim() ? `${nomePagador.trim()} · ` : ""}${descricao.trim()}`.slice(0, 120);
   try {
     await adicionarPagamento(bar.id, clienteId, valorCentavos, final);
+    await auditar("pagamento_registrado", { ator: user.id, alvo: clienteId, ok: true, detalhe: `${valorCentavos}` });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui registrar o pagamento."); }
@@ -83,9 +86,10 @@ export async function registrarPagamento(clienteId: string, valorCentavos: numbe
 
 export async function registrarPagamentoDeItem(clienteId: string, lancamentoId: string,
   quantidade: number, nomePagador?: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   try {
     await adicionarPagamentoPorItem(bar.id, clienteId, lancamentoId, quantidade, nomePagador);
+    await auditar("pagamento_registrado", { ator: user.id, alvo: clienteId, ok: true, detalhe: `item ${lancamentoId} x${quantidade}` });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui registrar o pagamento deste item."); }
@@ -103,27 +107,30 @@ export async function repetirItem(clienteId: string, item: {
 }
 
 export async function removerPagamento(clienteId: string, pagamentoId: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   try {
     await excluirPagamento(bar.id, clienteId, pagamentoId);
+    await auditar("pagamento_removido", { ator: user.id, alvo: clienteId, ok: true, detalhe: pagamentoId });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui desfazer o pagamento."); }
 }
 
 export async function fecharConta(clienteId: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   try {
     await encerrarComanda(bar.id, clienteId);
+    await auditar("comanda_fechada", { ator: user.id, alvo: clienteId, ok: true });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui fechar a comanda."); }
 }
 
 export async function reabrirConta(clienteId: string): Promise<Resultado> {
-  const { bar } = await exigirBar();
+  const { bar, user } = await exigirBar();
   try {
     await reabrirComanda(bar.id, clienteId);
+    await auditar("comanda_reaberta", { ator: user.id, alvo: clienteId, ok: true });
     atualizar(clienteId);
     return { ok: true };
   } catch (error) { return falha(error, "Não consegui reabrir a comanda."); }

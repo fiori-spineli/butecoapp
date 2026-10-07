@@ -17,10 +17,18 @@ function resumoNumerico(row: ComandaResumo): ComandaResumo {
   };
 }
 
+/**
+ * Open comandas plus the recently closed ones. Reading the whole history on every
+ * screen refresh (the live sync calls router.refresh) grew without bound; older
+ * closed comandas live on in Relatórios and in the CSV.
+ */
 export async function listarComandas(barId: string): Promise<ComandaResumo[]> {
   const { rows } = await neonPool.query<ComandaResumo>(
-    `SELECT ${resumoSelect} FROM public.comandas_resumo WHERE bar_id = $1
-      ORDER BY status ASC, created_at DESC`, [barId],
+    `SELECT ${resumoSelect} FROM public.comandas_resumo
+      WHERE bar_id = $1
+        AND (status = 'aberta' OR fechada_em > now() - interval '30 days')
+      ORDER BY status ASC, created_at DESC
+      LIMIT 500`, [barId],
   );
   return rows.map(resumoNumerico);
 }
@@ -50,7 +58,8 @@ export async function buscarProduto(barId: string, produtoId: string): Promise<P
 
 export async function listarLancamentos(barId: string, clienteId: string): Promise<Lancamento[]> {
   const { rows } = await neonPool.query<Lancamento>(
-    `SELECT l.*, json_build_object('nome', p.nome, 'imagem_url', p.imagem_url) AS produtos
+    `SELECT l.*, json_build_object('nome', COALESCE(l.descricao, p.nome),
+            'imagem_url', p.imagem_url) AS produtos
        FROM public.lancamentos l
        JOIN public.clientes c ON c.id = l.cliente_id
        LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = c.bar_id
@@ -91,7 +100,8 @@ export async function itensDasComandasAbertas(barId: string) {
   }>(
     `SELECT l.cliente_id, l.quantidade, l.valor_unitario_centavos,
             l.descricao, l.created_at,
-            CASE WHEN p.id IS NULL THEN NULL ELSE json_build_object('nome', p.nome) END AS produtos
+            CASE WHEN p.id IS NULL THEN NULL
+                 ELSE json_build_object('nome', COALESCE(l.descricao, p.nome)) END AS produtos
        FROM public.lancamentos l
        JOIN public.clientes c ON c.id = l.cliente_id
        LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = c.bar_id
@@ -129,7 +139,7 @@ export async function buscarComandaPublica(token: string): Promise<ComandaPublic
             c.status, c.created_at AS aberta_em, c.fechada_em,
             r.total_centavos, r.pago_centavos, r.restante_centavos,
             (SELECT COALESCE(json_agg(json_build_object(
-                'id', l.id, 'nome', COALESCE(p.nome, l.descricao, 'Item'),
+                'id', l.id, 'nome', COALESCE(l.descricao, p.nome, 'Item'),
                 'descricao_livre', l.produto_id IS NULL, 'imagem_url', p.imagem_url,
                 'quantidade', l.quantidade, 'valor_unitario_centavos', l.valor_unitario_centavos,
                 'total_centavos', l.quantidade::bigint * l.valor_unitario_centavos,
@@ -148,7 +158,11 @@ export async function buscarComandaPublica(token: string): Promise<ComandaPublic
                 ORDER BY pp.created_at DESC), '[]'::json)
                FROM public.pedidos_pendentes pp
                JOIN public.produtos p ON p.id = pp.produto_id AND p.bar_id = pp.bar_id
-              WHERE pp.cliente_id = c.id AND pp.status = 'pendente') AS pedidos_pendentes
+              -- Refused orders stay visible for a while so the customer is told,
+              -- instead of watching the order silently vanish.
+              WHERE pp.cliente_id = c.id AND (pp.status = 'pendente' OR
+                (pp.status = 'cancelado' AND pp.atendido_em > now() - interval '2 hours'))
+           ) AS pedidos_pendentes
        FROM public.clientes c JOIN public.bars b ON b.id = c.bar_id
        JOIN public.comandas_resumo r ON r.id = c.id
       WHERE c.token = $1
@@ -184,10 +198,18 @@ export async function assinaturaDoBar(barId: string): Promise<string> {
          UNION ALL
          SELECT 'o:' || pp.id || ':' || pp.status
            FROM public.pedidos_pendentes pp WHERE pp.bar_id = $1
-             AND pp.created_at > now() - interval '3 days'
+             AND (pp.status = 'pendente' OR pp.created_at > now() - interval '3 days')
          UNION ALL
-         SELECT 'r:' || p.id || ':' || p.preco_centavos || ':' || p.estoque_atual
+         -- Everything a screen shows about a product, not just price and stock:
+         -- a rename or a new photo on one device must reach the other one too.
+         SELECT 'r:' || p.id || ':' || p.preco_centavos || ':' || p.estoque_atual || ':' ||
+                p.nome || ':' || p.categoria || ':' || COALESCE(p.imagem_url, '')
            FROM public.produtos p WHERE p.bar_id = $1
+         UNION ALL
+         SELECT 'b:' || b.nome || ':' || COALESCE(b.foto_url, '') || ':' ||
+                COALESCE(b.mensagem_qr, '') || ':' || COALESCE(b.horario_abertura::text, '') ||
+                ':' || COALESCE(b.horario_fechamento::text, '')
+           FROM public.bars b WHERE b.id = $1
        ) changes`, [barId],
   );
   return rows[0].assinatura;

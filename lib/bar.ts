@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getNeonSession } from "@/lib/neon-session";
 import { neonPool } from "@/lib/neon-db";
@@ -8,8 +9,11 @@ import type { Bar } from "@/lib/types";
  *
  * A sessão é conferida no Neon antes da consulta ao bar. Todas as leituras
  * de negócio usam o identificador do bar obtido aqui, nunca do formulário.
+ *
+ * Memorizada por requisição (`cache`): o layout do painel e a página chamam
+ * os dois, e cada chamada custava duas consultas a mais antes dos dados.
  */
-export async function contextoDoDono() {
+export const contextoDoDono = cache(async () => {
   const session = await getNeonSession();
   if (!session) redirect("/login");
   const { rows } = await neonPool.query<Bar>(
@@ -20,7 +24,7 @@ export async function contextoDoDono() {
     user: { id: session.userId, email: session.email },
     bar: rows[0] ?? null,
   };
-}
+});
 
 /** Igual ao anterior, mas exige que o bar já exista (senão manda pro onboarding). */
 export async function exigirBar() {

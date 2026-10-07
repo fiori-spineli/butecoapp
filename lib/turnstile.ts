@@ -5,7 +5,11 @@
  * O widget no navegador oferece a prova, mas nunca autoriza sozinho.
  */
 
+import { headers } from "next/headers";
+
 const ENDPOINT = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+/** Cloudflare's documented always-pass/always-fail test secrets (1x…, 2x…, 3x…). */
+const SEGREDO_DE_TESTE = /^[123]x0+AA$/;
 
 export const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? "";
 
@@ -47,8 +51,20 @@ export async function conferirTurnstile(
       signal: AbortSignal.timeout(8000),
     });
 
-    const dados = (await resposta.json()) as { success?: boolean };
-    return dados.success === true;
+    const dados = (await resposta.json()) as { success?: boolean; hostname?: string };
+    if (dados.success !== true) return false;
+    // Cloudflare recommends checking where the token was issued: a token solved
+    // on another site that shares the sitekey must not open our login. The
+    // public test secrets answer a dummy hostname, so they skip this check.
+    if (SEGREDO_DE_TESTE.test(segredo)) return true;
+    const cabecalhos = await headers();
+    const aceitos = new Set([
+      cabecalhos.get("x-forwarded-host"), cabecalhos.get("host"),
+      (() => { try { return new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "").host; } catch { return null; } })(),
+    ].filter(Boolean).map(h => h!.split(":")[0]));
+    if (dados.hostname && aceitos.has(dados.hostname)) return true;
+    console.error("[turnstile] token emitido para outro host", dados.hostname);
+    return false;
   } catch {
     return false;
   }

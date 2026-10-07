@@ -8,6 +8,7 @@ import { analisarEmail, MENSAGEM_DESCARTAVEL } from "@/lib/email-descartavel";
 import { createInviteLink } from "@/lib/neon/recovery";
 import { revokeUserSessions } from "@/lib/neon-session";
 import { listarObjetos, apagarObjeto } from "@/lib/r2";
+import { auditar } from "@/lib/auditoria";
 import type { EstadoForm } from "@/app/actions/auth";
 
 const NEGADO: EstadoForm = { ok: false, mensagem: "Acesso negado. Valide o segundo fator de administrador." };
@@ -63,13 +64,16 @@ async function provisionar(nome: string, email: string, interessadoId?: string):
   } finally { client.release(); }
 }
 
-async function criar(nome: string, emailInput: string, interessadoId?: string): Promise<EstadoForm> {
+async function criar(ator: string, nome: string, emailInput: string,
+  interessadoId?: string): Promise<EstadoForm> {
   const { email, error } = validar(nome, emailInput);
   if (error) return { ok: false, mensagem: error };
   const result = await provisionar(nome, email, interessadoId);
+  await auditar("cliente_criado", { ator, alvo: result.ok ? result.userId : null, ok: result.ok });
   if (!result.ok) return { ok: false, mensagem: result.mensagem };
   try {
     const link = await createInviteLink(result.userId, email);
+    await auditar("convite_gerado", { ator, alvo: result.userId, ok: true });
     revalidatePath("/admin");
     return { ok: true, mensagem: `Bar "${nome}" criado. Envie este convite para o dono definir a senha: ${link}` };
   } catch (error) {
@@ -80,63 +84,96 @@ async function criar(nome: string, emailInput: string, interessadoId?: string): 
 }
 
 export async function criarClienteDoZero(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
-  return criar(String(formData.get("bar_nome") ?? "").trim(), String(formData.get("email") ?? ""));
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
+  return criar(admin.userId, String(formData.get("bar_nome") ?? "").trim(),
+    String(formData.get("email") ?? ""));
 }
 
 export async function criarClienteManual(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   if (String(formData.get("senha") ?? "")) return { ok: false,
     mensagem: "A senha deve ser definida pelo dono no convite. Deixe o campo de senha vazio." };
-  return criar(String(formData.get("bar_nome") ?? "").trim(), String(formData.get("email") ?? ""));
+  return criar(admin.userId, String(formData.get("bar_nome") ?? "").trim(),
+    String(formData.get("email") ?? ""));
 }
 
 export async function criarClienteDoPedido(id: string, nome: string, email: string): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   if (!UUID.test(id)) return { ok: false, mensagem: "Pedido inválido." };
-  return criar(nome.trim(), email, id);
+  return criar(admin.userId, nome.trim(), email, id);
 }
 
 export async function renomearBar(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   const id = String(formData.get("bar_id") ?? "");
   const nome = String(formData.get("bar_nome") ?? "").trim();
   if (!UUID.test(id) || nome.length < 2 || nome.length > 120) return { ok: false, mensagem: "Dados inválidos." };
   const result = await neonPool.query("UPDATE public.bars SET nome=$1 WHERE id=$2", [nome, id]);
+  await auditar("bar_renomeado", { ator: admin.userId, alvo: id, ok: !!result.rowCount });
   if (!result.rowCount) return { ok: false, mensagem: "Bar não encontrado." };
   revalidatePath("/admin");
   return { ok: true, mensagem: `Bar renomeado para "${nome}".` };
 }
 
 export async function alternarSuspensao(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   const ownerId = String(formData.get("owner_id") ?? "");
   if (!UUID.test(ownerId)) return { ok: false, mensagem: "Dono inválido." };
   const suspender = String(formData.get("suspender") ?? "") === "1";
-  const result = await neonPool.query(
-    `UPDATE public.users SET suspended_at = CASE WHEN $1 THEN now() ELSE NULL END
-      WHERE id=$2 AND EXISTS(SELECT 1 FROM public.bars WHERE owner_id=$2)`, [suspender, ownerId]);
-  if (!result.rowCount) return { ok: false, mensagem: "Dono não encontrado." };
-  // Without this, lifting the suspension would bring every old token back to life.
-  if (suspender) await revokeUserSessions(neonPool, ownerId);
+  // One transaction: the flag and the revocation land together or not at all.
+  // They used to be two commands, and a failure between them left a suspended
+  // owner whose old tokens came back to life on reactivation. Reactivating
+  // revokes too, so nothing issued before the suspension survives it.
+  const client = await neonPool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query(
+      `UPDATE public.users SET suspended_at = CASE WHEN $1 THEN now() ELSE NULL END
+        WHERE id=$2 AND EXISTS(SELECT 1 FROM public.bars WHERE owner_id=$2)`, [suspender, ownerId]);
+    if (!result.rowCount) {
+      await client.query("ROLLBACK");
+      return { ok: false, mensagem: "Dono não encontrado." };
+    }
+    await revokeUserSessions(client, ownerId);
+    await auditar(suspender ? "cliente_suspenso" : "cliente_reativado",
+      { ator: admin.userId, alvo: ownerId, ok: true, client });
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    console.error("[admin] suspensão falhou", error);
+    return { ok: false, mensagem: "Não consegui alterar o acesso. Nada foi mudado." };
+  } finally { client.release(); }
   revalidatePath("/admin");
   return { ok: true, mensagem: suspender ? "Acesso suspenso; dados preservados." : "Acesso reativado." };
 }
 
 export async function gerarLinkDeAcesso(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   const { email, problema } = analisarEmail(String(formData.get("email") ?? ""));
   if (problema) return { ok: false, mensagem: "E-mail inválido." };
   const { rows } = await neonPool.query<{ id: string }>(
     `SELECT u.id FROM public.users u JOIN public.bars b ON b.owner_id=u.id
       WHERE lower(u.email)=$1 LIMIT 1`, [email]);
   if (!rows[0]) return { ok: false, mensagem: "Cliente não encontrado." };
-  try { return { ok: true, mensagem: await createInviteLink(rows[0].id, email) }; }
-  catch { return { ok: false, mensagem: "Não consegui gerar o convite agora." }; }
+  try {
+    const link = await createInviteLink(rows[0].id, email);
+    await auditar("convite_gerado", { ator: admin.userId, alvo: rows[0].id, ok: true });
+    return { ok: true, mensagem: link };
+  } catch {
+    await auditar("convite_gerado", { ator: admin.userId, alvo: rows[0].id, ok: false });
+    return { ok: false, mensagem: "Não consegui gerar o convite agora." };
+  }
 }
 
 export async function excluirCliente(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   const barId = String(formData.get("bar_id") ?? "");
   const ownerId = String(formData.get("owner_id") ?? "");
   const confirmacao = String(formData.get("confirmacao") ?? "").trim();
@@ -152,7 +189,13 @@ export async function excluirCliente(_anterior: EstadoForm, formData: FormData):
       await client.query("ROLLBACK");
       return { ok: false, mensagem: "Digite exatamente o nome atual do bar para confirmar." };
     }
+    // Cascade radius (GUARDRAILS §1): users -> bars -> clientes, produtos ->
+    // lancamentos, pagamentos, pedidos_pendentes; sessions, mfa_factors and
+    // password_recovery go too; interessados.bar_id is SET NULL. The audit row
+    // keeps only ids, so it survives the cascade by design.
     await client.query("DELETE FROM public.users WHERE id=$1", [ownerId]);
+    await auditar("cliente_excluido", { ator: admin.userId, alvo: ownerId, ok: true,
+      detalhe: `bar ${barId}`, client });
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => {});
