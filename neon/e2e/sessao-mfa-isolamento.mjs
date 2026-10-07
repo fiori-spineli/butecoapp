@@ -167,6 +167,33 @@ check("cookie pré-MFA deixa de valer após a elevação (rotação)",
   (await action("mfa", "verificarStatusMFA", [], ad.cookie)).value?.temFatorAtivo === false);
 const m1 = await action("admin", "dispararManutencao", ["analisar"], ok1.cookie);
 check("admin com MFA recente: action privilegiada aceita", m1.value?.ok === true, m1.value?.mensagem);
+
+// ---------- suspensão pela ACTION real (não por SQL): revoga e não ressuscita ----------
+// Args (estadoAnterior, FormData) no protocolo de resposta do React: o FormData
+// vira "$K1", com os campos em "_1_<nome>", e a parte "0" leva os argumentos.
+// A parte "0" vai POR ÚLTIMO, como o encodeReply faz: o servidor decodifica em
+// streaming e montaria o FormData antes de os campos chegarem.
+async function actionForm(file, name, campos, cookie) {
+  const id = ids[`app/actions/${file}.ts#${name}`];
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(campos)) fd.append(`_1_${k}`, v);
+  fd.append("0", JSON.stringify([null, "$K1"]));
+  const res = await fetch(`${BASE}/admin`, { method: "POST", redirect: "manual",
+    headers: { "Next-Action": id, Origin: BASE, Accept: "text/x-component", Cookie: cookie }, body: fd });
+  const line = (await res.text()).split("\n").find(l => l.startsWith("1:"));
+  try { return line ? JSON.parse(line.slice(2)) : null; } catch { return line; }
+}
+const a3 = await login("dono-a@example.test");
+check("dono A logado antes da suspensão", await atividade(a3.cookie) === 200);
+const susp = await actionForm("clientes", "alternarSuspensao", { owner_id: A, suspender: "1" }, ok1.cookie);
+check("admin suspende pela action", susp?.ok === true, susp?.mensagem);
+check("sessão do suspenso: 401", await atividade(a3.cookie) === 401);
+const reat = await actionForm("clientes", "alternarSuspensao", { owner_id: A, suspender: "0" }, ok1.cookie);
+check("admin reativa pela action", reat?.ok === true, reat?.mensagem);
+check("token de antes da suspensão NÃO volta a valer", await atividade(a3.cookie) === 401);
+check("suspensão e reativação ficam na auditoria", sql(
+  `select count(*) from app_private.audit_log where target_id='${A}'
+     and action in ('cliente_suspenso','cliente_reativado') and ok`) === "2");
 const replay = await action("mfa", "validarCodigoMFA", [ADMIN, totp(secret, stepNow)], ok1.cookie);
 check("replay do mesmo código: recusado", replay.value?.ok === false);
 const anterior = await action("mfa", "validarCodigoMFA", [ADMIN, totp(secret, stepNow - 1)], ok1.cookie);
