@@ -21,33 +21,66 @@ export function CardProduto({ produto }: { produto: Produto }) {
    * aparelhos ajustando o mesmo produto nao apagam o ajuste um do outro.
    */
   const [estoque, setEstoque] = useState(produto.estoque_atual);
+  const [falhou, setFalhou] = useState(false);
   const pendenteRef = useRef(0);
+  const emVooRef = useRef(0);
+  const envioRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // O servidor e a verdade: quando a revalidacao traz um valor novo e nao ha
-  // toque esperando para ser enviado, a tela acompanha (inclusive ajuste feito
+  // toque esperando nem envio no ar, a tela acompanha (inclusive ajuste feito
   // no outro aparelho).
   useEffect(() => {
-    if (pendenteRef.current === 0) setEstoque(produto.estoque_atual);
+    if (pendenteRef.current === 0 && emVooRef.current === 0) setEstoque(produto.estoque_atual);
   }, [produto.estoque_atual]);
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  async function enviar() {
+    timerRef.current = null;
+    const acumulado = pendenteRef.current;
+    pendenteRef.current = 0;
+    if (acumulado === 0) return;
+    const numero = ++envioRef.current;
+    emVooRef.current += 1;
+    try {
+      const r = await ajustarEstoque(produto.id, acumulado);
+      // So a resposta do envio MAIS RECENTE manda no numero: uma resposta antiga
+      // chegando depois mostraria um estoque que ja ficou para tras.
+      if (numero !== envioRef.current) return;
+      if (!r.ok) {
+        setEstoque((atual) => Math.max(0, atual - acumulado));
+        setFalhou(true);
+      } else if (typeof r.estoque === "number" && pendenteRef.current === 0) {
+        setEstoque(r.estoque);
+        setFalhou(false);
+      }
+    } catch {
+      // Sem rede: desfaz o otimismo e avisa, em vez de exibir um numero que o
+      // banco nunca recebeu.
+      setEstoque((atual) => Math.max(0, atual - acumulado));
+      setFalhou(true);
+    } finally {
+      emVooRef.current -= 1;
+    }
+  }
+
+  // Sair da tela com toque pendente envia na hora. Antes o desmonte so
+  // cancelava o relogio, e o ajuste feito meio segundo antes de navegar sumia.
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (pendenteRef.current !== 0) void enviar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function mudarEstoque(delta: number) {
-    setEstoque((atual) => Math.max(0, atual + delta));
+    // O delta que vai ao banco e o que a tela mostra andam juntos: no zero,
+    // o "-" nao acumula um ajuste que a tela nao exibiu.
+    if (estoque + delta < 0) return;
+    setEstoque((atual) => atual + delta);
     pendenteRef.current += delta;
+    setFalhou(false);
 
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(async () => {
-      const acumulado = pendenteRef.current;
-      pendenteRef.current = 0;
-      if (acumulado === 0) return;
-
-      const r = await ajustarEstoque(produto.id, acumulado);
-      // Recusa do servidor desfaz o otimismo em vez de deixar numero mentiroso.
-      if (!r.ok) setEstoque((atual) => Math.max(0, atual - acumulado));
-      else if (typeof r.estoque === "number") setEstoque(r.estoque);
-    }, 500);
+    timerRef.current = setTimeout(() => { void enviar(); }, 500);
   }
 
   return (
@@ -55,7 +88,8 @@ export function CardProduto({ produto }: { produto: Produto }) {
       <Link href={`/produtos/${produto.id}`} className="block flex-1">
         <div className="relative aspect-square mb-3 rounded-lg bg-stone-100 dark:bg-stone-800 overflow-hidden">
           {produto.imagem_url && (
-            <Image src={produto.imagem_url} alt={produto.nome} fill className="object-cover" />
+            <Image src={produto.imagem_url} alt={produto.nome} fill
+              sizes="(min-width: 1024px) 220px, (min-width: 640px) 30vw, 45vw" className="object-cover" />
           )}
         </div>
         <h3 className="text-sm font-bold truncate">{produto.nome}</h3>
@@ -79,8 +113,13 @@ export function CardProduto({ produto }: { produto: Produto }) {
         >
           -
         </button>
-        <span className="text-xs font-black tabular-nums flex-1 text-center">
+        <span
+          title={falhou ? "O último ajuste não foi salvo. Tente de novo." : undefined}
+          className={`text-xs font-black tabular-nums flex-1 text-center ${
+            falhou ? "text-rose-600 dark:text-rose-400 underline decoration-dotted" : ""}`}
+        >
           {estoque}
+          <span role="status" className="sr-only">{falhou ? "O ajuste de estoque não foi salvo." : ""}</span>
         </span>
         <button
           onClick={() => mudarEstoque(1)}

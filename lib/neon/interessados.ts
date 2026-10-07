@@ -55,7 +55,11 @@ export async function listarInteressadosNoNeon(): Promise<Interessado[]> {
   const { rows } = await neonPool.query<Interessado>(
     `SELECT id, nome, bar_nome, email, telefone, cidade, mensagem,
             status, observacao, atendido_em, bar_id, created_at
-       FROM public.interessados ORDER BY created_at DESC LIMIT 200`,
+       FROM public.interessados
+      -- Every lead still waiting for an answer, however old, plus recent history.
+      -- A flat LIMIT 200 would quietly hide the oldest unanswered requests.
+      WHERE status IN ('novo', 'contatado') OR created_at > now() - interval '90 days'
+      ORDER BY created_at DESC LIMIT 1000`,
   );
   return rows;
 }

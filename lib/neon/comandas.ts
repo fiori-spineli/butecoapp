@@ -14,6 +14,9 @@ async function comComanda<T>(barId: string, clienteId: string,
   const client = await neonPool.connect();
   try {
     await client.query("BEGIN");
+    // A stuck lock must fail the request, not hang it until the function dies.
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query("SET LOCAL statement_timeout = '15s'");
     const { rows } = await client.query<ClienteBloqueado>(
       `SELECT id, status FROM public.clientes WHERE id = $1 AND bar_id = $2 FOR UPDATE`,
       [clienteId, barId],
@@ -61,16 +64,18 @@ export async function adicionarItens(barId: string, clienteId: string, itens: It
         throw new ComandaErro("Quantidade inválida.");
       }
       if (item.tipo === "produto") {
-        const { rows } = await client.query<{ preco_centavos: number }>(
-          "SELECT preco_centavos FROM public.produtos WHERE id = $1 AND bar_id = $2",
+        const { rows } = await client.query<{ preco_centavos: number; nome: string }>(
+          "SELECT preco_centavos, nome FROM public.produtos WHERE id = $1 AND bar_id = $2",
           [item.produto_id, barId],
         );
         if (!rows[0]) throw new ComandaErro("Produto não encontrado neste bar.");
+        // The sale keeps the name it was sold under, like it keeps the price:
+        // renaming or deleting the product later must not rewrite history.
         await client.query(
           `INSERT INTO public.lancamentos
-           (cliente_id, produto_id, quantidade, valor_unitario_centavos)
-           VALUES ($1, $2, $3, $4)`,
-          [clienteId, item.produto_id, quantidade, rows[0].preco_centavos],
+           (cliente_id, produto_id, descricao, quantidade, valor_unitario_centavos)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [clienteId, item.produto_id, rows[0].nome, quantidade, rows[0].preco_centavos],
         );
       } else if (item.tipo === "livre") {
         const valor = Number(item.valor_centavos);
@@ -130,7 +135,7 @@ export async function adicionarPagamentoPorItem(barId: string, clienteId: string
       quantidade: number; valor_unitario_centavos: number; nome: string;
     }>(
       `SELECT l.quantidade, l.valor_unitario_centavos,
-              COALESCE(p.nome, l.descricao, 'Item') AS nome
+              COALESCE(l.descricao, p.nome, 'Item') AS nome
          FROM public.lancamentos l
          LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = $1
         WHERE l.id = $2 AND l.cliente_id = $3`, [barId, lancamentoId, clienteId],

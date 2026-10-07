@@ -8,6 +8,7 @@ import { enviarEmail } from "@/lib/email-resend";
 import { openSession, revokeUserSessions } from "@/lib/neon-session";
 import { problemaDaSenha } from "@/lib/senha";
 import { origemDoApp } from "@/lib/url";
+import { auditar } from "@/lib/auditoria";
 
 const COOKIE_RECOVERY = "buteco_recovery";
 const EXPIRACAO_CODIGO_MINUTOS = 60;
@@ -94,20 +95,29 @@ export async function requestRecovery(email: string, ipHash: string): Promise<bo
   if (!user) return true;
   const code = randomInt(0, 100_000_000).toString().padStart(8, "0");
   const codeHash = hashCode(user.id, code);
-  await neonPool.query(
+  // A live invite from the admin is never replaced by an e-mailed code: anyone
+  // who knows the address could otherwise void the owner's invitation.
+  const { rowCount } = await neonPool.query(
     `INSERT INTO app_private.password_recovery
-     (user_id, code_hash, expires_at, attempts, confirmed_at, created_at)
-     VALUES ($1, $2, now() + interval '1 hour', 0, NULL, now())
+     (user_id, code_hash, expires_at, attempts, confirmed_at, created_at, kind)
+     VALUES ($1, $2, now() + interval '1 hour', 0, NULL, now(), 'code')
      ON CONFLICT (user_id) DO UPDATE SET
        code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at,
-       attempts = 0, confirmed_at = NULL, created_at = now()`,
+       attempts = 0, confirmed_at = NULL, created_at = now(), kind = 'code'
+     WHERE NOT (password_recovery.kind = 'invite' AND password_recovery.expires_at > now())`,
     [user.id, codeHash],
   );
+  if (!rowCount) return true;
   try {
     await enviarEmail(user.email, "Código de acesso do ButecoApp",
       `Seu código para criar uma nova senha é ${code}.\n\nEle vale por ${EXPIRACAO_CODIGO_MINUTOS} minutos. Se você não pediu isso, ignore esta mensagem.`);
+    await auditar("recuperacao_pedida", { alvo: user.id, ok: true });
   } catch (error) {
+    // The answer stays generic (no account enumeration), but the failure must be
+    // findable: it goes to the audit trail, not only to the runtime log.
     console.error("[recovery] envio falhou", error);
+    await auditar("recuperacao_envio_falhou", { alvo: user.id, ok: false,
+      detalhe: error instanceof Error ? error.message : "erro desconhecido" });
     await neonPool.query(
       "DELETE FROM app_private.password_recovery WHERE user_id = $1 AND code_hash = $2",
       [user.id, codeHash],
@@ -121,11 +131,11 @@ export async function createInviteLink(userId: string, email: string): Promise<s
   const token = randomBytes(32).toString("hex");
   await neonPool.query(
     `INSERT INTO app_private.password_recovery
-     (user_id, code_hash, expires_at, attempts, confirmed_at, created_at)
-     VALUES ($1, $2, now() + interval '24 hours', 0, NULL, now())
+     (user_id, code_hash, expires_at, attempts, confirmed_at, created_at, kind)
+     VALUES ($1, $2, now() + interval '24 hours', 0, NULL, now(), 'invite')
      ON CONFLICT (user_id) DO UPDATE SET
        code_hash = EXCLUDED.code_hash, expires_at = EXCLUDED.expires_at,
-       attempts = 0, confirmed_at = NULL, created_at = now()`,
+       attempts = 0, confirmed_at = NULL, created_at = now(), kind = 'invite'`,
     [userId, hashCode(userId, token)],
   );
   const link = new URL("/auth/recuperar", await origemDoApp());
@@ -134,24 +144,40 @@ export async function createInviteLink(userId: string, email: string): Promise<s
   return link.toString();
 }
 
-export async function confirmRecovery(email: string, code: string): Promise<boolean> {
-  if (!/^\d{8}$/.test(code) && !/^[0-9a-f]{64}$/.test(code)) return false;
+export async function confirmRecovery(email: string, code: string,
+  ipHash: string): Promise<boolean> {
+  const kind = /^\d{8}$/.test(code) ? "code" : /^[0-9a-f]{64}$/.test(code) ? "invite" : null;
+  if (!kind) return false;
+  // Attempts per address live on the row; this caps one source across addresses.
+  const { rows: limite } = await neonPool.query<{ attempts: number }>(
+    `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
+     VALUES ($1, now(), 1)
+     ON CONFLICT (key_hash) DO UPDATE SET
+       attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
+         THEN 1 ELSE auth_rate_limits.attempts + 1 END,
+       window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
+         THEN now() ELSE auth_rate_limits.window_start END
+     RETURNING attempts`, [digest(`recovery:confirm:ip:${ipHash}`)],
+  );
+  if (limite[0].attempts > 30) return false;
   const client = await neonPool.connect();
   let userId: string | null = null;
   let codeVersion: string | null = null;
   try {
     await client.query("BEGIN");
     const { rows } = await client.query<{
-      user_id: string; code_hash: Buffer; attempts: number;
+      user_id: string; code_hash: Buffer; attempts: number; kind: string;
     }>(
-      `SELECT r.user_id, r.code_hash, r.attempts
+      `SELECT r.user_id, r.code_hash, r.attempts, r.kind
          FROM app_private.password_recovery r
          JOIN public.users u ON u.id = r.user_id
         WHERE lower(u.email) = $1 AND r.expires_at > now()
           AND r.confirmed_at IS NULL FOR UPDATE OF r`, [email],
     );
     const recovery = rows[0];
-    if (!recovery || recovery.attempts >= 5) {
+    // An 8-digit guess against a 64-hex invite (or the reverse) can never match;
+    // counting it would let a stranger burn the owner's invitation.
+    if (!recovery || recovery.kind !== kind || recovery.attempts >= 5) {
       await client.query("COMMIT");
       return false;
     }
@@ -210,6 +236,7 @@ export async function saveRecoveryPassword(password: string): Promise<boolean> {
     // The new password ends every other device, even one still holding a valid cookie.
     await revokeUserSessions(client, proof.userId);
     await openSession(proof.userId, hash, { client });
+    await auditar("senha_trocada", { ator: proof.userId, alvo: proof.userId, ok: true, client });
     await client.query("COMMIT");
   } catch (error) {
     await client.query("ROLLBACK");

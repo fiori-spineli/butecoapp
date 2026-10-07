@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useFocoPreso } from "@/lib/use-foco-preso";
 
 export function Modal({
   titulo,
@@ -13,6 +14,9 @@ export function Modal({
   aoFechar: () => void;
   children: React.ReactNode;
 }) {
+  const dialogo = useRef<HTMLDivElement>(null);
+  useFocoPreso(dialogo, aberto);
+
   useEffect(() => {
     if (!aberto) return;
 
@@ -42,6 +46,8 @@ export function Modal({
       />
 
       <div
+        ref={dialogo}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label={titulo}

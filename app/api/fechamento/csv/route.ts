@@ -64,110 +64,125 @@ export async function GET() {
   const { bar } = await exigirBar();
   const inicioDoDia = inicioDoDiaLocalISO();
 
-  // O que interessa num fechamento: o que está aberto agora (de qualquer dia,
-  // inclusive a mesa esquecida de ontem) e o que foi fechado hoje.
-  const { rows: comandasCru } = await neonPool.query<LinhaComanda>(
-    `SELECT id, nome, numero_mesa, status, created_at, fechada_em,
-            total_centavos, pago_centavos, restante_centavos
-       FROM public.comandas_resumo
-      WHERE bar_id = $1 AND (status = 'aberta' OR fechada_em >= $2)
-      ORDER BY created_at`, [bar.id, inicioDoDia],
-  );
-  const comandas = comandasCru.map(c => ({
-    ...c, total_centavos: Number(c.total_centavos), pago_centavos: Number(c.pago_centavos),
-    restante_centavos: Number(c.restante_centavos),
-  }));
-  const { rows: lancamentos } = await neonPool.query<{
-    cliente_id: string; quantidade: number; valor_unitario_centavos: number;
-    descricao: string | null; created_at: string; produtos: { nome: string } | null;
-  }>(
-    `SELECT l.cliente_id, l.quantidade, l.valor_unitario_centavos,
-            l.descricao, l.created_at,
-            CASE WHEN p.id IS NULL THEN NULL ELSE json_build_object('nome', p.nome) END AS produtos
-       FROM public.lancamentos l JOIN public.clientes c ON c.id = l.cliente_id
-       LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = c.bar_id
-      WHERE c.bar_id = $1 AND (c.status = 'aberta' OR c.fechada_em >= $2)
-      ORDER BY l.created_at`, [bar.id, inicioDoDia],
-  );
-
-  const cabecalho = [
-    "Comanda",
-    "Mesa",
-    "Situacao",
-    "Aberta em",
-    "Fechada em",
-    "Item",
-    "Qtd",
-    "Valor unitario",
-    "Total do item",
-    "Lancado em",
-    "Total da comanda",
-    "Pago",
-    "Restante",
-  ];
-
-  const linhas: string[] = [cabecalho.map(celula).join(SEPARADOR)];
-
-  for (const comanda of comandas) {
-    const itens = lancamentos.filter(
-      (l) => (l as { cliente_id: string }).cliente_id === comanda.id,
+  // As duas leituras têm de ver o MESMO instante do banco: um item lançado entre
+  // elas aparecia na lista de itens sem entrar no total da comanda (ou o
+  // contrário). REPEATABLE READ READ ONLY dá uma foto só para as duas.
+  const cliente = await neonPool.connect();
+  try {
+    await cliente.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+    // O que interessa num fechamento: o que está aberto agora (de qualquer dia,
+    // inclusive a mesa esquecida de ontem) e o que foi fechado hoje.
+    const { rows: comandasCru } = await cliente.query<LinhaComanda>(
+      `SELECT id, nome, numero_mesa, status, created_at, fechada_em,
+              total_centavos, pago_centavos, restante_centavos
+         FROM public.comandas_resumo
+        WHERE bar_id = $1 AND (status = 'aberta' OR fechada_em >= $2)
+        ORDER BY created_at`, [bar.id, inicioDoDia],
     );
+    const comandas = comandasCru.map(c => ({
+      ...c, total_centavos: Number(c.total_centavos), pago_centavos: Number(c.pago_centavos),
+      restante_centavos: Number(c.restante_centavos),
+    }));
+    const { rows: lancamentos } = await cliente.query<{
+      cliente_id: string; quantidade: number; valor_unitario_centavos: number;
+      descricao: string | null; created_at: string; produtos: { nome: string } | null;
+    }>(
+      `SELECT l.cliente_id, l.quantidade, l.valor_unitario_centavos,
+              l.descricao, l.created_at,
+              CASE WHEN p.id IS NULL THEN NULL
+                   ELSE json_build_object('nome', COALESCE(l.descricao, p.nome)) END AS produtos
+         FROM public.lancamentos l JOIN public.clientes c ON c.id = l.cliente_id
+         LEFT JOIN public.produtos p ON p.id = l.produto_id AND p.bar_id = c.bar_id
+        WHERE c.bar_id = $1 AND (c.status = 'aberta' OR c.fechada_em >= $2)
+        ORDER BY l.created_at`, [bar.id, inicioDoDia],
+    );
+    await cliente.query("COMMIT");
 
-    const base = [
-      comanda.nome,
-      comanda.numero_mesa ?? "",
-      comanda.status === "aberta" ? "Aberta" : "Fechada",
-      momento(comanda.created_at),
-      momento(comanda.fechada_em),
+    const cabecalho = [
+      "Comanda",
+      "Mesa",
+      "Situacao",
+      "Aberta em",
+      "Fechada em",
+      "Item",
+      "Qtd",
+      "Valor unitario",
+      "Total do item",
+      "Lancado em",
+      "Total da comanda (repete em cada linha)",
+      "Pago na comanda (repete)",
+      "Restante na comanda (repete)",
     ];
 
-    const fim = [
-      dinheiro(comanda.total_centavos),
-      dinheiro(comanda.pago_centavos),
-      dinheiro(comanda.restante_centavos),
-    ];
+    const linhas: string[] = [cabecalho.map(celula).join(SEPARADOR)];
 
-    // Comanda aberta sem nada lançado ainda também aparece: sumir com ela do
-    // arquivo faria a conta de "quantas mesas estavam abertas" não bater.
-    if (itens.length === 0) {
-      linhas.push([...base, "(sem itens)", "", "", "", "", ...fim].map(celula).join(SEPARADOR));
-      continue;
-    }
-
-    for (const item of itens) {
-      const nome =
-        (item as { produtos?: { nome?: string } | null }).produtos?.nome ??
-        (item as { descricao?: string | null }).descricao ??
-        "Item";
-      const quantidade = (item as { quantidade: number }).quantidade;
-      const unitario = (item as { valor_unitario_centavos: number }).valor_unitario_centavos;
-
-      linhas.push(
-        [
-          ...base,
-          nome,
-          quantidade,
-          dinheiro(unitario),
-          dinheiro(quantidade * unitario),
-          momento((item as { created_at: string }).created_at),
-          ...fim,
-        ]
-          .map(celula)
-          .join(SEPARADOR),
+    for (const comanda of comandas) {
+      const itens = lancamentos.filter(
+        (l) => (l as { cliente_id: string }).cliente_id === comanda.id,
       );
+
+      const base = [
+        comanda.nome,
+        comanda.numero_mesa ?? "",
+        comanda.status === "aberta" ? "Aberta" : "Fechada",
+        momento(comanda.created_at),
+        momento(comanda.fechada_em),
+      ];
+
+      const fim = [
+        dinheiro(comanda.total_centavos),
+        dinheiro(comanda.pago_centavos),
+        dinheiro(comanda.restante_centavos),
+      ];
+
+      // Comanda aberta sem nada lançado ainda também aparece: sumir com ela do
+      // arquivo faria a conta de "quantas mesas estavam abertas" não bater.
+      if (itens.length === 0) {
+        linhas.push([...base, "(sem itens)", "", "", "", "", ...fim].map(celula).join(SEPARADOR));
+        continue;
+      }
+
+      for (const item of itens) {
+        const nome =
+          (item as { produtos?: { nome?: string } | null }).produtos?.nome ??
+          (item as { descricao?: string | null }).descricao ??
+          "Item";
+        const quantidade = (item as { quantidade: number }).quantidade;
+        const unitario = (item as { valor_unitario_centavos: number }).valor_unitario_centavos;
+
+        linhas.push(
+          [
+            ...base,
+            nome,
+            quantidade,
+            dinheiro(unitario),
+            dinheiro(quantidade * unitario),
+            momento((item as { created_at: string }).created_at),
+            ...fim,
+          ]
+            .map(celula)
+            .join(SEPARADOR),
+        );
+      }
     }
+
+    // Data de São Paulo: depois das 21h o UTC já é o dia seguinte.
+    const hoje = inicioDoDia.slice(0, 10);
+    const corpo = `﻿${linhas.join("\r\n")}\r\n`;
+
+    return new Response(corpo, {
+      headers: {
+        "content-type": "text/csv; charset=utf-8",
+        "content-disposition": `attachment; filename="fechamento-${bar.slug}-${hoje}.csv"`,
+        // Conta de bar não pode vir de cache: o arquivo de agora tem de ser o
+        // movimento de agora.
+        "cache-control": "private, no-store",
+      },
+    });
+  } catch (erro) {
+    await cliente.query("ROLLBACK").catch(() => {});
+    throw erro;
+  } finally {
+    cliente.release();
   }
-
-  const hoje = new Date().toISOString().slice(0, 10);
-  const corpo = `﻿${linhas.join("\r\n")}\r\n`;
-
-  return new Response(corpo, {
-    headers: {
-      "content-type": "text/csv; charset=utf-8",
-      "content-disposition": `attachment; filename="fechamento-${bar.slug}-${hoje}.csv"`,
-      // Conta de bar não pode vir de cache: o arquivo de agora tem de ser o
-      // movimento de agora.
-      "cache-control": "private, no-store",
-    },
-  });
 }

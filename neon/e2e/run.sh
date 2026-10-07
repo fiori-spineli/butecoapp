@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 # Local, disposable end-to-end run: Postgres in Docker + `next start` on :3100.
-# Proves code behavior only. It is NOT evidence about the Neon branches or the
-# Vercel preview (GUARDRAILS §2): the base schema here is the ORM model, not a
-# dump of production. Never point it at a real DATABASE_URL.
+# Proves code behavior on the production schema (neon/baseline + migrations).
+# It is NOT evidence about the Neon branches, the real R2 bucket or the Vercel
+# deployment (GUARDRAILS §2). Never point it at a real DATABASE_URL.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 WORK="${WORK:-$(mktemp -d)}"; mkdir -p "$WORK"
 PORT=3100; C=buteco-pg-e2e
 docker rm -f "$C" >/dev/null 2>&1 || true
 docker run -d --name "$C" -e POSTGRES_PASSWORD=localtest -e POSTGRES_DB=buteco \
-  -p 127.0.0.1:55432:5432 postgres:17-alpine >/dev/null
+  -p 127.0.0.1:55432:5432 postgres:18-alpine >/dev/null
 until docker exec "$C" pg_isready -U postgres -d buteco >/dev/null 2>&1; do sleep 1; done
-docker exec -i "$C" psql -v ON_ERROR_STOP=1 -q -U postgres -d buteco < neon/e2e/local-base.sql
+# The same base schema production has (neon/baseline), not a hand-written model:
+# CHECKs, composite FKs and columns must match or the run proves nothing about prod.
+docker exec -i "$C" psql -v ON_ERROR_STOP=1 -q -U postgres -d buteco < neon/baseline/0000_base.sql
 
 export DATABASE_URL="postgresql://postgres:localtest@127.0.0.1:55432/buteco" NEON_EXPECTED_HOST=127.0.0.1
 node neon/migrate.mjs && node neon/migrate.mjs && node neon/verify.mjs

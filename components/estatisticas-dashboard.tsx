@@ -1,6 +1,26 @@
 "use client";
 
-import { formatarReais } from "@/lib/format";
+import { formatarReais, TIMEZONE } from "@/lib/format";
+
+/**
+ * Data e hora em São Paulo, nunca no fuso de quem renderiza. Este componente
+ * roda no servidor (UTC na Vercel) e depois no navegador: com getDate() e
+ * getHours() os dois calculavam números diferentes e a venda das 22h caía no
+ * dia seguinte.
+ */
+const partesSP = new Intl.DateTimeFormat("en-US", {
+  timeZone: TIMEZONE, year: "numeric", month: "numeric", day: "numeric",
+  hour: "numeric", minute: "numeric", weekday: "short", hourCycle: "h23",
+});
+const SEMANA: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+
+function emSaoPaulo(data: Date) {
+  const p = Object.fromEntries(partesSP.formatToParts(data).map((x) => [x.type, x.value]));
+  return {
+    ano: Number(p.year), mes: Number(p.month), dia: Number(p.day),
+    hora: Number(p.hour), minuto: Number(p.minute), semana: SEMANA[p.weekday] ?? 0,
+  };
+}
 
 type VendaMesItem = {
   total_centavos: number;
@@ -18,20 +38,21 @@ export function EstatisticasDashboard({
   horarioAbertura = "18:00",
   horarioFechamento = "03:00",
 }: EstatisticasProps) {
-  const hoje = new Date();
-  const diasNoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).getDate();
-  const diaAtual = hoje.getDate();
+  const hoje = emSaoPaulo(new Date());
+  const diasNoMes = new Date(Date.UTC(hoje.ano, hoje.mes, 0)).getUTCDate();
+  const diaAtual = hoje.dia;
+  const vendasSP = vendas.map((v) => ({ ...v, sp: emSaoPaulo(new Date(v.created_at)) }));
 
   // 1. Processamento da Curva S (Faturamento Acumulado no Mês)
+  // Os dados cobrem 30 dias: só entra o que é DESTE mês. Antes o dia 20 do mês
+  // passado somava no dia 20 deste e inflava o total e a média.
   const acumuladoPorDia: number[] = Array(diasNoMes).fill(0);
   let totalMes = 0;
 
-  vendas.forEach((v) => {
-    const dia = new Date(v.created_at).getDate();
-    if (dia >= 1 && dia <= diasNoMes) {
-      acumuladoPorDia[dia - 1] += v.total_centavos;
-      totalMes += v.total_centavos;
-    }
+  vendasSP.forEach((v) => {
+    if (v.sp.ano !== hoje.ano || v.sp.mes !== hoje.mes) return;
+    acumuladoPorDia[v.sp.dia - 1] += v.total_centavos;
+    totalMes += v.total_centavos;
   });
 
   function calcularCurvaS(arr: number[]): number[] {
@@ -49,9 +70,8 @@ export function EstatisticasDashboard({
   const diasSemanaNomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
   const vendasPorDiaSemana: number[] = Array(7).fill(0);
 
-  vendas.forEach((v) => {
-    const d = new Date(v.created_at).getDay();
-    vendasPorDiaSemana[d] += v.total_centavos;
+  vendasSP.forEach((v) => {
+    vendasPorDiaSemana[v.sp.semana] += v.total_centavos;
   });
 
   const maxDiaSemana = Math.max(...vendasPorDiaSemana, 100);
@@ -81,24 +101,20 @@ export function EstatisticasDashboard({
     atualMins += 30;
   }
 
-  vendas.forEach((v) => {
-    const d = new Date(v.created_at);
-    let vMins = d.getHours() * 60 + d.getMinutes();
+  vendasSP.forEach((v) => {
+    let vMins = v.sp.hora * 60 + v.sp.minuto;
     if (aberturaMins > (fH * 60 + fM) && vMins <= (fH * 60 + fM)) {
       vMins += 24 * 60;
     }
 
-    let slotEncontrado = slotsPicoKeys[0];
+    // Venda fora do horário configurado não entra no gráfico de pico. Antes ela
+    // caía no primeiro intervalo e inventava um pico na abertura.
     for (let i = 0; i < slotsPicoKeys.length; i++) {
       const slotStart = aberturaMins + i * 30;
-      const slotEnd = slotStart + 30;
-      if (vMins >= slotStart && vMins < slotEnd) {
-        slotEncontrado = slotsPicoKeys[i];
+      if (vMins >= slotStart && vMins < slotStart + 30) {
+        picosMap[slotsPicoKeys[i]] += v.total_centavos;
         break;
       }
-    }
-    if (picosMap[slotEncontrado] !== undefined) {
-      picosMap[slotEncontrado] += v.total_centavos;
     }
   });
 
@@ -130,7 +146,7 @@ export function EstatisticasDashboard({
         <div>
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-              Curva S • Faturamento Acumulado no Mês
+              Curva S • Vendas Lançadas no Mês
             </h3>
             <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full">
               {formatarReais(totalMes)} total

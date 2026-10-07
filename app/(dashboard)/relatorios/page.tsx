@@ -41,7 +41,7 @@ export default async function RelatoriosPage() {
 
             <div className="grid grid-cols-2 gap-3">
                 <div className="border border-stone-200 dark:border-stone-800 p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40">
-                    <p className="text-[10px] uppercase font-bold text-stone-500">Faturamento Total</p>
+                    <p className="text-[10px] uppercase font-bold text-stone-500">Vendas lançadas</p>
                     <p className="text-lg font-black">{formatarReais(faturamentoTotal)}</p>
                 </div>
                 <div className="border border-stone-200 dark:border-stone-800 p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40">
@@ -82,7 +82,7 @@ export default async function RelatoriosPage() {
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4 p-6 border-b border-stone-200 dark:border-stone-800 bg-stone-100/50 dark:bg-stone-900/40">
                 <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-5 shadow-xs">
                     <span className="text-xs font-bold uppercase tracking-wider text-stone-500 dark:text-stone-400">
-                        Faturamento (últimos 30 dias)
+                        Vendas lançadas (últimos 30 dias)
                     </span>
                     <p className="mt-2 text-3xl font-black tabular-nums text-amber-800 dark:text-amber-400">
                         {formatarReais(faturamentoTotal)}

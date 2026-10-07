@@ -12,6 +12,7 @@ import { confirmRecovery, requestRecovery, saveRecoveryPassword } from "@/lib/ne
 import { conferirTurnstile } from "@/lib/turnstile";
 import { hashDoIpAtual, ipDoVisitante } from "@/lib/ip";
 import { problemaDaSenha } from "@/lib/senha";
+import { auditar } from "@/lib/auditoria";
 
 export type EstadoForm = { ok: boolean; mensagem: string } | null;
 export type EstadoRecuperacao = { ok: boolean; mensagem: string; enviadoEm?: number } | null;
@@ -22,6 +23,20 @@ function loginRateKey(email: string, ip: string): Buffer {
   const secret = process.env.SECRET_KEY;
   if (!secret || secret.length < 32) throw new Error("SECRET_KEY inválida.");
   return createHmac("sha256", secret).update(`login:${email}:${ip}`).digest();
+}
+
+async function contarTentativa(chave: Buffer): Promise<number> {
+  const { rows } = await neonPool.query<{ attempts: number }>(
+    `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
+     VALUES ($1, now(), 1)
+     ON CONFLICT (key_hash) DO UPDATE SET
+       attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
+         THEN 1 ELSE auth_rate_limits.attempts + 1 END,
+       window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
+         THEN now() ELSE auth_rate_limits.window_start END
+     RETURNING attempts`, [chave],
+  );
+  return rows[0].attempts;
 }
 
 async function gravarSessao(userId: string, hash: string, lembrar: boolean) {
@@ -44,18 +59,18 @@ export async function entrarComSenha(_anterior: EstadoForm, formData: FormData):
   }
   let destination = "/dashboard";
   try {
-    const key = loginRateKey(email, (await hashDoIpAtual()) || "sem-ip");
-    const { rows: rate } = await neonPool.query<{ attempts: number }>(
-      `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
-       VALUES ($1, now(), 1)
-       ON CONFLICT (key_hash) DO UPDATE SET
-         attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
-           THEN 1 ELSE auth_rate_limits.attempts + 1 END,
-         window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '15 minutes'
-           THEN now() ELSE auth_rate_limits.window_start END
-       RETURNING attempts`, [key],
-    );
-    if (rate[0].attempts > 10) {
+    const ip = (await hashDoIpAtual()) || "sem-ip";
+    const key = loginRateKey(email, ip);
+    // Three buckets. email+IP is the person mistyping; IP alone is one source
+    // spraying many accounts; email alone is many sources (a botnet) on one
+    // account. Only email+IP resets on success: the aggregates are ceilings,
+    // set high enough that a bar full of phones on one Wi-Fi never meets them.
+    const [porPar, porIp, porConta] = await Promise.all([
+      contarTentativa(key),
+      contarTentativa(loginRateKey("*", ip)),
+      contarTentativa(loginRateKey(email, "*")),
+    ]);
+    if (porPar > 10 || porIp > 60 || porConta > 50) {
       return { ok: false, mensagem: "Muitas tentativas. Aguarde 15 minutos." };
     }
     const { rows } = await neonPool.query<{
@@ -67,6 +82,8 @@ export async function entrarComSenha(_anterior: EstadoForm, formData: FormData):
     const user = rows[0];
     const valid = await bcrypt.compare(password, user?.password_hash || DUMMY_HASH);
     if (!user || !valid || user.suspended_at || !user.password_hash) {
+      if (user) await auditar("login", { alvo: user.id, ok: false,
+        detalhe: user.suspended_at ? "suspenso" : "credencial" });
       return { ok: false, mensagem: "E-mail ou senha incorretos." };
     }
     await neonPool.query("DELETE FROM app_private.auth_rate_limits WHERE key_hash = $1", [key]);
@@ -77,6 +94,7 @@ export async function entrarComSenha(_anterior: EstadoForm, formData: FormData):
     );
     destination = access[0].is_admin ? "/admin" : access[0].has_bar ? "/dashboard" : "/onboarding";
     await gravarSessao(user.id, user.password_hash, lembrar);
+    await auditar("login", { ator: user.id, alvo: user.id, ok: true });
   } catch (error) {
     console.error("[login] falha", error);
     return { ok: false, mensagem: "Não foi possível entrar agora." };
@@ -118,7 +136,7 @@ export async function confirmarCodigoDeRecuperacao(_anterior: EstadoForm,
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const code = String(formData.get("codigo") ?? "").trim();
   try {
-    if (!await confirmRecovery(email, code)) {
+    if (!await confirmRecovery(email, code, (await hashDoIpAtual()) || "sem-ip")) {
       return { ok: false, mensagem: "Código inválido, expirado ou já usado." };
     }
   } catch (error) {

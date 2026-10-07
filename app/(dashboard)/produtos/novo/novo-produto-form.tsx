@@ -161,6 +161,7 @@ export function NovoProdutoForm() {
                 src={previa}
                 alt="Prévia do produto"
                 fill
+                sizes="192px"
                 className="object-cover"
               />
             ) : (

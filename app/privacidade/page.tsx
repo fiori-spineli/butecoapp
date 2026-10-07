@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  * O texto é curto de propósito. Política que ninguém lê não informa ninguém.
  */
 
-const ATUALIZADO_EM = "10 de setembro de 2026";
+const ATUALIZADO_EM = "7 de outubro de 2026";
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -80,9 +80,11 @@ export default function PrivacidadePage() {
           </p>
           <p>
             Guardamos também um <strong>código embaralhado do seu endereço de
-            internet</strong> (um hash), nunca o endereço em si. Ele serve para limitar
-            quantos pedidos saem da mesma conexão por dia e barrar envio automático. Não
-            dá para voltar dele ao seu endereço.
+            internet</strong> (um hash com uma chave secreta nossa), nunca o endereço em
+            si. Ele serve para limitar quantos pedidos saem da mesma conexão por dia e
+            barrar envio automático. Sem a chave secreta, ele não serve para descobrir o
+            seu endereço. O endereço em si passa pela Cloudflare na verificação
+            anti-robô (abaixo) e pelos registros técnicos da hospedagem.
           </p>
           <p>
             Se você não virar cliente, é só pedir a exclusão pelo contato no fim desta
@@ -93,22 +95,33 @@ export default function PrivacidadePage() {
         <Secao titulo="Se você é dono de um bar que usa o sistema">
           <p>
             A conta guarda o e-mail de acesso e os dados do seu bar: produtos, comandas,
-            lançamentos e pagamentos registrados. Cada bar enxerga só os próprios dados —
-            isso é garantido pelo banco, não só pela tela.
+            lançamentos e pagamentos registrados. Cada bar enxerga só os próprios dados:
+            toda consulta do servidor é filtrada pelo bar de quem está conectado, e o
+            banco recusa misturar produto, comanda e pedido de bares diferentes.
           </p>
           <p>
-            Sua senha nunca é vista por nós: ela é gravada embaralhada pelo serviço de
-            autenticação, e trocar de senha sempre passa por um link enviado ao seu
-            e-mail.
+            Sua senha nunca é vista por nós: ela é gravada embaralhada (bcrypt), e nem
+            quem administra o sistema consegue lê-la. Para criar a primeira senha você
+            recebe um convite; para trocar ou recuperar, um código de 8 dígitos enviado
+            ao seu e-mail. Trocar a senha desconecta todos os outros aparelhos.
+          </p>
+          <p>
+            Ações importantes — entrar, trocar a senha, registrar ou desfazer pagamento,
+            fechar comanda, e as ações de administração — ficam registradas com quem fez,
+            quando e o resultado (sem senha, código ou e-mail), por até dois anos. Isso
+            serve para esclarecer dúvidas sobre o caixa e investigar abuso.
           </p>
         </Secao>
 
         <Secao titulo="Se você é cliente de um bar e abriu a conta pelo QR Code">
           <p>
-            A página da comanda <strong>não pede e não guarda nada seu</strong>. Sem
-            cadastro, sem login, sem cookie de identificação. Ela mostra o que o bar
-            lançou naquela mesa, e o link para de funcionar 24 horas depois de a conta
-            ser fechada.
+            A página da comanda <strong>não pede cadastro, login nem cookie</strong>.
+            Ela mostra o que o bar lançou na sua conta: o nome que você deu ao garçom, a
+            mesa e os itens. Os pedidos que você faz por ela ficam guardados junto da
+            conta do bar. O link para de funcionar 24 horas depois de a conta ser
+            fechada (volta a valer se o bar reabrir a conta) e não aparece em buscadores.
+            Este aparelho lembra, no próprio navegador, quais avisos de pedido recusado
+            você já viu.
           </p>
         </Secao>
 
@@ -120,9 +133,6 @@ export default function PrivacidadePage() {
             </li>
             <li>
               <strong>Cloudflare R2</strong> — fotos dos produtos e dos bares.
-            </li>
-            <li>
-              <strong>Resend</strong> — envio de códigos de recuperação de acesso.
             </li>
             <li>
               <strong>Vercel</strong> — hospedagem do site.
@@ -144,25 +154,47 @@ export default function PrivacidadePage() {
               .
             </li>
             <li>
-              <strong>Resend</strong> — envio dos e-mails do sistema (link de senha e
-              aviso de pedido novo).
+              <strong>Resend</strong> — envio dos e-mails do sistema (código de
+              recuperação de acesso e aviso de pedido novo para a nossa equipe).
             </li>
             <li>
               <strong>Vercel Analytics e Speed Insights</strong> — contagem de acessos e
-              tempo de carregamento, sem identificar visitante. O endereço da página da
-              comanda é limpo antes de sair do navegador, para que o código de acesso do
-              cliente nunca chegue a um painel de métricas.
+              tempo de carregamento, sem cookie e sem identificar visitante. O endereço da
+              página da comanda e dos links de convite e recuperação é limpo antes de sair
+              do navegador, para que nenhum código de acesso chegue a um painel de
+              métricas.
             </li>
           </ul>
         </Secao>
 
         <Secao titulo="Cookies">
           <p>
-            Só um: o de sessão, que mantém o dono do bar conectado. Ele é inacessível a
-            qualquer JavaScript da página e não serve para publicidade. A escolha entre
-            tema claro e escuro fica gravada no seu próprio navegador e não chega até
-            nós.
+            Só para quem entra na área do bar, e nenhum serve para publicidade ou é lido
+            por JavaScript da página:
           </p>
+          <ul className="ml-4 list-disc space-y-2">
+            <li><strong>Sessão</strong> — mantém você conectado; até 30 dias com
+              &quot;manter conectado&quot;, senão até fechar o navegador.</li>
+            <li><strong>Preferência &quot;manter conectado&quot;</strong> — lembra a sua escolha
+              nessa caixa.</li>
+            <li><strong>Recuperação</strong> — existe só por 15 minutos, entre confirmar o
+              código e gravar a senha nova.</li>
+          </ul>
+          <p>
+            A escolha entre tema claro e escuro fica gravada no seu próprio navegador e
+            não chega até nós.
+          </p>
+        </Secao>
+
+        <Secao titulo="Por quanto tempo guardamos">
+          <ul className="ml-4 list-disc space-y-2">
+            <li>Dados do bar (produtos, comandas, pagamentos): enquanto a conta existir.
+              Excluir a conta apaga tudo, inclusive as fotos.</li>
+            <li>Pedidos de acesso pelo formulário: até você pedir a exclusão, ou até
+              virarem conta.</li>
+            <li>Sessões encerradas ou vencidas: apagadas uma semana depois.</li>
+            <li>Registro de ações importantes: dois anos.</li>
+          </ul>
         </Secao>
 
         <Secao titulo="Seus direitos">

@@ -4,27 +4,42 @@ import { usePathname } from "next/navigation";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 /**
- * Speed Insights em todo lugar, menos na página da comanda do cliente.
+ * Speed Insights sem credencial na URL.
  *
- * Achei isso medindo o corpo da requisição em produção, não lendo documentação:
- * o beacon de vitals manda DOIS campos de endereço.
+ * O beacon de vitals manda o endereço da página (`url`). Na comanda do cliente
+ * esse endereço carrega o token — e quem tem o token abre a conta. Medido em
+ * produção em 2026-09: o `route` vinha agrupado (`/c/[token]`), mas o endereço
+ * ia cru.
  *
- *   "route": "/c/[token]"
- *   "href":  "https://butecoapp.vercel.app/c/0716d5a1-1a85-42cb-8e94-18c063468665"
+ * Duas camadas, porque cada uma cobre um buraco da outra:
  *
- * O `route` vem agrupado, mas o `href` vai cru — com o token de verdade. E esse
- * token É a credencial de acesso do cliente: quem tem a URL abre a comanda.
- * Diferente do @vercel/analytics, este SDK não expõe `beforeSend`, então não há
- * como limpar o campo antes do envio.
- *
- * Sobra não medir essa rota. Custa pouco: a página do cliente já carrega em
- * ~600 ms, e a lentidão que queremos investigar está na área do dono — que
- * continua medida normalmente.
+ * 1. `beforeSend` (existe no SDK desde a 2.x; um comentário antigo aqui dizia o
+ *    contrário) limpa o token e a query de recuperação ANTES do envio. Vale
+ *    também para um script já carregado numa página anterior, que continua
+ *    vivo durante a navegação interna — devolver `null` não o remove.
+ * 2. Nas próprias rotas sensíveis o componente nem monta: abertas direto pelo
+ *    QR ou pelo convite, elas nunca carregam o script.
  */
+function limpar<T extends { url: string }>(evento: T): T | null {
+  try {
+    const url = new URL(evento.url);
+    if (url.pathname.startsWith("/c/")) {
+      url.pathname = "/c/[token]";
+      url.search = "";
+    } else if (url.pathname.startsWith("/auth/") || url.pathname === "/nova-senha") {
+      url.search = "";
+    }
+    url.hash = "";
+    return { ...evento, url: url.toString() };
+  } catch {
+    return null;
+  }
+}
+
 export function SpeedInsightsButeco() {
   const caminho = usePathname();
 
-  if (caminho?.startsWith("/c/") || caminho === "/auth/recuperar") return null;
+  if (caminho?.startsWith("/c/") || caminho?.startsWith("/auth/")) return null;
 
-  return <SpeedInsights />;
+  return <SpeedInsights beforeSend={limpar} />;
 }

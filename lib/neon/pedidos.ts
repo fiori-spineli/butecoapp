@@ -1,6 +1,10 @@
 import "server-only";
 
 import { neonPool } from "@/lib/neon-db";
+import {
+  LIMITE_DE_PEDIDOS_PENDENTES as LIMITE_PENDENTES,
+  QUANTIDADE_MAXIMA_POR_ITEM as QUANTIDADE_MAXIMA,
+} from "@/lib/pedido-limites";
 
 type Resultado = { ok: boolean; mensagem?: string; pedidos?: number };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,6 +18,8 @@ export async function criarPedidoPublico(token: string,
   let committed = false;
   try {
     await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query("SET LOCAL statement_timeout = '15s'");
     const { rows } = await client.query<{ id: string; bar_id: string; status: string }>(
       "SELECT id, bar_id, status FROM public.clientes WHERE token = $1 FOR UPDATE", [token],
     );
@@ -26,20 +32,28 @@ export async function criarPedidoPublico(token: string,
       `SELECT COUNT(*) AS n FROM public.pedidos_pendentes
        WHERE cliente_id = $1 AND status = 'pendente'`, [comanda.id],
     );
-    let restantes = 40 - Number(counts[0].n);
+    const restantes = LIMITE_PENDENTES - Number(counts[0].n);
     if (restantes < 1) {
       return { ok: false, mensagem: "Você já tem pedidos esperando. Chame o garçom." };
     }
+    // All or nothing. Skipping a bad line and answering "sent" told the customer
+    // the whole cart was on its way when part of it had been silently dropped.
+    if (itens.length > restantes) {
+      return { ok: false, mensagem: `Dá para pedir mais ${restantes} item(ns) agora. Tire alguns do carrinho ou chame o garçom.` };
+    }
     let pedidos = 0;
     for (const item of itens) {
-      if (restantes < 1) break;
       if (!UUID.test(item.produto_id) || !Number.isSafeInteger(item.quantidade) ||
-          item.quantidade < 1 || item.quantidade > 99) continue;
+          item.quantidade < 1 || item.quantidade > QUANTIDADE_MAXIMA) {
+        return { ok: false, mensagem: `Cada item aceita de 1 a ${QUANTIDADE_MAXIMA} unidades.` };
+      }
       const product = await client.query<{ preco_centavos: number }>(
         "SELECT preco_centavos FROM public.produtos WHERE id = $1 AND bar_id = $2",
         [item.produto_id, comanda.bar_id],
       );
-      if (!product.rows[0]) continue;
+      if (!product.rows[0]) {
+        return { ok: false, mensagem: "Um item do carrinho saiu do cardápio. Atualize a página e confira." };
+      }
       await client.query(
         `INSERT INTO public.pedidos_pendentes
          (bar_id, cliente_id, produto_id, quantidade, valor_unitario_centavos)
@@ -48,9 +62,7 @@ export async function criarPedidoPublico(token: string,
           item.quantidade, product.rows[0].preco_centavos],
       );
       pedidos++;
-      restantes--;
     }
-    if (!pedidos) return { ok: false, mensagem: "Nenhum item válido para pedir." };
     await client.query("COMMIT");
     committed = true;
     return { ok: true, pedidos };
@@ -73,6 +85,8 @@ export async function processarPedido(barId: string, pedidoId: string,
   let committed = false;
   try {
     await client.query("BEGIN");
+    await client.query("SET LOCAL lock_timeout = '5s'");
+    await client.query("SET LOCAL statement_timeout = '15s'");
     const { rows } = await client.query<{
       cliente_id: string; produto_id: string; quantidade: number;
       valor_unitario_centavos: number; status: string;
@@ -96,16 +110,17 @@ export async function processarPedido(barId: string, pedidoId: string,
       return { ok: false, mensagem: "Reabra a comanda antes de confirmar." };
     }
     if (entregar) {
-      const product = await client.query(
-        "SELECT 1 FROM public.produtos WHERE id = $1 AND bar_id = $2",
+      const product = await client.query<{ nome: string }>(
+        "SELECT nome FROM public.produtos WHERE id = $1 AND bar_id = $2",
         [pedido.produto_id, barId],
       );
-      if (!product.rowCount) return { ok: false, mensagem: "Produto não encontrado neste bar." };
+      if (!product.rows[0]) return { ok: false, mensagem: "Produto não encontrado neste bar." };
       await client.query(
         `INSERT INTO public.lancamentos
-         (cliente_id, produto_id, quantidade, valor_unitario_centavos)
-         VALUES ($1, $2, $3, $4)`,
-        [clienteId, pedido.produto_id, pedido.quantidade, pedido.valor_unitario_centavos],
+         (cliente_id, produto_id, descricao, quantidade, valor_unitario_centavos)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [clienteId, pedido.produto_id, product.rows[0].nome, pedido.quantidade,
+          pedido.valor_unitario_centavos],
       );
     }
     await client.query(

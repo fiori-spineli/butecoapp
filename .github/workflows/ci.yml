@@ -1,0 +1,52 @@
+# Verificação obrigatória de toda mudança (GUARDRAILS §2: o que não roda sozinho
+# não protege ninguém). Nada aqui usa segredo nem toca Neon, R2 ou Vercel reais:
+# o banco é um Postgres descartável com o esquema de produção (neon/baseline),
+# os segredos são aleatórios por execução e o Turnstile usa as chaves públicas
+# de teste da Cloudflare.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: TypeScript
+        run: npx tsc --noEmit --incremental false
+
+      - name: ESLint
+        run: npx eslint --no-cache .
+
+      - name: Auditoria de dependências de runtime
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Baterias ponta a ponta (sessão, MFA, isolamento, dinheiro, upload)
+        env:
+          WORK: ${{ runner.temp }}/e2e
+        run: bash neon/e2e/run.sh
+
+      - name: Logs do servidor de teste
+        if: failure()
+        run: |
+          tail -n 200 "$RUNNER_TEMP/e2e/build.log" || true
+          tail -n 200 "$RUNNER_TEMP/e2e/server.log" || true

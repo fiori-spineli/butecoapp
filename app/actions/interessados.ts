@@ -6,6 +6,7 @@ import { criarClienteDoPedido } from "@/app/actions/clientes";
 import { listarInteressadosNoNeon, mudarStatusInteresse } from "@/lib/neon/interessados";
 import type { EstadoForm } from "@/app/actions/auth";
 import type { Interessado } from "@/lib/types";
+import { auditar } from "@/lib/auditoria";
 
 const NEGADO: EstadoForm = {
   ok: false,
@@ -27,13 +28,16 @@ export async function criarContaDoBar(_anterior: EstadoForm, formData: FormData)
 }
 
 export async function mudarStatusInteressado(_anterior: EstadoForm, formData: FormData): Promise<EstadoForm> {
-  if (!(await exigirAdminVerificado())) return NEGADO;
+  const admin = await exigirAdminVerificado();
+  if (!admin) return NEGADO;
   const id = String(formData.get("interessado_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const observacao = String(formData.get("observacao") ?? "").trim();
   if (!/^[0-9a-f-]{36}$/i.test(id) || !["novo", "contatado", "descartado"].includes(status) ||
       observacao.length > 2000) return { ok: false, mensagem: "Dados inválidos." };
-  if (!(await mudarStatusInteresse(id, status, observacao))) {
+  const mudou = await mudarStatusInteresse(id, status, observacao);
+  await auditar("interessado_atualizado", { ator: admin.userId, alvo: id, ok: mudou, detalhe: status });
+  if (!mudou) {
     return { ok: false, mensagem: "Pedido não encontrado ou já convertido em cliente." };
   }
   revalidatePath("/admin");

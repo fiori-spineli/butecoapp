@@ -3,6 +3,7 @@
 import { getNeonSession, openSession } from "@/lib/neon-session";
 import { neonPool } from "@/lib/neon-db";
 import { iniciarMfa, statusMfa, verificarMfa } from "@/lib/neon/mfa";
+import { auditar } from "@/lib/auditoria";
 
 export interface StatusMFA {
   temFatorAtivo: boolean;
@@ -37,16 +38,29 @@ export async function iniciarCadastroTOTP(setupKey: string) {
   }
 }
 
-/** Privilege change rotates the session: the pre-MFA token stops working. */
+/**
+ * Privilege change rotates the session: the pre-MFA token stops working.
+ * New row and old revocation commit together; if they were separate, a failure
+ * in between left the pre-MFA token alive next to the elevated one.
+ */
 async function elevarSessao(userId: string, previousSessionId: string) {
-  const { rows } = await neonPool.query<{ password_hash: string | null }>(
-    "SELECT password_hash FROM public.users WHERE id = $1", [userId],
-  );
-  if (!rows[0]?.password_hash) throw new Error("Conta sem senha local.");
-  await openSession(userId, rows[0].password_hash, { mfaAt: Math.floor(Date.now() / 1000) });
-  await neonPool.query(
-    "UPDATE app_private.sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2",
-    [previousSessionId, userId]);
+  const client = await neonPool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<{ password_hash: string | null }>(
+      "SELECT password_hash FROM public.users WHERE id = $1 FOR UPDATE", [userId],
+    );
+    if (!rows[0]?.password_hash) throw new Error("Conta sem senha local.");
+    await client.query(
+      "UPDATE app_private.sessions SET revoked_at = now() WHERE id = $1 AND user_id = $2",
+      [previousSessionId, userId]);
+    await openSession(userId, rows[0].password_hash,
+      { mfaAt: Math.floor(Date.now() / 1000), client });
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => {});
+    throw error;
+  } finally { client.release(); }
 }
 
 async function validar(fatorId: string, codigo: string, enrollment: boolean) {
@@ -54,6 +68,8 @@ async function validar(fatorId: string, codigo: string, enrollment: boolean) {
   if (!session || fatorId !== session.userId) return { ok: false, mensagem: "Acesso negado." };
   try {
     const valid = await verificarMfa(session.userId, codigo.trim(), enrollment);
+    await auditar(enrollment ? "mfa_inscricao" : "mfa_verificacao",
+      { ator: session.userId, alvo: session.userId, ok: valid });
     if (!valid) return { ok: false, mensagem: "Código incorreto, expirado ou já usado." };
     await elevarSessao(session.userId, session.sessionId);
     return { ok: true };

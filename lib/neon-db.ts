@@ -1,5 +1,6 @@
 import "server-only";
 
+import { attachDatabasePool } from "@vercel/functions/db-connections";
 import { Pool, types } from "pg";
 
 // Server components pass timestamps to client components as ISO strings.
@@ -24,5 +25,22 @@ function urlDoBanco(): string {
 
 const connectionString = urlDoBanco();
 
-/** A single pool per server process; callers must never expose its credentials. */
-export const neonPool = new Pool({ connectionString });
+/**
+ * A single pool per server process; callers must never expose its credentials.
+ *
+ * Every wait has a deadline (GUARDRAILS §12). pg's default connectionTimeoutMillis
+ * is 0 — wait forever — so an exhausted pool used to hang requests until the
+ * function itself timed out. Now a request that cannot get a connection in 5 s
+ * fails and the page shows the error boundary. DATABASE_URL points at Neon's
+ * pooler, so a small per-instance ceiling is enough; the pooler fans out.
+ */
+export const neonPool = new Pool({
+  connectionString,
+  max: 5,
+  connectionTimeoutMillis: 5_000,
+  idleTimeoutMillis: 10_000,
+});
+
+// With Fluid compute one instance serves many requests and may be suspended with
+// clients still open; this releases idle clients before that. No-op elsewhere.
+attachDatabasePool(neonPool);

@@ -128,7 +128,7 @@ export function EditarProdutoForm({ produto }: { produto: Produto }) {
             <>
               <div className="relative mx-auto size-48 rounded-2xl border-2 border-dashed border-stone-300 dark:border-stone-700 bg-stone-100 dark:bg-stone-800/60 overflow-hidden flex items-center justify-center">
                 {previa ? (
-                  <Image src={previa} alt="Foto do produto" fill className="object-cover" />
+                  <Image src={previa} alt="Foto do produto" fill sizes="192px" className="object-cover" />
                 ) : (
                   <span className="text-xs text-stone-400">Sem foto</span>
                 )}
