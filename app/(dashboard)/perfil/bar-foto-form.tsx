@@ -56,7 +56,11 @@ export function BarFotoForm({ fotoAtual }: { fotoAtual?: string | null }) {
         setPrevia(corpo.url);
         router.refresh();
       } else {
-        setErro(corpo?.erro ?? "Não consegui trocar a foto. Tente de novo.");
+        // 413 vem da Vercel (corpo acima de ~4,5 MB), antes da rota rodar: sem
+        // JSON, a mensagem genérica escondia o motivo.
+        setErro(res.status === 413
+          ? "Essa foto é grande demais para enviar. Tire um print dela ou escolha outra."
+          : corpo?.erro ?? "Não consegui trocar a foto. Tente de novo.");
       }
     } catch {
       setErro("Sem conexão com o servidor. Confira a internet e tente de novo.");
@@ -70,7 +74,7 @@ export function BarFotoForm({ fotoAtual }: { fotoAtual?: string | null }) {
       {/* Box de Prévia: Mostra a foto ou a caneca dourada padrão */}
       <div className="relative size-20 rounded-2xl border border-amber-600/40 overflow-hidden flex items-center justify-center shrink-0 shadow-xs bg-linear-to-br from-amber-600 to-amber-800">
         {previa ? (
-          <Image src={previa} alt="Foto do Bar" fill className="object-cover" />
+          <Image src={previa} alt="Foto do Bar" fill sizes="80px" onError={() => setPrevia(null)} className="object-cover" />
         ) : (
           <svg
             width="36"

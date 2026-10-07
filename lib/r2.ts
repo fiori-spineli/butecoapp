@@ -42,10 +42,24 @@ export function chaveDaImagem(url: string | null | undefined, pasta: "produtos" 
   } catch { return null; }
 }
 
+/** JPEG, PNG, WebP or AVIF by magic bytes; everything else never reaches a decoder. */
+function assinaturaAceita(b: Buffer): boolean {
+  if (b.length < 12) return false;
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return true;
+  if (b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return true;
+  if (b.toString("latin1", 0, 4) === "RIFF" && b.toString("latin1", 8, 12) === "WEBP") return true;
+  return b.toString("latin1", 4, 8) === "ftyp" && /^avi[fs]$/.test(b.toString("latin1", 8, 12));
+}
+
 export async function salvarImagem(arquivo: File, pasta: "produtos" | "logos", barId: string) {
   if (arquivo.size < 1) throw new ImagemInvalida("O arquivo está vazio.");
   if (arquivo.size > 6 * 1024 * 1024) throw new ImagemInvalida("A imagem deve ter até 6 MB.");
   const bytes = Buffer.from(await arquivo.arrayBuffer());
+  // Gate on the file signature BEFORE sharp parses anything: metadata() already
+  // runs the decoder, and an SVG reaches librsvg there (GHSA-wq5f-xc86-pv6w).
+  if (!assinaturaAceita(bytes)) {
+    throw new ImagemInvalida("Formato de imagem inválido. Use JPEG, PNG, WebP ou AVIF.");
+  }
   const image = sharp(bytes, { limitInputPixels: 20_000_000, failOn: "error" });
   let webp: Buffer;
   try {
@@ -66,7 +80,28 @@ export async function salvarImagem(arquivo: File, pasta: "produtos" | "logos", b
     Bucket: bucket, Key: key, Body: webp, ContentType: "image/webp",
     CacheControl: "public, max-age=31536000, immutable",
   }));
-  return new URL(key, `${publicUrl.href.replace(/\/$/, "")}/`).href;
+  const url = new URL(key, `${publicUrl.href.replace(/\/$/, "")}/`).href;
+  // Writing to the bucket proves the credentials, not the public domain. Production
+  // once ran with a placeholder R2_PUBLIC_DOMAIN: uploads "worked" and every photo
+  // was a dead link. Read it back over HTTPS before handing the URL to the database.
+  if (!await legivelEmPublico(url)) {
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {});
+    throw new Error(`R2_PUBLIC_DOMAIN não serve o objeto recém-enviado (${publicUrl.origin}).`);
+  }
+  return url;
+}
+
+async function legivelEmPublico(url: string): Promise<boolean> {
+  // r2.dev and custom domains can take a moment to see a brand-new object.
+  for (const espera of [0, 400, 1200]) {
+    if (espera) await new Promise(resolve => setTimeout(resolve, espera));
+    try {
+      const resposta = await fetch(url, { method: "HEAD", cache: "no-store",
+        signal: AbortSignal.timeout(4000) });
+      if (resposta.ok && resposta.headers.get("content-type")?.startsWith("image/")) return true;
+    } catch { /* timeout or DNS: try again, then fail closed */ }
+  }
+  return false;
 }
 
 export async function apagarImagem(url: string | null | undefined,
@@ -75,6 +110,11 @@ export async function apagarImagem(url: string | null | undefined,
   if (!key) return;
   const { client, bucket } = configuracao();
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+}
+
+export function urlPublicaDaChave(key: string): string {
+  const { publicUrl } = configuracao();
+  return new URL(key, `${publicUrl.href.replace(/\/$/, "")}/`).href;
 }
 
 /** Full pagination prevents deleting a referenced object beyond the first 1000. */

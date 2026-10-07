@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 import { neonPool } from "@/lib/neon-db";
 import { getNeonSession } from "@/lib/neon-session";
@@ -17,6 +19,23 @@ export async function uploadImagem(request: NextRequest, pasta: "produtos" | "lo
   );
   const barId = rows[0]?.id;
   if (!barId) return NextResponse.json({ erro: "Bar não encontrado." }, { status: 403 });
+
+  // Ceiling per bar: one logged-in session could otherwise fill the bucket.
+  // 60 an hour is far above a real menu session (pick, crop, retake).
+  const { rows: ritmo } = await neonPool.query<{ attempts: number }>(
+    `INSERT INTO app_private.auth_rate_limits (key_hash, window_start, attempts)
+     VALUES ($1, now(), 1)
+     ON CONFLICT (key_hash) DO UPDATE SET
+       attempts = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
+         THEN 1 ELSE auth_rate_limits.attempts + 1 END,
+       window_start = CASE WHEN auth_rate_limits.window_start < now() - interval '1 hour'
+         THEN now() ELSE auth_rate_limits.window_start END
+     RETURNING attempts`, [createHash("sha256").update(`upload:bar:${barId}`).digest()],
+  );
+  if (ritmo[0].attempts > 60) {
+    return NextResponse.json({ erro: "Muitas fotos em pouco tempo. Aguarde alguns minutos." },
+      { status: 429 });
+  }
 
   try {
     const data = await request.formData();
