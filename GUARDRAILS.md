@@ -351,6 +351,28 @@ vale** → digitar o código → gravar a senha nova → sair → entrar com a n
 
 ---
 
+## 14. Variável presente não é variável certa
+
+**Incidente — encontrado em 2026-10-07, antes do primeiro upload real.** O
+registro de corte dizia "R2: variáveis presentes em Production", e estavam. Mas
+a CSP pública mostrava `R2_PUBLIC_DOMAIN = https://pub-abc123xyz.r2.dev`, que não
+tem o formato de um r2.dev de verdade (`pub-<32 hex>`) e responde igual a um host
+inventado. O primeiro upload gravaria no bucket e entregaria ao banco um link
+morto; o teste local nunca veria, porque usa um R2 falso de propósito.
+
+**Regras:**
+
+- "Existe a variável" não verifica nada. Confira o **efeito**: o valor público
+  aparece na CSP, o upload lê o próprio objeto de volta por HTTPS
+  (`lib/r2.ts`), o e-mail chega, o login com Turnstile passa.
+- Toda integração que grava algo que outra pessoa vai ler **confere a leitura
+  antes de confirmar**: gravar prova as credenciais, não o endereço público.
+- Plano gratuito tem teto de recurso (Neon: 1 snapshot, sem agenda, sem branch
+  protegida). Antes de escrever "backup feito", liste o que o plano realmente
+  guarda e por quanto tempo — e tenha uma cópia **fora** do provedor.
+
+---
+
 ## Checklist antes de commitar
 
 1. `git status` — só o que eu pretendia mudar está aí?
@@ -371,3 +393,7 @@ vale** → digitar o código → gravar a senha nova → sair → entrar com a n
 12. Se mexeu em login, senha ou e-mail do Auth: a recuperação foi feita de
     ponta a ponta em produção, e o template do painel bate com
     `supabase/templates/` (seção 13).
+13. Se depende de variável ou serviço externo: o **efeito** foi conferido no
+    ambiente real (seção 14), não só a presença da variável.
+14. `git push` dispara a CI (`.github/workflows/ci.yml`); só considere entregue
+    com ela verde.

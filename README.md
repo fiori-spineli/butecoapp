@@ -30,7 +30,9 @@ node neon/migrate.mjs
 node neon/verify.mjs
 ```
 
-O migrador confere o SHA-256 de cada arquivo aplicado. Crie sempre um arquivo numerado novo; não edite migrations já aplicadas. `neon/verify.mjs` executa seus testes em transação e faz rollback. `neon/verify-admin.mjs` grava (e desfaz) dados de teste: exige `NEON_DISPOSABLE_HOST` igual ao host da URL e `NEON_PRODUCTION_HOST` diferente dele. `neon/auditoria.sql` é a leitura somente-leitura de paridade e esquema; `bash neon/e2e/run.sh` repete a prova local completa.
+Banco novo (vazio): aplique antes `neon/baseline/0000_base.sql`, o esquema `public` que as migrations pressupõem, extraído do catálogo de produção.
+
+O migrador confere o SHA-256 de cada arquivo aplicado. Crie sempre um arquivo numerado novo; não edite migrations já aplicadas. `neon/verify.mjs` executa seus testes em transação e faz rollback. `neon/verify-admin.mjs` grava (e desfaz) dados de teste: exige `NEON_DISPOSABLE_HOST` igual ao host da URL e `NEON_PRODUCTION_HOST` diferente dele. `neon/auditoria.sql` é a leitura somente-leitura de paridade e esquema; `bash neon/e2e/run.sh` repete a prova local completa (Docker: Postgres 18 com a baseline + migrations, build de produção e as baterias de sessão/MFA/isolamento, dinheiro e upload). A CI (`.github/workflows/ci.yml`) roda tudo isso em cada push e PR.
 
 ## Operação e segurança
 

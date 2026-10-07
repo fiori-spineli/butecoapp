@@ -7,19 +7,46 @@ A produção (`butecoapp.vercel.app`) roda o código do PR #1 (merge `3913217`) 
 - migration `0005` aplicada no Neon de produção antes do merge (8 comandos, registro em `schema_migrations`);
 - `ADMIN_MFA_ENROLLMENT_KEY` criada em Production antes do deploy;
 - conferido de fora: páginas restritas mandam ao login, CSP e HSTS ativos, o navegador não chama o Supabase;
-- primeiro admin entrou com senha + TOTP; o segundo cadastra o autenticador dele;
+- primeiro admin entrou com senha + TOTP;
 - Supabase de origem **pausado** (reversível); branches Neon de teste apagadas.
 
-Pendências depois do corte:
+## Revisão pós-corte de 07/10/2026
 
-| Item | Situação |
-|---|---|
-| "Esqueci a senha" por e-mail | Depende de domínio próprio verificado no Resend + `RESEND_API_KEY`/`RESEND_FROM_EMAIL` em Production. Até lá, convite pelo `/admin`. |
-| Upload de imagens (R2) | Variáveis presentes em Production; primeiro upload real ainda não feito. |
-| Contas de teste no Neon | Só os 2 admins importam; limpeza das demais preparada para o dono executar. |
-| Segredo `SUPABASE_ANON_KEY` no GitHub Actions | Órfão (nenhum workflow o usa); apagar em Settings → Secrets. |
-| Chave da API do Resend usada pelo SMTP do Supabase | Revogar quando a chave nova (com domínio) existir. |
-| Supabase pausado | Excluir de vez só por decisão explícita; o plano gratuito restaura projeto pausado por tempo limitado. |
+Conferido por leitura no Neon, na Vercel, no Resend e por GETs anônimos na produção. Corrigido no PR
+"fix/pos-auditoria" (migration `0006`, testes e CI). O que **não** dava para resolver por código ficou na
+tabela abaixo, com o responsável.
+
+| Item | Situação em 07/10 | Responsável |
+|---|---|---|
+| `R2_PUBLIC_DOMAIN` | A CSP pública mostra `https://pub-abc123xyz.r2.dev`: não tem o formato de um r2.dev real (`pub-<32 hex>`) e responde igual a hosts inventados. **Toda foto subida iria virar link quebrado.** O upload agora confere a leitura pública antes de gravar e recusa com erro claro. Corrigir o valor na Vercel e fazer novo deploy (o `remotePatterns` é lido no build). | dono (Cloudflare + Vercel) |
+| MFA do segundo admin | Banco: 1 de 2 admins com `confirmed_at`; o segundo não tem fator nem pendente. | segundo admin |
+| Backup | Plano gratuito: 6 h de histórico, **1** snapshot (o de 26/09, anterior ao corte), sem agenda e sem branch protegida — os três recursos foram tentados e recusados pelo plano. Criada a branch `backup-2026-10-07-pos-corte` (cópia do estado pós-corte, sem compute). Falta a cópia **fora** do Neon: `pg_dump` (ver abaixo). | dono |
+| "Esqueci a senha" por e-mail | Resend sem domínio; `RESEND_*` ausente. Até lá, convite pelo `/admin`. | dono |
+| Logo do único bar | Aponta para o Supabase pausado (otimizador responde 400). A tela agora mostra a caneca padrão; o dono troca a foto quando o R2 estiver certo. | dono do bar |
+| Ambiente Preview/Development | Nenhuma variável fora de Production: não existe ambiente para testar antes de produção. A CI cobre o código; preview com banco precisa de uma branch Neon de esquema e de segredos novos. | dono |
+| Role com menos privilégio | A aplicação usa `neondb_owner`, dona de tudo. Criar `app_runtime` (só DML) exige gravar uma nova `DATABASE_URL`. | dono |
+| Segredo `SUPABASE_ANON_KEY` no GitHub Actions | Órfão; apagar em Settings → Secrets. | dono |
+| Chave da API do Resend usada pelo SMTP do Supabase | Revogar quando a chave nova (com domínio) existir. | dono |
+| Supabase pausado | Excluir de vez só por decisão explícita, depois de `pg_dump` da origem guardado com checksum. | dono |
+
+### Cópia do banco fora do Neon (rodar na máquina do dono)
+
+A sessão automatizada não materializa a senha do banco. Com a URL **direta** (sem `-pooler`) copiada do
+console do Neon:
+
+```powershell
+$env:PGURL = '<URL direta da branch production>'
+docker run --rm -e PGURL postgres:18-alpine sh -c 'pg_dump "$PGURL" --format=custom --no-owner' > "$HOME\backups\buteco-$(Get-Date -Format yyyy-MM-dd).dump"
+Get-FileHash "$HOME\backups\buteco-*.dump" -Algorithm SHA256
+```
+
+O arquivo contém e-mails, hashes de senha e o segredo MFA cifrado: guardar **fora** desta pasta (o repositório
+é público). Restaurar: `pg_restore --no-owner -d <banco vazio>`.
+
+### Reconstruir o banco do zero
+
+`neon/baseline/0000_base.sql` (esquema `public` extraído do catálogo de produção em 07/10) e depois
+`node neon/migrate.mjs`. É o mesmo caminho que `neon/e2e/run.sh` e a CI percorrem a cada execução.
 
 O restante deste arquivo é o registro da auditoria **anterior** ao corte, mantido como histórico.
 
@@ -198,12 +225,15 @@ Nada foi alterado na origem nesta rodada.
 bash neon/e2e/run.sh   # Docker + Node 24; ~3 min; derruba tudo no fim
 ```
 
-Sobe um Postgres descartável com a base ORM (`neon/e2e/local-base.sql`), aplica as migrations duas
-vezes, roda `verify.mjs` (12 checagens) e `verify-admin.mjs`, carrega dois bares e um admin
-(`seed.sql`), faz o build com segredos aleatórios e as chaves públicas de teste do Turnstile, e roda:
-`sessao-mfa-isolamento.mjs` (42 casos), `dinheiro.mjs` (7) e `upload.mjs` (11). Resultado em
-01/10 no commit `6f19aa7`: tudo verde. As rodadas intermediárias tiveram falhas reais (rate limit do
-MFA, mensagem de recusa genérica), o que prova que a bateria sabe reprovar.
+Sobe um Postgres 18 descartável com o esquema de produção (`neon/baseline/0000_base.sql`, que
+substituiu a antiga base ORM `local-base.sql`), aplica as migrations duas vezes, roda `verify.mjs`
+(12 checagens) e `verify-admin.mjs`, carrega dois bares e um admin (`seed.sql`), faz o build com
+segredos aleatórios e as chaves públicas de teste do Turnstile, e roda:
+`sessao-mfa-isolamento.mjs` (48 casos, inclusive suspensão e reativação pela action real),
+`dinheiro.mjs` (13, inclusive nome preservado no histórico e pedido público tudo-ou-nada) e
+`upload.mjs` (15, agora com asserções e código de saída — a versão anterior só imprimia).
+Resultado em 07/10: tudo verde. A primeira rodada reprovou 5 casos (o teste montava o FormData fora
+da ordem que o React usa), o que prova que a bateria sabe reprovar. A mesma bateria roda na CI.
 
 `verify-admin.mjs` agora exige `NEON_DISPOSABLE_HOST` (conexão direta da branch descartável) e
 `NEON_PRODUCTION_HOST`, e recusa quando são iguais ou quando a URL é de pooler.
